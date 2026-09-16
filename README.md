@@ -37,21 +37,6 @@ Subscribe on the Steam Workshop, or copy `Contents/mods/ZomboidFixesB42` into yo
 - Must be installed on both the server and clients.
 - Admin features stay admin-only.
 
-## Layout
-
-```
-Contents/mods/ZomboidFixesB42/42.20/
-├── mod.info
-└── media/
-    ├── sandbox-options.txt
-    └── lua/
-        ├── client/   ZomboidFixesB42_<Fix>.lua
-        ├── server/   ZomboidFixesB42_<Fix>.lua
-        └── shared/   ZomboidFixesB42.lua, translations
-```
-
-Each fix lives in its own `ZomboidFixesB42_<Fix>.lua` file, split into client and server halves where it needs both. Command names shared by both sides are in `shared/ZomboidFixesB42.lua`.
-
 ## License
 
 Copyright (C) 2026 Tien
