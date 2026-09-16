@@ -16,6 +16,7 @@ description=[h2]Gameplay fixes[/h2]
 description=[list]
 description=[*][b]Negative weight items[/b] - Items with negative weight, which let players carry or store more than they should, are deleted automatically. Can be turned off in sandbox options.
 description=[*][b]Broken clothing[/b] - Clothing torn apart while worn is dropped for everyone, not just on your own screen, so it no longer comes back undamaged when you relog. Off by default; turn it on in sandbox options.
+description=[*][b]Metal shin armor run speed[/b] - Vanilla had the run speed of Metal Shin Armor and Articulated Metal Shin Armor the wrong way round, so the articulated ones were slower. The values are swapped back.
 description=[/list]
 description=
 description=[h2]Notes[/h2]

@@ -18,6 +18,7 @@ Steam Workshop ID: `3800148259` · Mod ID: `ZomboidFixesB42`
 
 - **Negative weight items.** Items with negative weight, which let players carry or store more than they should, are deleted automatically.
 - **Broken clothing.** Clothing torn apart while worn is dropped for everyone, not just on the wearer's screen, so it no longer comes back undamaged after relogging.
+- **Metal shin armor run speed.** Vanilla had the run speed of Metal Shin Armor and Articulated Metal Shin Armor the wrong way round, so the articulated ones were slower. The values are swapped back.
 
 ## Sandbox options
 
