@@ -1,0 +1,25 @@
+VERSION = 1,
+
+option ZomboidFixesB42.HideAdminTag
+{
+    type = boolean,
+    default = false,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_HideAdminTag,
+}
+
+option ZomboidFixesB42.DeleteNegativeWeightItems
+{
+    type = boolean,
+    default = false,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_DeleteNegativeWeightItems,
+}
+
+option ZomboidFixesB42.SyncBrokenClothing
+{
+    type = boolean,
+    default = false,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_SyncBrokenClothing,
+}

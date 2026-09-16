@@ -1,0 +1,12 @@
+{
+    "Sandbox_ZomboidFixesB42": "Zomboid Fixes B42.20",
+
+    "Sandbox_ZomboidFixesB42_HideAdminTag": "Hide Admin Tag While Cheating",
+    "Sandbox_ZomboidFixesB42_HideAdminTag_tooltip": "Normally the red admin tag appears above a staff member's head whenever any admin panel cheat is switched on. Tick this to never show it. Switched off, the tag follows every cheat in the admin panel consistently, including the ones vanilla forgets to count.",
+
+    "Sandbox_ZomboidFixesB42_DeleteNegativeWeightItems": "Delete Negative Weight Items",
+    "Sandbox_ZomboidFixesB42_DeleteNegativeWeightItems_tooltip": "Items with a negative weight reduce a player's encumbrance and let them carry far more than they should. Tick this to delete any such item. Player inventories are checked every few seconds, and the floor, containers, corpses and vehicles around a player are checked as they come within reach. Each deletion is written to the server log.",
+
+    "Sandbox_ZomboidFixesB42_SyncBrokenClothing": "Sync Broken Clothing",
+    "Sandbox_ZomboidFixesB42_SyncBrokenClothing_tooltip": "When worn clothing is torn down to zero condition, the game drops it only on that player's screen, and the server keeps the undamaged item, which comes back on relog. Tick this to drop the broken item for real, so everyone sees it and it stays broken."
+}
