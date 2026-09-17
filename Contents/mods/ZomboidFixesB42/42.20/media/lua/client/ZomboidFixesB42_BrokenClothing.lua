@@ -25,10 +25,16 @@
     the item's removeOnBroken flag is set, and nothing else reads that flag. It
     comes from the item script when the item is created and is neither saved nor
     networked, so clearing it on the client's copy of worn clothing changes nothing
-    for the server or anyone else. The client then keeps a broken item on instead
-    of dropping it, and reports the break. The server's copy still has the flag, so
-    its own Unwear takes the item off, drops it and replicates both to everyone,
-    including this client.
+    for the server or anyone else. The client then keeps the broken item instead of
+    dropping it, takes it off without dropping it, and reports the break. The server
+    drops its own copy and replicates that to everyone, including this client.
+
+    Taking it off locally straight away matters. Every hit, and a few other things,
+    call IsoPlayer.syncVisuals, which sends SyncClothing with the client's worn
+    list. When the server gets a worn item it does not have in the inventory, it
+    creates a new one with that ID and puts it on. So if the client still listed the
+    broken item as worn after the server had dropped it, the server would make a
+    fresh, undamaged copy while the broken one lay on the floor.
 --]]
 
 if not isClient() then return end
@@ -45,8 +51,7 @@ end
 local suppressed = {}
 local suppressedCount = 0
 
--- Item IDs already reported this session. A broken item stays worn until the
--- server's reply arrives, and one report is enough.
+-- Item IDs already reported this session, so one break is only reported once.
 local reported = {}
 
 --- The holes on an item, as body part indices joined with commas.
@@ -63,7 +68,8 @@ local function encodeHoles(item)
     return table.concat(holes, ",")
 end
 
-local function checkItem(player, item)
+--- Returns true when the item broke and should be taken off and reported.
+local function checkItem(item)
     local id = item:getID()
 
     if item:isRemoveOnBroken() then
@@ -74,13 +80,10 @@ local function checkItem(player, item)
         end
     end
 
-    if not suppressed[id] or reported[id] or item:getCondition() > 0 then return end
+    if not suppressed[id] or reported[id] or item:getCondition() > 0 then return false end
 
     reported[id] = true
-    sendClientCommand(player, ZomboidFixesB42.MODULE, ZomboidFixesB42.CMD_BROKEN_CLOTHING, {
-        id = tostring(id),
-        holes = encodeHoles(item),
-    })
+    return true
 end
 
 --- Walk a local player's worn clothing. With restore set, put the flags back
@@ -89,15 +92,36 @@ local function checkPlayer(player, restore)
     local wornItems = player:getWornItems()
     if not wornItems then return end
 
+    local broken = {}
     for i = 0, wornItems:size() - 1 do
         local item = wornItems:getItemByIndex(i)
         if item and instanceof(item, "Clothing") then
             if not restore then
-                checkItem(player, item)
+                if checkItem(item) then
+                    table.insert(broken, item)
+                end
             elseif suppressed[item:getID()] then
                 item:setRemoveOnBroken(true)
             end
         end
+    end
+
+    -- Taken off after the loop so the worn list is not changed while walking it.
+    -- This only unwears: the item stays in the inventory until the server drops
+    -- it, and the SyncClothing this sends no longer lists it (see the top of the
+    -- file). Taken off before reporting, so that SyncClothing is already on its
+    -- way when the server starts waiting for it.
+    if #broken > 0 then
+        for _, item in ipairs(broken) do
+            player:removeWornItem(item, false)
+        end
+        for _, item in ipairs(broken) do
+            sendClientCommand(player, ZomboidFixesB42.MODULE, ZomboidFixesB42.CMD_BROKEN_CLOTHING, {
+                id = tostring(item:getID()),
+                holes = encodeHoles(item),
+            })
+        end
+        triggerEvent("OnClothingUpdated", player)
     end
 end
 
