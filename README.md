@@ -19,6 +19,7 @@ Steam Workshop ID: `3800148259` · Mod ID: `ZomboidFixesB42`
 - **Negative weight items.** Items with negative weight, which let players carry or store more than they should, are deleted automatically.
 - **Broken clothing.** Clothing torn apart while worn is dropped for everyone, not just on the wearer's screen, so it no longer comes back undamaged after relogging.
 - **Metal shin armor run speed.** Vanilla had the run speed of Metal Shin Armor and Articulated Metal Shin Armor the wrong way round, so the articulated ones were slower. The values are swapped back.
+- **Chickens lost in hutch nest boxes.** A hen laying an egg gives up her place inside the hutch while she sits in the nest box, so another bird can walk in and take it. If every place is taken when she finishes, the game deletes her rather than putting her back, and the player just sees a chicken that vanished. She is caught and put back instead.
 
 ## Sandbox options
 
@@ -29,6 +30,7 @@ All options are on the **Zomboid Fixes B42.20** page.
 | Hide Admin Tag While Cheating | Off |
 | Delete Negative Weight Items | Off |
 | Sync Broken Clothing | Off |
+| Rescue Animals Lost In Hutch Nest Boxes | Off |
 
 ## Installation
 

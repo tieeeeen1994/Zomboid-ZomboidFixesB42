@@ -8,5 +8,8 @@
     "Sandbox_ZomboidFixesB42_DeleteNegativeWeightItems_tooltip": "Items with a negative weight reduce a player's encumbrance and let them carry far more than they should. Tick this to delete any such item. Player inventories are checked every few seconds, and the floor, containers, corpses and vehicles around a player are checked as they come within reach. Each deletion is written to the server log.",
 
     "Sandbox_ZomboidFixesB42_SyncBrokenClothing": "Sync Broken Clothing",
-    "Sandbox_ZomboidFixesB42_SyncBrokenClothing_tooltip": "When worn clothing is torn down to zero condition, the game drops it only on that player's screen, and the server keeps the undamaged item, which comes back on relog. Tick this to drop the broken item for real, so everyone sees it and it stays broken."
+    "Sandbox_ZomboidFixesB42_SyncBrokenClothing_tooltip": "When worn clothing is torn down to zero condition, the game drops it only on that player's screen, and the server keeps the undamaged item, which comes back on relog. Tick this to drop the broken item for real, so everyone sees it and it stays broken.",
+
+    "Sandbox_ZomboidFixesB42_RescueHutchAnimals": "Rescue Animals Lost In Hutch Nest Boxes",
+    "Sandbox_ZomboidFixesB42_RescueHutchAnimals_tooltip": "A hen laying an egg gives up her place inside the hutch while she sits in the nest box, so another bird can take it. If every place is taken when she finishes, the game deletes her instead of putting her back, and the player just sees a chicken that vanished. Tick this to catch her and put her back: into her own hutch, or one nearby, or a nest box if the coop really is full. Each rescue is written to the server log."
 }

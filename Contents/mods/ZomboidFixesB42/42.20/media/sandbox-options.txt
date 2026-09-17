@@ -23,3 +23,11 @@ option ZomboidFixesB42.SyncBrokenClothing
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_SyncBrokenClothing,
 }
+
+option ZomboidFixesB42.RescueHutchAnimals
+{
+    type = boolean,
+    default = false,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_RescueHutchAnimals,
+}
