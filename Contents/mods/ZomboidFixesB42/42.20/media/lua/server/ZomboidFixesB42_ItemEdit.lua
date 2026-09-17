@@ -215,8 +215,25 @@ local function onApplyItemEdit(player, args)
         pcall(elem.funcOnSave, { item = item, admin = player })
     end
 
-    -- The server-side broadcast of item stat changes to every client.
+    -- Two different packets, because neither one carries the whole item.
+    --
+    -- ItemStatsPacket is the food and consumable side of things -- hunger, calories,
+    -- cooked, burned, frozen, spices, uses -- plus the handful of basics it always
+    -- writes. Nothing in it describes how an item looks.
     sendItemStats(item)
+
+    -- SyncItemFieldsPacket is the rest: the ItemVisual, so clothing holes, patches,
+    -- per-body-part blood, dirtiness and wetness, alongside condition, head
+    -- condition, sharpness, colour, custom name and mod data. Without it a
+    -- fully restored jacket arrives at the client with perfect condition and every
+    -- hole still in place, because fullyRestore() only touched the visual.
+    --
+    -- It addresses the item through ContainerID, which knows about floor containers
+    -- and resolves them back through the IsoWorldInventoryObject, so this reaches
+    -- items lying on the ground as well as ones in a container.
+    if type(item.syncItemFields) == "function" then
+        item:syncItemFields()
+    end
 end
 
 local function onClientCommand(module, command, player, args)

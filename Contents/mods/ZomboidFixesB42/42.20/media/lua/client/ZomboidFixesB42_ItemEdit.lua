@@ -25,7 +25,7 @@
     player inventories. Lua also cannot serialise an item.
 
     So send the changed fields instead, and let the server apply the same setters to
-    its own copy and broadcast the result with sendItemStats.
+    its own copy and broadcast the result.
 
     Changes go one per command: the values include free text like the item name, and
     packing several into one string would mean inventing an escaping scheme. A save
