@@ -86,6 +86,35 @@
     Runs on the server in multiplayer and on the game itself in single player, which
     is where hutch state is authoritative. addAnimalInside and addAnimalInNestBox
     both send their own animal update and hutch sync, so clients follow along.
+
+    On a tick rather than a timer, because the loss is tied to the frame loop and not
+    to anyone watching. Three things say it cannot happen while the area is unloaded:
+
+      * every line of IsoHutch.update() sits inside
+        `if (!this.isSlave() && this.isExistInTheWorld())`, so a hutch with no live
+        square does not tick at all;
+      * the hutch's own offscreen catch-up, IsoHutch.doMeta(hours), only accumulates
+        hutchDirt and nestBoxDirt. It never touches animalInside or a nest box;
+      * the offscreen laying path, AnimalData.checkEggs(cal, true), is gated on
+        `this.parent.hutch == null` and lays through addMetaEgg(), which puts an egg
+        in a box without moving the bird. Its only caller is IsoAnimal.updateStatsAway,
+        which is never reached by a hutched animal: all three call sites
+        (AnimalManagerMain.fromWorker, DesignationZoneAnimal.doMeta and IsoAnimal
+        itself) work from animals that live on squares, and BaseAnimalBehavior.enterHutch
+        takes a bird off its square on the way in.
+
+    Loaded is not the same as watched, though. HutchManager.updateAll() runs every
+    frame from IsoWorld.updateInternal(), for every hutch whose square is loaded --
+    on a server, any coop in streaming range of any player. So the hens lay, and the
+    bird is lost, while the owner is across the farm, indoors, or logged out with
+    someone else online. Events.OnTick is the same clock, so this sees it happen.
+
+    One gap worth knowing about: hutches are found through
+    DesignationZoneAnimal.getAllZones(), because HutchManager is not on the Lua
+    exposer's list and there is no other way to enumerate them. A hutch outside every
+    animal zone is therefore not watched -- but it also gets no automatic traffic,
+    since AnimalData.getRegionHutch() only ever picks from a zone's hutch list. Only
+    a bird put into such a hutch by hand can reach a nest box in one, and lose.
 --]]
 
 if isClient() then return end

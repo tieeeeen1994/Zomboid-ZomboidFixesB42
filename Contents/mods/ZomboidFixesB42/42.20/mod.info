@@ -11,5 +11,7 @@ description=- Items with negative weight are deleted automatically (optional).
 description=- Clothing destroyed while worn now stays destroyed after relogging (optional).
 description=- Metal and Articulated Metal Shin Armor run speeds are no longer swapped.
 description=- Chickens deleted by the game when they finish laying in a hutch are put back (optional).
+description=- Hutches and nest boxes can be made to get dirty more slowly (optional).
+description=- Guns of Marz weapon tooltips can be wrapped so they stop stretching across the screen (optional).
 description=Must be installed on both the server and clients.
 modversion=1.0
