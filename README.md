@@ -24,7 +24,7 @@ Steam Workshop ID: `3800148259` · Mod ID: `ZomboidFixesB42`
 
 ### Other mods
 
-- **Guns of Marz tooltips.** Guns of Marz writes each note about a gun or attachment as one long line, and a tooltip is only ever as narrow as its widest line, so hovering a weapon throws a banner across the screen. The notes can be wrapped to a line length of your choosing, with continuations indented, which leaves Guns of Marz's own tooltip drawing untouched.
+- **Guns of Marz attachment tooltips.** The game lists every weapon an attachment fits on a single tooltip line, and a tooltip is only ever as narrow as its widest line, so once Guns of Marz has added thirty guns a scope or a laser throws a banner across the screen. The list is rebuilt under its heading and wrapped to a line length of your choosing. The heading the game writes is left above it with nothing after it: a tooltip layout can only be appended to, and Lua cannot read back a label the game has already written.
 
 ## Sandbox options
 
