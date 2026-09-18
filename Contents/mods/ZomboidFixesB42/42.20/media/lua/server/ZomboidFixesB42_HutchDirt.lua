@@ -90,6 +90,14 @@ local function hutchKey(hutch)
     return math.floor(hutch:getX()) .. "," .. math.floor(hutch:getY()) .. "," .. math.floor(hutch:getZ())
 end
 
+--- Kahlua's BaseLib does not register `next`, and stdlib.lua only aliases `pairs`
+-- and `ipairs` out of table.pairs/table.ipairs, so an emptiness test has to go
+-- through the iterator.
+local function isEmpty(t)
+    for _ in pairs(t) do return false end
+    return true
+end
+
 --- Brake one counter. Returns the value it should now hold, and the carried
 -- fraction, or nil when nothing needs changing.
 local function brake(current, last, debt, keep)
@@ -170,7 +178,7 @@ local function pass()
         -- Nothing to do at vanilla speed, and nothing worth remembering either: a
         -- stale baseline would brake a whole session's worth of dirt in one go if
         -- the setting were turned down mid-game.
-        if next(watched) then watched = {} end
+        if not isEmpty(watched) then watched = {} end
         return
     end
 
