@@ -51,3 +51,11 @@ option ZomboidFixesB42.GoMTooltipLineLength
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_GoMTooltipLineLength,
 }
+
+option ZomboidFixesB42.NoStairAutoVault
+{
+    type = boolean,
+    default = false,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_NoStairAutoVault,
+}
