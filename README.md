@@ -12,6 +12,7 @@ Steam Workshop ID: `3800148259` · Mod ID: `ZomboidFixesB42`
 - **Animal gender.** Changing an animal's gender in the animal info window now changes the animal, and sticks for everyone instead of reverting. Vanilla only flips a hidden flag, so a sow made male keeps the sow model, the sow texture and no mate of her own; the animal is swapped to the matching type instead, so it looks and breeds like what it now is. Works on animals loose in the world, in a hutch, in a trailer and carried, and in single player as well.
 - **Foraging debug menu.** Adding, moving and refreshing forage icons now works, and icons you add can be picked up.
 - **Item editor.** Edits now save for items anywhere: crates, vehicles, the floor or another player's inventory.
+- **Debug Add Fluid.** Adding fluid to a rain collector or any other fluid container in the world with the debug menu now really fills it. Vanilla's server command called `addFluid` without an amount, so it emptied the container instead, and it never synced the result, so the water only seemed to be there until you looked again.
 - **Admin tag.** The red admin tag now shows for every admin panel cheat, not just some of them. A sandbox option can hide it completely.
 
 ### Gameplay

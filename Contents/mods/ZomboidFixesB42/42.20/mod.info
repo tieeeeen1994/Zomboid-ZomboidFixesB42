@@ -6,6 +6,7 @@ description=- Fast Timed Actions makes item transfers quick in multiplayer.
 description=- Changing an animal's gender now swaps the animal's model and type with it, and sticks for everyone.
 description=- The foraging debug menu works, and added icons can be picked up.
 description=- Item editor changes save for items anywhere, not just your own inventory.
+description=- The debug Add Fluid option fills rain collectors and other fluid containers for real, and everyone sees it.
 description=- The admin tag shows for every admin cheat, with an option to hide it.
 description=- Items with negative weight are deleted automatically (optional).
 description=- Clothing destroyed while worn now stays destroyed after relogging (optional).

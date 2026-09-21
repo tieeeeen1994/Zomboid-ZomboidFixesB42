@@ -9,6 +9,7 @@ description=[*][b]Fast item transfers[/b] - With Fast Timed Actions on, moving i
 description=[*][b]Animal gender[/b] - Changing an animal's gender in the animal info window now changes the animal, and sticks for everyone instead of reverting. Vanilla only flips a hidden flag, so a sow made male keeps the sow model, the sow texture and no mate of her own; the animal is swapped to the matching type instead, so it looks and breeds like what it now is.
 description=[*][b]Foraging debug menu[/b] - Adding, moving and refreshing forage icons now works, and icons you add can actually be picked up.
 description=[*][b]Item editor[/b] - Edits now save for items anywhere: crates, vehicles, the floor or another player's inventory.
+description=[*][b]Debug Add Fluid[/b] - Adding fluid to a rain collector or any other fluid container in the world with the debug menu now really fills it. Vanilla emptied it on the server instead and never told anyone, so the water only seemed to be there until you looked again.
 description=[*][b]Admin tag[/b] - The red admin tag now shows for every admin panel cheat, not just some of them. A sandbox option can hide it completely.
 description=[/list]
 description=

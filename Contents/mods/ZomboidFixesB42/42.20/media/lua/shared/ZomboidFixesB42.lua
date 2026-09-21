@@ -34,6 +34,7 @@ ZomboidFixesB42.CMD_FORAGE_REFRESH_ZONE = "refreshForageZone"
 ZomboidFixesB42.CMD_FORAGE_MOVE_ICONS = "moveForageIcons"
 ZomboidFixesB42.CMD_ITEM_EDIT = "applyItemEdit"
 ZomboidFixesB42.CMD_BROKEN_CLOTHING = "brokenClothing"
+ZomboidFixesB42.CMD_FLUID_DEBUG = "addFluidDebug"
 
 -- server -> clients
 ZomboidFixesB42.CMD_ANIMAL_GENDER_SYNC = "animalGenderSync"
