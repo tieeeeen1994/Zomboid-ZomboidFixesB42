@@ -25,18 +25,23 @@
     5", where the 5 always wins, and makes StarlitLibrary recompute a layout's y
     offset by hand rather than read Layout.offsetY.
 
-    What is reachable is the data behind the label. getMountOn and setMountOn are
-    both public methods, so the list can be emptied for the length of the draw --
-    leaving the game to write its header with nothing after it -- the text rebuilt
-    here from the same script items the game would have used, wrapped, and added
-    back as ordinary layout lines. Then the list is restored.
+    What is reachable is the data behind the label. mountOnDisplayName is filled by
+    setMountOn, a public method, from each weapon script's getDisplayName, and
+    Item.setDisplayName is public too. A label may also hold newlines:
+    LayoutItem.calcSizes counts them into its height, and AngelCodeFont.getWidth
+    restarts its count at each one and keeps the widest line. So for the length of
+    the draw, every weapon that should start a new line has "\n" put in front of
+    its script's display name, setMountOn rebuilds the list from them, and the game
+    writes its own line already wrapped, in its own place, under its own header.
+    Afterwards the names are put back and setMountOn is run again to rebuild the
+    list from them.
 
     Three details make that safe rather than reckless. setMountOn clears its own
     field and not the list it is handed, so only setMountOn(getMountOn()) would
-    destroy the data, and the restore below always builds a fresh list. The whole
-    swap happens inside one synchronous render call, so nothing reads the emptied
-    list in between. And the draw is wrapped in pcall, so the restore still runs if
-    it throws.
+    destroy the data, and every call below builds a fresh list. The whole swap
+    happens inside one synchronous render call, so nothing reads the altered names
+    in between. And the draw is wrapped in pcall, so the restore still runs if it
+    throws.
 
     The seam that gives us the layout at all is
     InventoryItem.DoTooltipEmbedded(tooltipUI, layoutOverride, offsetY): handed a
@@ -49,11 +54,6 @@
 
     to the caller. Its padding and starting y are worked out again here, because
     both live in instance fields Lua cannot see.
-
-    One wart: a layout can only be appended to, so the rebuilt list lands after
-    everything the game adds, including "Mod: ...". The game's own header is left
-    above it with nothing after it. Inserting in the middle is not possible --
-    Layout.next is a field, and addItem only appends.
 
     Only weapon parts go through any of this. Everything else is handed to whichever
     render was already installed, which leaves Guns of Marz's tooltip drawing, and
@@ -76,10 +76,6 @@ local CONTINUATION = "  "
 -- Guns of Marz's own heading and colours for its block, copied so that the tooltips
 -- this file draws itself are not told apart from the ones it leaves alone.
 local INFO_HEADING = "Information"
-
--- The colour WeaponPart.DoTooltip gives its own rows, so the rebuilt mount list
--- matches the "Type:" line above it.
-local PART_R, PART_G, PART_B, PART_A = 1.0, 1.0, 0.8, 1.0
 
 -- Below this the game pads the tooltip out to a fixed width, so wrapping any harder
 -- only makes it taller. Matches InventoryItem.DoTooltipEmbedded.
@@ -170,27 +166,51 @@ local function mountTypes(item)
     return types
 end
 
---- The same names the game would have printed. setMountOn stores
--- scriptItem.getDisplayName() beside each type, so the display name is looked up
--- the same way here, and an unknown type falls back to the type itself.
-local function mountNames(types)
-    local scripts = ScriptManager.instance
-    local names = {}
-
-    for i = 1, #types do
-        local script = scripts:getItem(types[i])
-        names[#names + 1] = script and script:getDisplayName() or types[i]
-    end
-
-    return names
-end
-
 local function javaList(types)
     local list = ArrayList.new()
     for i = 1, #types do
         list:add(types[i])
     end
     return list
+end
+
+--- Put a line break in front of every weapon name that should start a new line,
+-- and return what was changed so it can be put back. The game joins the names with
+-- ", " after "Can be mounted on: ", so the lines are measured the same way. Names
+-- are never split: one longer than the limit gets a line to itself and overhangs.
+local function breakNames(types, limit)
+    local scripts = ScriptManager.instance
+    local changed = {}
+    local used = #(getText("Tooltip_weapon_CanBeMountOn") .. ": ")
+    local first = true
+
+    for i = 1, #types do
+        local script = scripts:getItem(types[i])
+        -- setMountOn drops a type with no script, so it takes no room either.
+        if script then
+            local name = script:getDisplayName()
+            if not first and used + 2 + #name > limit then
+                -- A weapon listed twice shares one script; change it only once so
+                -- the original is the one saved.
+                if not changed[script] then
+                    changed[script] = name
+                    script:setDisplayName("\n" .. CONTINUATION .. name)
+                end
+                used = #CONTINUATION + #name
+            else
+                used = used + (first and 0 or 2) + #name
+            end
+            first = false
+        end
+    end
+
+    return changed
+end
+
+local function restoreNames(changed)
+    for script, name in pairs(changed) do
+        script:setDisplayName(name)
+    end
 end
 
 -- ---------------------------------------------------------------------------
@@ -219,26 +239,23 @@ local function layoutTop(tooltip, item, padTop)
     return y
 end
 
---- Fill the tooltip's layout the way the game would but with the mount list held
--- back, add it again wrapped, then render. The two halves of DoTooltipEmbedded that
--- the layout override skips -- the render and the minimum width -- are repeated
--- here.
+--- Fill the tooltip's layout the way the game would but with the mount list's
+-- names broken onto lines, add the Guns of Marz block, then render. The two halves
+-- of DoTooltipEmbedded that the layout override skips -- the render and the
+-- minimum width -- are repeated here.
 local function drawWrapped(tooltip, item, gomLines, limit)
     local types = mountTypes(item)
     local padSide, padEnd = padding(tooltip)
 
-    if types then item:setMountOn(ArrayList.new()) end
-
+    local changed = nil
     local ok, err = pcall(function()
+        if types then
+            changed = breakNames(types, limit)
+            item:setMountOn(javaList(types))
+        end
+
         local layout = tooltip:beginLayout()
         item:DoTooltipEmbedded(tooltip, layout, 0)
-
-        if types then
-            layout:addItem():setLabel(getText("Tooltip_weapon_CanBeMountOn") .. ":",
-                PART_R, PART_G, PART_B, PART_A)
-            addWrapped(layout, table.concat(mountNames(types), ", "), limit,
-                CONTINUATION, CONTINUATION, PART_R, PART_G, PART_B, PART_A)
-        end
 
         if gomLines then
             layout:addItem():setLabel(INFO_HEADING, 1, 0.02, 0.02, 1)
@@ -258,6 +275,7 @@ local function drawWrapped(tooltip, item, gomLines, limit)
 
     -- Always, including when the draw threw, and always from a list of our own so
     -- that setMountOn cannot clear the one it is reading.
+    if changed then restoreNames(changed) end
     if types then item:setMountOn(javaList(types)) end
 
     if not ok then error(err, 0) end
