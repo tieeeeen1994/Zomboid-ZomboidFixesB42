@@ -83,7 +83,7 @@ local MIN_TOOLTIP_WIDTH = 150
 
 --- The greatest number of characters a tooltip line may have. 0 means leave the
 -- tooltips alone, which is also what an absent option gives, so the fix ships
--- inert.
+-- inert: the render hook is installed but hands every tooltip straight on.
 local function lineLength()
     local vars = SandboxVars and SandboxVars.ZomboidFixesB42
     local limit = vars and vars.GoMTooltipLineLength
@@ -360,8 +360,11 @@ local function install(module)
     local broken = false
 
     function ISToolTipInv:render()
+        -- Read every draw rather than once at install, so an admin changing the
+        -- option mid-game takes effect both ways, and 0 always means hands off.
+        local limit = lineLength()
         local item = self.item
-        if broken or not item or not instanceof(item, "WeaponPart") then
+        if broken or limit == 0 or not item or not instanceof(item, "WeaponPart") then
             return previousRender(self)
         end
 
@@ -370,8 +373,6 @@ local function install(module)
         local entry = module.tooltipsPergun[item:getFullType()]
         local gomLines = entry and toLines(entry) or nil
         if gomLines and #gomLines == 0 then gomLines = nil end
-
-        local limit = lineLength()
 
         if checked then
             return renderWrapped(self, item, gomLines, limit)
@@ -399,8 +400,6 @@ local function tooltipsModule()
 end
 
 local function apply()
-    if lineLength() == 0 then return end
-
     local module = tooltipsModule()
     if not module then return end
 
