@@ -16,5 +16,6 @@ description=- Chickens deleted by the game when they finish laying in a hutch ar
 description=- Hutches and nest boxes can be made to get dirty more slowly (optional).
 description=- Guns of Marz attachment tooltips no longer stretch across the screen (optional).
 description=- Running players no longer vault stair railings by accident (optional).
+description=- Fast forward in multiplayer, when every player votes for it (optional).
 description=Must be installed on both the server and clients.
 modversion=1.0

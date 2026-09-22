@@ -67,3 +67,11 @@ option ZomboidFixesB42.NoFastMoveFallDamage
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_NoFastMoveFallDamage,
 }
+
+option ZomboidFixesB42.MultiplayerFastForward
+{
+    type = boolean,
+    default = false,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_MultiplayerFastForward,
+}

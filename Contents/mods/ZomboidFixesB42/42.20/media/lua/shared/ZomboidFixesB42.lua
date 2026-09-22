@@ -35,11 +35,26 @@ ZomboidFixesB42.CMD_FORAGE_MOVE_ICONS = "moveForageIcons"
 ZomboidFixesB42.CMD_ITEM_EDIT = "applyItemEdit"
 ZomboidFixesB42.CMD_BROKEN_CLOTHING = "brokenClothing"
 ZomboidFixesB42.CMD_FLUID_DEBUG = "addFluidDebug"
+ZomboidFixesB42.CMD_FAST_FORWARD_VOTE = "fastForwardVote"
+ZomboidFixesB42.CMD_FAST_FORWARD_HELLO = "fastForwardHello"
 
 -- server -> clients
 ZomboidFixesB42.CMD_ANIMAL_GENDER_SYNC = "animalGenderSync"
 ZomboidFixesB42.CMD_FORAGE_ZONE_RESET = "forageZoneReset"
 ZomboidFixesB42.CMD_TRANSFER_DECLINED = "transferDeclined"
+ZomboidFixesB42.CMD_FAST_FORWARD_STATE = "fastForwardState"
+
+-- The single player speed buttons, as zombie.ui.SpeedControls sets them: play,
+-- fast forward, faster forward and wait. Multiplayer fast forward offers exactly
+-- these, so a vote can only ever be one of them.
+ZomboidFixesB42.FAST_FORWARD_SPEEDS = { 1, 5, 20, 40 }
+
+function ZomboidFixesB42.isFastForwardSpeed(speed)
+    for _, allowed in ipairs(ZomboidFixesB42.FAST_FORWARD_SPEEDS) do
+        if speed == allowed then return true end
+    end
+    return false
+end
 
 -- How long a cheated item transfer takes, in the same units as the vanilla
 -- ISInventoryTransferAction maxTime (container to inventory is around 50 before
