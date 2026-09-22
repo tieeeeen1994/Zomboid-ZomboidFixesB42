@@ -173,7 +173,7 @@ function SpeedBar:new()
     end
     o.buttonHeight = height
     o:setWidth(x - GAP)
-    o:setHeight(height + FONT_HGT_SMALL + 4)
+    o:setHeight(height)
     o.anchorLeft = false
     o.anchorRight = true
     return o
@@ -231,27 +231,30 @@ function SpeedBar:render()
     local myVote = voteOf(getSpecificPlayer(0))
     local hovered = self:isMouseOver() and self:buttonAt(self:getMouseX(), self:getMouseY()) or nil
 
+    -- Drawn as SpeedControls.SCButton draws them: a black backing, the _On icon
+    -- for the chosen or hovered button, and the chosen one nudged down a pixel.
     for _, button in ipairs(self.buttons) do
         local chosen = button.speed == myVote
-        local running = button.speed == state.speed and state.speed > 1
-        local dy = BORDER + (chosen and 1 or 0)
+        local nudge = chosen and 1 or 0
+        local dy = BORDER + nudge
 
-        self:drawRect(button.x, 0, button.w, button.h, 0.75, 0, chosen and 1 or 0, 0)
+        self:drawRect(button.x, nudge, button.w, button.h, 0.75, 0, 0, 0)
         if chosen or button == hovered then
             self:drawTexture(button.on, button.x + BORDER, dy, 1, 1, 1, 1)
         else
             self:drawTexture(button.off, button.x + BORDER, dy, 0.85, 1, 1, 1)
         end
-
-        -- A bar under the speed the game is actually running at.
-        if running then
-            self:drawRect(button.x, button.h - 2, button.w, 2, 1, 0.3, 0.9, 0.3)
-        end
     end
 
+    -- To the left of the buttons, outside the element: nothing clips it, and
+    -- keeping it out of the bounds means it never catches a click.
     local text = self:statusText(hovered, myVote)
     if text then
-        self:drawTextRight(text, self.width, self.buttonHeight + 2, 1, 1, 1, 0.9, UIFont.Small)
+        local textWidth = getTextManager():MeasureStringX(UIFont.Small, text)
+        local right = -GAP * 2
+        local pad = BORDER * 2
+        self:drawRect(right - textWidth - pad * 2, 0, textWidth + pad * 2, self.buttonHeight, 0.75, 0, 0, 0)
+        self:drawTextRight(text, right - pad, (self.buttonHeight - FONT_HGT_SMALL) / 2, 1, 1, 1, 0.9, UIFont.Small)
     end
 end
 
