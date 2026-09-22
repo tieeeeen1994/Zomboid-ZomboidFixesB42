@@ -13,6 +13,7 @@ Steam Workshop ID: `3800148259` · Mod ID: `ZomboidFixesB42`
 - **Foraging debug menu.** Adding, moving and refreshing forage icons now works, and icons you add can be picked up.
 - **Item editor.** Edits now save for items anywhere: crates, vehicles, the floor or another player's inventory.
 - **Debug Add Fluid.** Adding fluid to a rain collector or any other fluid container in the world with the debug menu now really fills it. Vanilla's server command called `addFluid` without an amount, so it emptied the container instead, and it never synced the result, so the water only seemed to be there until you looked again.
+- **Fast Move falls.** Fast Move can carry you over stairs faster than the game puts you on the steps, leaving you in the air until you drop, often to your death. With Fast Move on you now glide down to the floor without taking damage, without needing God Mode, which would also heal every wound and clear every moodle.
 - **Admin tag.** The red admin tag now shows for every admin panel cheat, not just some of them. A sandbox option can hide it completely.
 
 ### Gameplay
@@ -39,6 +40,7 @@ All options are on the **Zomboid Fixes B42.20** page.
 | Rescue Animals Lost In Hutch Nest Boxes | Off |
 | Hutch Dirt Speed | 1 (vanilla) |
 | Guns of Marz Tooltip Line Length | 0 (off) |
+| No Fall Damage With Fast Move | Off |
 
 ## Installation
 

@@ -10,6 +10,7 @@ description=[*][b]Animal gender[/b] - Changing an animal's gender in the animal 
 description=[*][b]Foraging debug menu[/b] - Adding, moving and refreshing forage icons now works, and icons you add can actually be picked up.
 description=[*][b]Item editor[/b] - Edits now save for items anywhere: crates, vehicles, the floor or another player's inventory.
 description=[*][b]Debug Add Fluid[/b] - Adding fluid to a rain collector or any other fluid container in the world with the debug menu now really fills it. Vanilla emptied it on the server instead and never told anyone, so the water only seemed to be there until you looked again.
+description=[*][b]Fast Move falls[/b] - Fast Move can carry you over stairs faster than the game puts you on the steps, leaving you in the air until you drop, often to your death. With Fast Move on you now glide down to the floor without taking damage, without needing God Mode, which would also heal every wound and clear every moodle. Off by default; turn it on in sandbox options.
 description=[*][b]Admin tag[/b] - The red admin tag now shows for every admin panel cheat, not just some of them. A sandbox option can hide it completely.
 description=[/list]
 description=

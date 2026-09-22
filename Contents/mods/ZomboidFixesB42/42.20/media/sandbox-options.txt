@@ -59,3 +59,11 @@ option ZomboidFixesB42.NoStairAutoVault
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_NoStairAutoVault,
 }
+
+option ZomboidFixesB42.NoFastMoveFallDamage
+{
+    type = boolean,
+    default = false,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_NoFastMoveFallDamage,
+}
