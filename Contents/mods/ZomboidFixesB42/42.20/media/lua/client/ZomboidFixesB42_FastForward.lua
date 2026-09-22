@@ -8,19 +8,22 @@
     slowest speed anyone picked, and clears every vote the moment anyone goes back
     to normal speed. See the server file for how the speed itself is changed.
 
-    Two single player rules come along with it:
+    Three single player rules come along with it:
 
       - Moving your character stops fast forward (IsoPlayer.updateInternal drops
         SpeedControls to 1 when the player moves). In multiplayer this also
         covers walking to something and driving, which single player allows,
         because at forty times the speed a moving player breaks the anti-cheat's
         speed limit (AntiCheatSpeed, 20) and gets kicked.
+      - Finishing a timed action stops it. Single player makes this an option
+        each player can turn off; here it always applies.
       - A zombie close to anyone stops it; the server checks that.
 --]]
 
 if not isClient() then return end
 
 require "ISUI/ISUIElement"
+require "TimedActions/ISTimedActionQueue"
 
 ZomboidFixesB42 = ZomboidFixesB42 or {}
 
@@ -111,29 +114,9 @@ local function applySpeed()
     end
 end
 
-local function explain(reason, by)
-    local player = getSpecificPlayer(0)
-    if not player then return end
-    local text
-    if reason == "cancelled" then
-        if by and by ~= player:getUsername() then
-            text = getText("IGUI_ZomboidFixesB42_FastForward_CancelledBy", by)
-        else
-            text = getText("IGUI_ZomboidFixesB42_FastForward_Cancelled")
-        end
-    elseif reason == "zombie" then
-        text = getText("IGUI_ZomboidFixesB42_FastForward_Zombie")
-    else
-        text = getText("IGUI_ZomboidFixesB42_FastForward_Stopped")
-    end
-    HaloTextHelper.addText(player, text)
-end
-
 local function onServerCommand(module, command, args)
     if module ~= ZomboidFixesB42.MODULE or command ~= ZomboidFixesB42.CMD_FAST_FORWARD_STATE then return end
     if type(args) ~= "table" then return end
-
-    local wasInvolved = state.speed > 1 or voteOf(getSpecificPlayer(0)) > 1
 
     state = {
         speed = tonumber(args.speed) or 1,
@@ -147,10 +130,6 @@ local function onServerCommand(module, command, args)
     end
 
     applySpeed()
-
-    if args.reason and wasInvolved then
-        explain(args.reason, args.by)
-    end
 end
 
 -- Speed bar ------------------------------------------------------------------
@@ -291,7 +270,25 @@ local function onPlayerUpdate(player)
     end
 end
 
+-- Local players, by index, who were busy with a timed action last tick.
+local wasDoingAction = {}
+
+--- Finishing an action stops fast forward, as ISTimedActionQueue.onTick does in
+-- single player -- except that there it is the player's own choice (the "return
+-- to normal speed when timed actions finish" option), and here it always applies.
+local function checkActionsFinished()
+    for i = 0, getNumActivePlayers() - 1 do
+        local player = getSpecificPlayer(i)
+        local doing = player ~= nil and not player:isDead() and ISTimedActionQueue.isPlayerDoingAction(player)
+        if wasDoingAction[i] and not doing and voteOf(player) > 1 then
+            vote(1)
+        end
+        wasDoingAction[i] = doing
+    end
+end
+
 local function onTick()
+    checkActionsFinished()
     applySpeed()
 end
 

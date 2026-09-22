@@ -1,9 +1,5 @@
 {
     "IGUI_ZomboidFixesB42_FastForward_NormalHint": "Normal speed - stops fast forward for everyone",
     "IGUI_ZomboidFixesB42_FastForward_Ready": "%1x speed: %2 of %3 players ready",
-    "IGUI_ZomboidFixesB42_FastForward_Running": "Fast forward %1x",
-    "IGUI_ZomboidFixesB42_FastForward_Cancelled": "Fast forward cancelled",
-    "IGUI_ZomboidFixesB42_FastForward_CancelledBy": "Fast forward cancelled by %1",
-    "IGUI_ZomboidFixesB42_FastForward_Zombie": "Fast forward stopped: zombie nearby",
-    "IGUI_ZomboidFixesB42_FastForward_Stopped": "Fast forward stopped"
+    "IGUI_ZomboidFixesB42_FastForward_Running": "Fast forward %1x"
 }

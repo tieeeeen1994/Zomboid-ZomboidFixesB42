@@ -113,18 +113,11 @@ local function apply(speed)
     applied = speed
 end
 
---- Clear every vote and bring the game back to normal speed at once, telling
--- everyone why. reason is "cancelled" (a player chose normal speed, by is their
--- name), "zombie", or "interrupted" (something in vanilla dropped the speed).
-local function stopAll(reason, by)
-    local wasRunning = applied > 1
+--- Clear every vote and bring the game back to normal speed at once.
+local function stopAll()
     votes = {}
     apply(1)
     local _, state = tally()
-    if wasRunning or reason == "cancelled" then
-        state.reason = reason
-        state.by = by
-    end
     broadcast(state)
 end
 
@@ -172,12 +165,8 @@ local function onTick()
     if applied > 1 then
         -- Anything in vanilla that drops the speed back to normal -- IsoPlayer's own
         -- zombie check also runs on the server -- counts as stopping it for everyone.
-        if anyZombieNear() then
-            stopAll("zombie")
-            return
-        end
-        if getGameTime():getTrueMultiplier() < applied - 0.01 then
-            stopAll("interrupted")
+        if anyZombieNear() or getGameTime():getTrueMultiplier() < applied - 0.01 then
+            stopAll()
             return
         end
     end
@@ -197,7 +186,7 @@ local function onVote(player, args)
     if not ZomboidFixesB42.isFastForwardSpeed(speed) then return end
 
     if speed == 1 then
-        stopAll("cancelled", player:getUsername())
+        stopAll()
         return
     end
 
