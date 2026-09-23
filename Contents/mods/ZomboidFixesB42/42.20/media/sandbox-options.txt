@@ -83,3 +83,19 @@ option ZomboidFixesB42.NISFShiftRange
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_NISFShiftRange,
 }
+
+option ZomboidFixesB42.TurboGameMultiplayer
+{
+    type = boolean,
+    default = false,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_TurboGameMultiplayer,
+}
+
+option ZomboidFixesB42.PauseOnStart
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_PauseOnStart,
+}

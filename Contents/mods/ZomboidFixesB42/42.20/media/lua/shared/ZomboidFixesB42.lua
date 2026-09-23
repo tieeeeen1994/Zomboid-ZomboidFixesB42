@@ -37,6 +37,10 @@ ZomboidFixesB42.CMD_BROKEN_CLOTHING = "brokenClothing"
 ZomboidFixesB42.CMD_FLUID_DEBUG = "addFluidDebug"
 ZomboidFixesB42.CMD_FAST_FORWARD_VOTE = "fastForwardVote"
 ZomboidFixesB42.CMD_FAST_FORWARD_HELLO = "fastForwardHello"
+ZomboidFixesB42.CMD_TURBO_INSERT = "turboInsertCartridge"
+ZomboidFixesB42.CMD_TURBO_EJECT = "turboEjectCartridge"
+ZomboidFixesB42.CMD_TURBO_BATTERY = "turboInsertBattery"
+ZomboidFixesB42.CMD_TURBO_REPORT = "turboReport"
 
 -- server -> clients
 ZomboidFixesB42.CMD_ANIMAL_GENDER_SYNC = "animalGenderSync"
