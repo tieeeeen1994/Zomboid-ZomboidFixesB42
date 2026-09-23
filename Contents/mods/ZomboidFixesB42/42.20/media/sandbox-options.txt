@@ -75,3 +75,11 @@ option ZomboidFixesB42.MultiplayerFastForward
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_MultiplayerFastForward,
 }
+
+option ZomboidFixesB42.NISFShiftRange
+{
+    type = boolean,
+    default = false,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_NISFShiftRange,
+}

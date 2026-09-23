@@ -15,5 +15,6 @@ Zomboid Fixes B42.20 is a set of fixes for Project Zomboid Build 42.20, mostly f
 - Running into a stair railing no longer vaults you over it (optional).
 - Speed controls are back in multiplayer. The game fast forwards once every player votes for it (optional, beta).
 - Guns of Marz attachment tooltips wrap instead of stretching across the screen (optional).
+- With Nick's Inventory Selection Fix, shift-click selects the whole range instead of acting like ctrl-click (optional).
 
 Steam Workshop ID 3800148259, mod ID ZomboidFixesB42. Licensed under the GNU GPL v3, see [LICENSE](LICENSE).
