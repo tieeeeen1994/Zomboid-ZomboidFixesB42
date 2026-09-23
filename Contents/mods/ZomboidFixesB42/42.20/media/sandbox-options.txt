@@ -92,10 +92,12 @@ option ZomboidFixesB42.TurboGameMultiplayer
     translation = ZomboidFixesB42_TurboGameMultiplayer,
 }
 
-option ZomboidFixesB42.PauseOnStart
+option ZomboidFixesB42.AdminSpawnProtection
 {
-    type = boolean,
-    default = true,
+    type = integer,
+    min = 0,
+    max = 600,
+    default = 0,
     page = ZomboidFixesB42,
-    translation = ZomboidFixesB42_PauseOnStart,
+    translation = ZomboidFixesB42_AdminSpawnProtection,
 }

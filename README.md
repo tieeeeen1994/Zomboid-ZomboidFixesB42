@@ -17,6 +17,6 @@ Zomboid Fixes B42.20 is a set of fixes for Project Zomboid Build 42.20, mostly f
 - Guns of Marz attachment tooltips wrap instead of stretching across the screen (optional).
 - With Nick's Inventory Selection Fix, shift-click selects the whole range instead of acting like ctrl-click (optional).
 - Turbo Game cartridges and batteries go in and come out on multiplayer servers, including in consoles spawned from the item list, and the battery charge and mood effects are kept (optional, beta).
-- Single player games start paused when loaded, before anything moves (optional).
+- Admins who join are fully healed and in god mode for a set time, so an admin revived on the server does not die again on load (optional).
 
 Steam Workshop ID 3800148259, mod ID ZomboidFixesB42. Licensed under the GNU GPL v3, see [LICENSE](LICENSE).
