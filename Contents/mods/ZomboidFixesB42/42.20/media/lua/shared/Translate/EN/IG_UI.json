@@ -11,5 +11,14 @@
     "IGUI_ZomboidFixesB42_BodyStats_Waiting": "Waiting for the server...",
     "IGUI_ZomboidFixesB42_BodyStats_Offline": "%1 is not online.",
     "IGUI_ZomboidFixesB42_BodyStats_Dead": "%1 is dead.",
-    "IGUI_ZomboidFixesB42_BodyStats_Denied": "You are not allowed to change %1's body."
+    "IGUI_ZomboidFixesB42_BodyStats_Denied": "You are not allowed to change %1's body.",
+    "IGUI_ZomboidFixesB42_Chopper": "Chopper",
+    "IGUI_ZomboidFixesB42_Chopper_Send": "Send Chopper",
+    "IGUI_ZomboidFixesB42_Chopper_Stop": "Stop Chopper",
+    "IGUI_ZomboidFixesB42_Chopper_SendTooltip": "Sends the chopper to a random online player, as the chopper event does. It flies in from far away, so it takes about a minute to be heard.",
+    "IGUI_ZomboidFixesB42_Chopper_StopTooltip": "Removes the chopper at once and tells every player it is gone, including anyone who still hears a chopper that already left.",
+    "IGUI_ZomboidFixesB42_Chopper_Sent": "Chopper sent to a random player",
+    "IGUI_ZomboidFixesB42_Chopper_Stopped": "Chopper stopped",
+    "IGUI_ZomboidFixesB42_Chopper_Denied": "You are not allowed to call the chopper",
+    "IGUI_ZomboidFixesB42_Chopper_Disabled": "Chopper controls are off in sandbox options"
 }

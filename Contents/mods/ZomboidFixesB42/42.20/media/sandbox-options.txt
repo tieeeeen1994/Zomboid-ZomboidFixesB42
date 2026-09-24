@@ -101,3 +101,11 @@ option ZomboidFixesB42.AdminSpawnProtection
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_AdminSpawnProtection,
 }
+
+option ZomboidFixesB42.ChopperControls
+{
+    type = boolean,
+    default = false,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_ChopperControls,
+}

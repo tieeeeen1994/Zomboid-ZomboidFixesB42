@@ -30,6 +30,28 @@
     In single player there is no server: the window reads and changes the
     character directly, the way the debug panel does. There it opens from the
     Player Stats window, which single player only offers in debug mode.
+
+    The vanilla UI this builds on:
+
+      - ISDebugMenu.OnOpenPanel only opens with getCore():getDebug() (the -debug
+        launch flag) or ISDebugMenu.forceEnable, so without -debug an admin never
+        sees General Debuggers. All of media/lua/client still loads without it,
+        DebugUIs/ included, so its building blocks (ISDebugUtils,
+        ISDebugSubPanelBase, and ISSliderPanel from RadioCom/ISUIRadio/) work in
+        an ordinary window.
+      - ISPlayerStatsUI:new(x, y, w, h, playerChecked, admin) is opened from the
+        admin panel's Check your Stats (for yourself), the scoreboard's Check
+        Stats (needs CanSeePlayersStats; the player comes from
+        getPlayerFromUsername, which is nil for anyone this client has never
+        seen) and the world context menu (ISWorldObjectContextMenu.onCheckStats).
+        Its edit buttons need CanModifyPlayerStatsInThePlayerStatsUI.
+      - ISSliderPanel:setCurrentValue(v, ignoreOnChange) rounds to the step,
+        clamps, and calls onValueChange(target, v, slider) unless told not to. It
+        does nothing while slider.disabled, and while dragging it fires on every
+        mouse move.
+      - An ISTickBox calls back with (target, index, selected, arg1, arg2,
+        tickBox) after selected[index] has flipped, and ignores clicks while
+        tickBox.enable is false.
 --]]
 
 require "ISUI/ISPanel"

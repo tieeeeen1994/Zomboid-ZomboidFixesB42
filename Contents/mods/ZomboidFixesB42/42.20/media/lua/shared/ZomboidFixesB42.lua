@@ -1,6 +1,37 @@
 --[[
     Zomboid Fixes B42.20 -- shared
 
+    Written against Build 42.20.4 (revision b0bbce05d5). Java names in the comments
+    come from a Vineflower decompile of projectzomboid.jar; line numbers, where
+    given, shift between builds.
+
+    How the mod is laid out:
+
+      - One feature is client/ZomboidFixesB42_<Feature>.lua and
+        server/ZomboidFixesB42_<Feature>.lua, plus shared/ when both sides need it.
+        Each file opens with a comment on the vanilla bug and the Java behind it.
+        Server files start with `if isClient() then return end` (or `if not
+        isServer()` when single player has nothing to do), and client files that
+        only matter on a server with `if not isClient() then return end`.
+      - Every new fix gets a sandbox option on the ZomboidFixesB42 page, off by
+        default, read as SandboxVars.ZomboidFixesB42.<Option>, with its name and
+        a long tooltip in Translate/EN/Sandbox.json ("[BETA] ..." for beta ones).
+        UI text goes in Translate/EN/IG_UI.json as IGUI_ZomboidFixesB42_*.
+      - Every feature has a line in README.md, workshop.txt and mod.info, and the
+        three are kept in step.
+      - Server handlers check the sender's capability
+        (player:getRole():hasCapability(Capability.X)), check and clamp every
+        argument, and log what admins do.
+
+    Roles: zombie/characters/Capability.java lists every capability. By default
+    (Roles.java) admin has all of them, and moderator all but UseMovablesCheat,
+    SaveWorld, QuitWorld, ChangeAndReloadServerOptions, ReloadLuaFiles,
+    BypassLuaChecksum, RolesWrite and ConnectWithDebug. gm and observer have short
+    hand-picked lists; observer's includes god mode, invisibility and noclip for
+    themselves, CanSeePlayersStats and UseDebugContextMenu.
+
+    Item transfers --------------------------------------------------------------
+
     In single player the "Fast Timed Actions" cheat makes item transfers instant,
     because ISInventoryTransferAction sets maxTime = 1 and the client moves the
     item itself.
@@ -23,6 +54,39 @@
 
 ZomboidFixesB42 = ZomboidFixesB42 or {}
 
+--[[ Commands and packets --------------------------------------------------------
+
+    Client and server talk through sendClientCommand and sendServerCommand with the
+    command names below. Each server file adds its own OnClientCommand handler and
+    ignores the other commands.
+
+    sendClientCommand travels in the ClientCommand packet: priority 1, RakNet
+    RELIABLE, which is not ordered, so two commands can arrive the other way round.
+    A client silently drops packets of one type beyond the server's
+    MaxPacketsPerSecond (300 by default) a second (PacketsCache.isLimitExceeded).
+    Arguments are serialised by TableNetworkUtils: strings, numbers, booleans and
+    nested tables, plus items, directions and dead bodies. Anything else is left out.
+
+    In single player sendClientCommand goes to SinglePlayerClient and fires
+    OnClientCommand locally, so a server file guarded by `if isClient() then return
+    end` handles it there too. sendServerCommand does nothing outside a server, so a
+    feature that asks and waits for an answer needs its own single player path.
+
+    Server-side Lua has no getPlayerFromUsername (it is client only, it reads
+    GameClient.instance), so walk getOnlinePlayers(). getPlayerByOnlineID works on
+    both sides. writeLog(logger, text) writes the server's <date>_<logger>.txt; the
+    "admin" logger is the one /addxp and the other admin commands use.
+
+    The game's own packets are INetworkPacket classes annotated @PacketSetting.
+    handlingType bits: 1 the server handles it, 2 the client does, 4 the client
+    does while loading. PacketTypes.PacketType.onServerPacket drops a packet unless
+    the sender's role holds its requiredCapability
+    (PacketAuthorization.isAuthorized), then runs parseServer, isConsistent, the
+    anticheats and processServer. On the server INetworkPacket.send(IsoPlayer, type,
+    ...) goes to that player's connection only; on a client INetworkPacket.send(type,
+    ...) goes to the server.
+--]]
+
 ZomboidFixesB42.MODULE = "ZomboidFixesB42"
 
 -- client -> server
@@ -44,6 +108,7 @@ ZomboidFixesB42.CMD_TURBO_REPORT = "turboReport"
 ZomboidFixesB42.CMD_TURBO_DATA = "turboSaveData"
 ZomboidFixesB42.CMD_BODY_STATS_REQUEST = "bodyStatsRequest"
 ZomboidFixesB42.CMD_BODY_STATS_SET = "bodyStatsSet"
+ZomboidFixesB42.CMD_CHOPPER = "chopper"
 
 -- server -> clients
 ZomboidFixesB42.CMD_ANIMAL_GENDER_SYNC = "animalGenderSync"
@@ -51,6 +116,7 @@ ZomboidFixesB42.CMD_FORAGE_ZONE_RESET = "forageZoneReset"
 ZomboidFixesB42.CMD_TRANSFER_DECLINED = "transferDeclined"
 ZomboidFixesB42.CMD_FAST_FORWARD_STATE = "fastForwardState"
 ZomboidFixesB42.CMD_BODY_STATS_STATE = "bodyStatsState"
+ZomboidFixesB42.CMD_CHOPPER_RESULT = "chopperResult"
 
 -- The single player speed buttons, as zombie.ui.SpeedControls sets them: play,
 -- fast forward, faster forward and wait. Multiplayer fast forward offers exactly
