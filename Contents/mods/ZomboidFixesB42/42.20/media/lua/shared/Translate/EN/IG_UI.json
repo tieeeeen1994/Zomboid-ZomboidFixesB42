@@ -9,6 +9,7 @@
     "IGUI_ZomboidFixesB42_BodyStats_ContextMenu": "Body Stats",
     "IGUI_ZomboidFixesB42_BodyStats_Tooltip": "Change hunger, mood, health, nutrition, weight and the rest, like the debug menu's Body panel. Changes are made on the server, so they stick and the player sees them.",
     "IGUI_ZomboidFixesB42_BodyStats_Waiting": "Waiting for the server...",
+    "IGUI_ZomboidFixesB42_BodyStats_NoAnswer": "The server is not answering. Is it running this version of Zomboid Fixes?",
     "IGUI_ZomboidFixesB42_BodyStats_Offline": "%1 is not online.",
     "IGUI_ZomboidFixesB42_BodyStats_Dead": "%1 is dead.",
     "IGUI_ZomboidFixesB42_BodyStats_Denied": "You are not allowed to change %1's body.",
