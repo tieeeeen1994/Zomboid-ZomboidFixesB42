@@ -64,34 +64,9 @@ local function parseItemIds(encoded)
     return ids
 end
 
---- Find an item lying on the ground within arm's reach, and the square it is on.
--- Searching only the player's own square and the eight around it is both how far
--- the inventory page's floor panel reaches and a natural reach check.
-local function findItemOnGround(player, itemId)
-    local cell = getCell()
-    local px, py, pz = math.floor(player:getX()), math.floor(player:getY()), math.floor(player:getZ())
-
-    for dx = -1, 1 do
-        for dy = -1, 1 do
-            local square = cell:getGridSquare(px + dx, py + dy, pz)
-            local worldObjects = square and square:getWorldObjects()
-            if worldObjects then
-                for i = 0, worldObjects:size() - 1 do
-                    local worldObject = worldObjects:get(i)
-                    local item = worldObject and worldObject:getItem()
-                    if item and item:getID() == itemId then
-                        return item, square
-                    end
-                end
-            end
-        end
-    end
-    return nil
-end
-
 --- Picking an item up off the ground.
 local function moveFromGround(player, itemId, destContainer)
-    local item, square = findItemOnGround(player, itemId)
+    local item, square = ZomboidFixesB42.findItemOnGround(player, itemId)
     if not item then return false end
     if not destContainer:isItemAllowed(item) or not destContainer:hasRoomFor(player, item) then return false end
 

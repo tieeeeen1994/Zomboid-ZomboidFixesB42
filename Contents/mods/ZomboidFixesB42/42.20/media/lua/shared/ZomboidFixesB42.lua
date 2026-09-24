@@ -195,11 +195,11 @@ function ZomboidFixesB42.isZombieNear(player)
 end
 
 -- How long a cheated item transfer takes, in the same units as the vanilla
--- ISInventoryTransferAction maxTime (container to inventory is around 50 before
--- weight and capacity scaling). Deliberately short rather than zero: at maxTime 1
--- the action finishes inside a single frame, which loses the animation, the
--- job-delta progress on the item and any sense that a queue is draining. Tune here.
-ZomboidFixesB42.TRANSFER_MAX_TIME = 5
+-- ISInventoryTransferAction maxTime. 1 is what ISInventoryTransferAction:new gives
+-- single player under the cheat (isTimedActionInstant), so the transfer is over in
+-- a tick and shows no progress bar. In multiplayer it still lasts until the
+-- server's move has arrived; see the client file.
+ZomboidFixesB42.TRANSFER_MAX_TIME = 1
 
 -- How far a player may be from a container and still transfer into or out of it.
 -- This is defence in depth rather than game balance: the command is already gated
@@ -215,15 +215,24 @@ ZomboidFixesB42.FLOOR = "f"
 
 --[[ Encoding ----------------------------------------------------------------
 
-    p                          the player's own main inventory
-    i|<itemID>                 a bag or other item-backed container
-    v|<vehicleID>|<partID>     a vehicle part container
-    w|<x>|<y>|<z>|<obj>|<con>  a container on a world object, by the object's index
-                               on the square and the container's index on the object
+    p                                 the player's own main inventory
+    i|<itemID>                        a bag the player is carrying, at any depth
+    g|<itemID>                        a bag lying on the ground next to the player
+    n|<itemID>|<encoded container>    a bag inside another container: a crate, a
+                                      car trunk, or a bag in either
+    v|<vehicleID>|<partID>            a vehicle part container
+    w|<x>|<y>|<z>|<obj>|<con>|<type>  a container on a world object, by the
+                                      object's index on the square, the
+                                      container's index on the object and the
+                                      container's type
 
     Anything else returns nil, and the caller falls back to vanilla behaviour.
     Floor containers and corpses are deliberately not encoded -- see the comment
     on ZomboidFixesB42.encodeContainer.
+
+    A bag used to be sent as i| wherever it was. The server only looks for i| in
+    the player's own inventory, so every transfer into or out of a backpack on the
+    ground or in a crate was refused, item by item, and the items stayed put.
 --]]
 
 --- Describe a container as a string the server can resolve.
@@ -245,11 +254,21 @@ function ZomboidFixesB42.encodeContainer(container, character)
     -- for this.
     if container:getType() == "floor" then return ZomboidFixesB42.FLOOR end
 
-    -- A bag. The server finds it by item ID inside the player's own inventory
-    -- tree, so a bag sitting in a crate resolves to nil and falls back.
+    -- A bag, found by item ID wherever it is: in the player's own inventory tree,
+    -- on the ground around them, or inside a container that can itself be encoded.
     local holder = container:getContainingItem()
     if holder then
-        return "i" .. SEP .. tostring(holder:getID())
+        local id = tostring(holder:getID())
+        if container:isInCharacterInventory(character) then
+            return "i" .. SEP .. id
+        end
+        if holder:getWorldItem() then
+            return "g" .. SEP .. id
+        end
+        local outer = holder:getContainer()
+        local outerEncoded = outer and outer ~= container and ZomboidFixesB42.encodeContainer(outer, character)
+        if not outerEncoded or outerEncoded == ZomboidFixesB42.FLOOR then return nil end
+        return "n" .. SEP .. id .. SEP .. outerEncoded
     end
 
     local parent = container:getParent()
@@ -272,10 +291,35 @@ function ZomboidFixesB42.encodeContainer(container, character)
     local objects = square:getObjects()
     for i = 0, objects:size() - 1 do
         if objects:get(i) == parent then
-            return table.concat({ "w", square:getX(), square:getY(), square:getZ(), i, containerIndex }, SEP)
+            return table.concat({ "w", square:getX(), square:getY(), square:getZ(), i, containerIndex, container:getType() }, SEP)
         end
     end
 
+    return nil
+end
+
+--- Find an item lying on the ground within arm's reach, and the square it is on.
+-- Searching only the player's own square and the eight around it is both how far
+-- the inventory page's floor panel reaches and a natural reach check.
+function ZomboidFixesB42.findItemOnGround(player, itemId)
+    local cell = getCell()
+    local px, py, pz = math.floor(player:getX()), math.floor(player:getY()), math.floor(player:getZ())
+
+    for dx = -1, 1 do
+        for dy = -1, 1 do
+            local square = cell:getGridSquare(px + dx, py + dy, pz)
+            local worldObjects = square and square:getWorldObjects()
+            if worldObjects then
+                for i = 0, worldObjects:size() - 1 do
+                    local worldObject = worldObjects:get(i)
+                    local item = worldObject and worldObject:getItem()
+                    if item and item:getID() == itemId then
+                        return item, square
+                    end
+                end
+            end
+        end
+    end
     return nil
 end
 
@@ -326,8 +370,19 @@ function ZomboidFixesB42.decodeContainer(encoded, player)
         return player:getInventory()
     end
 
-    if kind == "i" then
-        local holder = findItemById(player:getInventory(), tonumber(parts[2]) or -1, 0)
+    if kind == "i" or kind == "g" or kind == "n" then
+        local id = tonumber(parts[2]) or -1
+        local holder
+        if kind == "i" then
+            holder = findItemById(player:getInventory(), id, 0)
+        elseif kind == "g" then
+            holder = ZomboidFixesB42.findItemOnGround(player, id)
+        else
+            -- Everything after the second separator is the outer container's own
+            -- encoding, separators and all.
+            local outer = ZomboidFixesB42.decodeContainer(string.match(encoded, "^n|[^|]*|(.+)$"), player)
+            holder = outer and outer:getItemWithID(id)
+        end
         if not holder or not instanceof(holder, "InventoryContainer") then return nil end
         return holder:getInventory()
     end
@@ -344,23 +399,39 @@ function ZomboidFixesB42.decodeContainer(encoded, player)
         if not square then return nil end
         local objects = square:getObjects()
         local index = tonumber(parts[5]) or -1
-        if index < 0 or index >= objects:size() then return nil end
-        local object = objects:get(index)
-        if not object then return nil end
+        local containerIndex = tonumber(parts[6]) or -1
+        local containerType = parts[7]
 
-        local containerIndex = tonumber(parts[6])
-        if not containerIndex or containerIndex < 0 or containerIndex >= object:getContainerCount() then
-            return nil
+        local function containerOn(object)
+            if not object or containerIndex < 0 or containerIndex >= object:getContainerCount() then return nil end
+            local found = object:getContainerByIndex(containerIndex)
+            if found and containerType and found:getType() ~= containerType then return nil end
+            return found
         end
-        return object:getContainerByIndex(containerIndex)
+
+        if index >= 0 and index < objects:size() then
+            local found = containerOn(objects:get(index))
+            if found then return found end
+        end
+        -- Nothing promises the square's object list is in the same order on the
+        -- client and the server, so an index that points at the wrong object is
+        -- answered by looking for the container by its type instead.
+        if containerType then
+            for i = 0, objects:size() - 1 do
+                local found = containerOn(objects:get(i))
+                if found then return found end
+            end
+        end
+        return nil
     end
 
     return nil
 end
 
---- Where a container is in the world, for the reach check. Returns nil for
--- containers the player is carrying, which are always in reach.
-function ZomboidFixesB42.containerPosition(container)
+--- Where a container is in the world, for the reach check. Returns nil when it
+-- has no position at all. A bag is where its holder is: in the player's hands, on
+-- the ground or in the container it sits in.
+function ZomboidFixesB42.containerPosition(container, depth)
     local parent = container:getParent()
     if parent then
         return parent:getX(), parent:getY()
@@ -368,6 +439,18 @@ function ZomboidFixesB42.containerPosition(container)
     local square = container:getSourceGrid()
     if square then
         return square:getX(), square:getY()
+    end
+    local holder = container:getContainingItem()
+    if holder then
+        local worldItem = holder:getWorldItem()
+        if worldItem then
+            return worldItem:getX(), worldItem:getY()
+        end
+        local outer = holder:getContainer()
+        depth = depth or 0
+        if outer and outer ~= container and depth < 10 then
+            return ZomboidFixesB42.containerPosition(outer, depth + 1)
+        end
     end
     return nil
 end

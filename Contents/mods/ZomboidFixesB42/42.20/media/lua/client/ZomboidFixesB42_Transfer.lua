@@ -6,14 +6,18 @@
     transfer time the server would otherwise impose. See
     shared/ZomboidFixesB42.lua for why this is necessary.
 
-    Two things this has to get right, both learned the hard way.
+    Like single player. Under the cheat single player gives every transfer
+    maxTime = 1 (ISInventoryTransferAction:new), so it is over in a tick and no
+    progress bar is ever seen. These do the same, maxTime
+    ZomboidFixesB42.TRANSFER_MAX_TIME with the progress bar turned off
+    (useProgressBar, as ISPetAnimal and the hotbar actions do). Batching is not
+    lost: vanilla holds the first transfer back for CLIENT_DELAY_FOR_MULTI_TRANSACTION
+    (waitToStart), so by start() a whole shift-click is queued and
+    checkQueueList() merges it.
 
-    Fast, not instant. Single player uses maxTime = 1, which completes inside one
-    frame -- no animation, no job-delta progress on the item, and a queue that
-    drains before you can see it was ever a queue. These stay proper timed actions
-    on ZomboidFixesB42.TRANSFER_MAX_TIME, which also gives checkQueueList() time
-    to batch the following transfers into one action, so a shift-click of twenty
-    items becomes a handful of quick actions rather than twenty.
+    It cannot stop being a timed action altogether. The queue is what orders it
+    after the walk to the container and before whatever was queued behind it --
+    eating, equipping, a recipe -- and those expect the item to be there.
 
     The action must not finish until the item has really moved. This is why vanilla
     sets setWaitForFinished(true) and waits on isItemTransactionDone: a queued
@@ -26,9 +30,8 @@
     so completing the transfer early -- before the server's move has come back --
     cancels the meal. The item is moved by the server, never locally, so the wait is
     unavoidable; what this does instead is replace the transaction as the completion
-    signal with the item actually leaving the source container. The fast maxTime
-    therefore sets the animation length and the floor, and real completion is
-    whichever is longer, that or one round trip.
+    signal with the item actually arriving. So a transfer takes one round trip to
+    the server, with no bar, instead of the full vanilla transfer time.
 
     Everything here is opt-in per action: if the containers involved cannot be
     addressed over the wire, zfixFast is never set and the action runs exactly as
@@ -202,6 +205,7 @@ function ISInventoryTransferAction:new(character, item, srcContainer, destContai
             o.zfixFast = true
             o.zfixSrc = src
             o.zfixDst = dst
+            o.useProgressBar = false
             -- Vanilla set this to -1 so the action would wait for a duration the
             -- server would send back.
             o.maxTime = ZomboidFixesB42.TRANSFER_MAX_TIME
@@ -222,6 +226,12 @@ function ISInventoryTransferAction:start()
     -- sets setWaitForFinished(true), which is left alone: update() below decides
     -- when this action is done.
     vanilla.start(self)
+
+    -- Vanilla returns early, with the time at 0 and nothing started, when the item
+    -- has already moved or is no longer in the source. Nothing to send then.
+    if not self.started then return end
+
+    self.action:setUseProgressBar(false)
 
     -- The transaction it opened is not wanted; we do the move ourselves.
     if self.transactionId and self.transactionId ~= 0 then
