@@ -42,12 +42,15 @@ ZomboidFixesB42.CMD_TURBO_EJECT = "turboEjectCartridge"
 ZomboidFixesB42.CMD_TURBO_BATTERY = "turboInsertBattery"
 ZomboidFixesB42.CMD_TURBO_REPORT = "turboReport"
 ZomboidFixesB42.CMD_TURBO_DATA = "turboSaveData"
+ZomboidFixesB42.CMD_BODY_STATS_REQUEST = "bodyStatsRequest"
+ZomboidFixesB42.CMD_BODY_STATS_SET = "bodyStatsSet"
 
 -- server -> clients
 ZomboidFixesB42.CMD_ANIMAL_GENDER_SYNC = "animalGenderSync"
 ZomboidFixesB42.CMD_FORAGE_ZONE_RESET = "forageZoneReset"
 ZomboidFixesB42.CMD_TRANSFER_DECLINED = "transferDeclined"
 ZomboidFixesB42.CMD_FAST_FORWARD_STATE = "fastForwardState"
+ZomboidFixesB42.CMD_BODY_STATS_STATE = "bodyStatsState"
 
 -- The single player speed buttons, as zombie.ui.SpeedControls sets them: play,
 -- fast forward, faster forward and wait. Multiplayer fast forward offers exactly

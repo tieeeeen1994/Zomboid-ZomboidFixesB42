@@ -2,5 +2,14 @@
     "IGUI_ZomboidFixesB42_FastForward_NormalHint": "Normal speed - stops fast forward for everyone",
     "IGUI_ZomboidFixesB42_FastForward_Ready": "%1x speed: %2 of %3 players ready",
     "IGUI_ZomboidFixesB42_FastForward_Running": "Fast forward %1x",
-    "IGUI_ZomboidFixesB42_TurboGame_ZombieNear": "Zombies are too close."
+    "IGUI_ZomboidFixesB42_TurboGame_ZombieNear": "Zombies are too close.",
+    "IGUI_ZomboidFixesB42_BodyStats_Title": "Body of %1",
+    "IGUI_ZomboidFixesB42_BodyStats_Button": "Body",
+    "IGUI_ZomboidFixesB42_BodyStats_AdminButton": "Edit your Body Stats",
+    "IGUI_ZomboidFixesB42_BodyStats_ContextMenu": "Body Stats",
+    "IGUI_ZomboidFixesB42_BodyStats_Tooltip": "Change hunger, mood, health, nutrition, weight and the rest, like the debug menu's Body panel. Changes are made on the server, so they stick and the player sees them.",
+    "IGUI_ZomboidFixesB42_BodyStats_Waiting": "Waiting for the server...",
+    "IGUI_ZomboidFixesB42_BodyStats_Offline": "%1 is not online.",
+    "IGUI_ZomboidFixesB42_BodyStats_Dead": "%1 is dead.",
+    "IGUI_ZomboidFixesB42_BodyStats_Denied": "You are not allowed to change %1's body."
 }
