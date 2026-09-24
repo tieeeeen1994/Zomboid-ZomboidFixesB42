@@ -21,5 +21,6 @@ description=- Shift-click selects a full range with Nick's Inventory Selection F
 description=- Turbo Game cartridges, batteries, best scores and mood effects work on servers, best scores are kept per console, playing no longer moves your character, and games close near zombies or in the dark (optional, beta).
 description=- Admins who join are fully healed and briefly in god mode, so a revived admin does not die again (optional).
 description=- Admins can change any player's body stats (hunger, mood, health, calories, weight and more) like the debug Body panel, and the changes stick for everyone.
+description=- Admins can send and stop the chopper from the right-click Tools menu, and stopping it reaches every player, even one who still hears a chopper that already left (optional, beta).
 description=Must be installed on both the server and clients.
 modversion=1.0

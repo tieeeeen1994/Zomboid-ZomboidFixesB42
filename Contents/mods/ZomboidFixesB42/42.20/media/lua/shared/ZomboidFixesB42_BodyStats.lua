@@ -4,18 +4,42 @@
     The debug menu's General Debuggers > Body panel (ISStatsAndBody) lets you drag
     every stat of your character -- hunger, unhappiness, calories, weight and so on.
     Multiplayer has a capability made for exactly this, CanModifyBodyStats, which
-    admins and moderators hold, but its only use is that panel, and the panel only
-    opens with the -debug launch flag. Even then it half works on a server:
+    admins and moderators hold (its tooltip says "Use the Body section of General
+    Debuggers in the Debug Menu panel"), but its only use is that panel, and the
+    panel only opens with the -debug launch flag. Even then it half works on a
+    server:
 
-      - The server owns every stat. NetworkPlayerManager sends each player their
-        stats, nutrition, smoking timer and main body fields every second, and a
-        client never simulates its own body at all (BodyDamage.Update returns
-        straight away on a client). Anything set only on the client is put back
-        within a second.
+      - The server owns every stat. For every online player NetworkPlayerManager
+        sends the owning client, and only that client:
+
+          every 0.5 s  PlayerHealth    each body part's health
+          every 1 s    PlayerStats     every CharacterStat (Stats.save), the
+                                       nutrition, the smoking timer and
+                                       BodyDamage.saveMainFields: cold, food
+                                       healing timer, pain and cold reduction,
+                                       infection time and mortality, cold
+                                       damage stage
+                       PlayerEffects   sleeping pill, beta blocker,
+                                       antidepressant and painkiller effects
+                       PlayerXp        traits, XP and perk levels
+          every 2 s    PlayerDamage    max weight, corpse sickness rate and the
+                                       whole BodyDamage, every body part with its
+                                       infection flags, wetness and health
+                       PlayerInjuries  wounds
+
+        A client never simulates its own body (BodyDamage.Update returns straight
+        away on a client for its own living player). So anything set only on the
+        client is put back within a second, and anything the server sets --
+        including traits and skill levels -- reaches the player within a second by
+        itself. BodyDamage.isInfected, isIsFakeInfected and isIsOnFire are in no
+        packet at all; they only exist on the server.
       - The panel only tells the server about the 24 CharacterStats
-        (sendPlayerStat) and nutrition (sendPlayerNutrition). The eaten food timer,
-        smoking timer, cold, overall health, the Fitness level and the tick boxes
-        never leave the client.
+        (sendPlayerStat) and nutrition (sendPlayerNutrition). Both are client
+        only and do nothing unless the local role has CanModifyBodyStats. They send
+        a SyncPlayerStatsPacket, which the server loads into the player it names --
+        not necessarily the sender -- without answering or passing it on. The
+        eaten food timer, smoking timer, cold, overall health, the Fitness level and
+        the tick boxes never leave the client.
       - It only ever edits getPlayer(). Another player's stats never reach an
         admin's client at all -- the client even resets remote players' bodies to
         full health every update -- so the Check Stats window cannot show them either.
@@ -39,7 +63,22 @@
         character, so the infection time is moved to match.
 
     Pain is recomputed from the body parts' pain every tick, and morale only moves
-    while stressed; the debug panel says so, and so does this one.
+    while stressed; the debug panel says so, and so does this one. Pain is set to
+    the body parts' pain minus the painkiller reduction whenever it is above that,
+    and only creeps up slowly when below (BodyDamage.Update).
+
+    Others stick, some only for a while:
+
+      - Sickness: nothing writes it any more; it is only read by the
+        thermoregulator and the moodles.
+      - Temperature: the thermoregulator lerps the core temperature halfway to the
+        stat every update and writes the stat back
+        (Thermoregulator.updateHeatDeltas), so it gets there and then drifts
+        naturally.
+      - Discomfort is lerped slowly towards a target from clothing, bed and
+        moodles, so it drifts back.
+      - Fatigue is reset on the server when sleep is not allowed or not needed
+        (IsoGameCharacter.calculateStats).
 --]]
 
 ZomboidFixesB42 = ZomboidFixesB42 or {}
@@ -47,8 +86,14 @@ ZomboidFixesB42 = ZomboidFixesB42 or {}
 local BodyStats = {}
 ZomboidFixesB42.BodyStats = BodyStats
 
--- syncPlayerStats masks. Every stat: SyncPlayerStatsPacket only walks bits up to
--- the number of stats, so setting the rest is harmless. -1 sends the nutrition.
+-- syncPlayerStats masks. syncPlayerStats(player, mask) is server only and sends a
+-- SyncPlayerStatsPacket to that player, once they exist in the world. Each bit is
+-- a stat, in CharacterStat.ORDERED_STATS order: Anger 0, Boredom, Discomfort,
+-- Endurance, Fatigue, Fitness, FoodSickness, Hunger, Idleness, Intoxication,
+-- Morale 10, NicotineWithdrawal, Pain, Panic, Poison, Sanity, Sickness, Stress,
+-- Temperature, Thirst, Unhappiness 20, Wetness, ZombieFever, ZombieInfection 23.
+-- Every stat: the packet only walks bits up to the number of stats, so setting the
+-- rest is harmless. -1 sends the whole nutrition instead.
 local ALL_STATS = 0x7FFFFFFF
 local NUTRITION = -1
 
@@ -90,6 +135,7 @@ local function setFitness(player, value)
 end
 
 local function setWetness(player, value)
+    -- BodyPart.setWetness clamps to 0..100, the same range as the stat.
     local parts = player:getBodyDamage():getBodyParts()
     for i = 0, parts:size() - 1 do
         parts:get(i):setWetness(value)
@@ -112,7 +158,8 @@ end
 
 local function setOverallHealth(player, value)
     -- The overall health is worked out from the body parts, so the parts are
-    -- healed or hurt, as the debug panel does it.
+    -- healed or hurt, as the debug panel does it. AddGeneralHealth spreads the
+    -- amount over the damaged parts only, ReduceGeneralHealth over all of them.
     local body = player:getBodyDamage()
     local current = body:getOverallBodyHealth()
     if value < current then
@@ -205,6 +252,7 @@ local function build()
     add(statField("Morale", "MORALE", "IGUI_StatsAndBody_Morale"))
     add(statField("Stress", "STRESS", "IGUI_StatsAndBody_Stress"))
     add(statField("NicotineWithdrawal", "NICOTINE_WITHDRAWAL", "IGUI_StatsAndBody_NicotineWithdrawal"))
+    -- setTimeSinceLastSmoke clamps to 0..10 itself.
     add(numberField("TimeSinceLastSmoke", "IGUI_StatsAndBody_TimeSinceLastSmoke", 0, 10, 0.01,
         function(p) return p:getTimeSinceLastSmoke() end,
         function(p, v) p:setTimeSinceLastSmoke(v) end))
@@ -239,6 +287,7 @@ local function build()
 
     add(statField("ZombieFever", "ZOMBIE_FEVER", "IGUI_StatsAndBody_ZombieFever", 1))
     add(statField("FoodSickness", "FOOD_SICKNESS", "IGUI_StatsAndBody_FoodSickness", 1))
+    -- Nutrition's setters clamp to these same ranges.
     add(numberField("Carbohydrates", "Fluid_Prop_Carbohydrates", -500, 1000, 1,
         function(p) return nutrition(p):getCarbohydrates() end,
         function(p, v) nutrition(p):setCarbohydrates(v) end, BodyStats.SYNC_NUTRITION))
@@ -265,13 +314,18 @@ local function build()
         function(p) return body(p):isInfected() end, setInfected))
     add(boolField("IsFakeInfected", "IGUI_StatsAndBody_IsFakeInfected",
         function(p) return body(p):isIsFakeInfected() end, setFakeInfected))
+    -- Only the flag the game checks to decide "burnt to death", as in the debug
+    -- panel. Really setting someone alight is IsoGameCharacter.SetOnFire(), and
+    -- StopBurning() puts them out.
     add(boolField("IsOnFire", "IGUI_StatsAndBody_IsOnFire",
         function(p) return body(p):isIsOnFire() end,
         function(p, v) body(p):setIsOnFire(v) end))
     -- God mode and invisibility go out to every client in ExtraInfoPacket, which
-    -- only the server's own commands can send for another player, so in
-    -- multiplayer these two use those commands. Ghost mode is not listed: in this
-    -- build IsoPlayer.setGhostMode just calls setInvisible.
+    -- only the server's own commands can send for another player
+    -- (GameServer.sendPlayerExtraInfo is not reachable from Lua, and the Lua
+    -- global sendPlayerExtraInfo is client only), so in multiplayer these two use
+    -- /godmodplayer and /invisibleplayer. Ghost mode is not listed: in this build
+    -- IsoPlayer.setGhostMode just calls setInvisible.
     add(boolField("GodMod", "IGUI_StatsAndBody_GodMod",
         function(p) return p:isGodMod() end,
         function(p, v) p:setGodMod(v) end,
@@ -353,7 +407,8 @@ end
 -- waiting up to a second for the regular sync. Does nothing outside a server.
 -- Everything else a field can change (the body, the smoking timer, the Fitness
 -- level and traits) reaches the player on the regular sync: every half second for
--- body part health, every second for the rest.
+-- body part health, every second for the rest. A single body part can also be
+-- sent at once with syncBodyPart(part, mask), server only.
 function BodyStats.sync(player, changed)
     if not isServer() or not player:isExistInTheWorld() then return end
     if changed[BodyStats.SYNC_STATS] then

@@ -20,6 +20,10 @@
     Only roles with CanModifyBodyStats (admin and moderator by default) may use
     this, and never on a player whose role ranks above their own. Every change is
     written to the admin log, like the server's own admin commands.
+
+    Vanilla's own weight command, Commands.player.setWeight in
+    server/ClientCommands.lua, sets any player's weight by online ID with no access
+    check at all, so any client can call it. This file does not rely on it.
 --]]
 
 if not isServer() then return end
@@ -48,6 +52,7 @@ local function stateFor(admin, session)
     return state
 end
 
+-- getPlayerFromUsername is client only, so the online list is walked instead.
 local function findOnlinePlayer(username)
     if type(username) ~= "string" then return nil end
     local list = getOnlinePlayers()

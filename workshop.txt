@@ -23,6 +23,7 @@ description=[*]With Nick's Inventory Selection Fix, shift-click selects the whol
 description=[*]Turbo Game cartridges and batteries go in and come out on multiplayer servers, including in consoles spawned from the item list, the battery charge, best scores and mood effects are kept, best scores belong to the console they were set on, the character no longer walks around while a game is open, and the game closes when a zombie is near or it is too dark (optional, beta).
 description=[*]Admins who join are fully healed and in god mode for a set time, so an admin revived on the server does not die again on load (optional).
 description=[*]Admins and moderators can change any online player's hunger, mood, health, nutrition, weight and other body stats, like the debug menu's Body panel, from a Body button in the Player Stats window, the admin panel or the scoreboard. The changes are made on the server, so they stick and the player sees them.
+description=[*]Admins and moderators can send and stop the chopper from the right-click Tools menu, and the debug menu's chopper buttons work on servers. Stopping it reaches every player, including anyone who still hears a chopper that already left, which vanilla's stop cannot fix (optional, beta).
 description=[/list]
 description=
 description=Licensed under the GNU GPL v3.
