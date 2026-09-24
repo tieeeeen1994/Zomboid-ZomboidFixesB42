@@ -41,6 +41,7 @@ ZomboidFixesB42.CMD_TURBO_INSERT = "turboInsertCartridge"
 ZomboidFixesB42.CMD_TURBO_EJECT = "turboEjectCartridge"
 ZomboidFixesB42.CMD_TURBO_BATTERY = "turboInsertBattery"
 ZomboidFixesB42.CMD_TURBO_REPORT = "turboReport"
+ZomboidFixesB42.CMD_TURBO_DATA = "turboSaveData"
 
 -- server -> clients
 ZomboidFixesB42.CMD_ANIMAL_GENDER_SYNC = "animalGenderSync"
@@ -59,6 +60,39 @@ function ZomboidFixesB42.isFastForwardSpeed(speed)
     end
     return false
 end
+
+-- Where a Turbo Game console keeps what its games save, in the item's mod data.
+ZomboidFixesB42.TURBO_DATA_KEY = "zomboidFixesTurboGame"
+
+-- Every key the games save in Turbo Game's global mod data table, and the cartridge
+-- whose game saves it. Each game has keys of its own; Flappy Bird's is the only one
+-- not named after its game.
+local TURBO = "TurboGame."
+ZomboidFixesB42.TURBO_GAME_KEYS = {
+    arkanoidBest = TURBO .. "ArkanoidCartridge",
+    asteroidsBest = TURBO .. "AsteroidsCartridge",
+    candyBest = TURBO .. "CandyCartridge",
+    dinoBest = TURBO .. "DinoCartridge",
+    bestScore = TURBO .. "FlappyBirdCartridge",
+    froggerBest = TURBO .. "FroggerCartridge",
+    minesweeperBest = TURBO .. "MinesweeperCartridge",
+    pacmanBest = TURBO .. "PacManCartridge",
+    pongBest = TURBO .. "PongCartridge",
+    roadFighterBest = TURBO .. "RoadFighterCartridge",
+    snakeBest = TURBO .. "SnakeCartridge",
+    spaceInvadersBest = TURBO .. "SpaceInvadersCartridge",
+    tetrisBest = TURBO .. "TetrisCartridge",
+    sudokuWinsEasy = TURBO .. "SudokuCartridge",
+    sudokuWinsMedium = TURBO .. "SudokuCartridge",
+    sudokuWinsHard = TURBO .. "SudokuCartridge",
+    sudokuDifficulty = TURBO .. "SudokuCartridge",
+    sudokuPuzzle = TURBO .. "SudokuCartridge",
+    sudokuSolution = TURBO .. "SudokuCartridge",
+    sudokuUserGrid = TURBO .. "SudokuCartridge",
+    sudokuNotes = TURBO .. "SudokuCartridge",
+    sudokuElapsed = TURBO .. "SudokuCartridge",
+    sudokuGameState = TURBO .. "SudokuCartridge",
+}
 
 -- A zombie this close to a player, on the same floor, counts as near them.
 local NEAR_ZOMBIE = 4

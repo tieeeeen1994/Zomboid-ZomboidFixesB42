@@ -16,7 +16,7 @@ Zomboid Fixes B42.20 is a set of fixes for Project Zomboid Build 42.20, mostly f
 - Speed controls are back in multiplayer. The game fast forwards once every player votes for it (optional, beta).
 - Guns of Marz attachment tooltips wrap instead of stretching across the screen (optional).
 - With Nick's Inventory Selection Fix, shift-click selects the whole range instead of acting like ctrl-click (optional).
-- Turbo Game cartridges and batteries go in and come out on multiplayer servers, including in consoles spawned from the item list, the battery charge and mood effects are kept, the character no longer walks around while a game is open, and the game closes when a zombie is near or it is too dark (optional, beta).
+- Turbo Game cartridges and batteries go in and come out on multiplayer servers, including in consoles spawned from the item list, the battery charge, best scores and mood effects are kept, best scores belong to the console they were set on, the character no longer walks around while a game is open, and the game closes when a zombie is near or it is too dark (optional, beta).
 - Admins who join are fully healed and in god mode for a set time, so an admin revived on the server does not die again on load (optional).
 
 Steam Workshop ID 3800148259, mod ID ZomboidFixesB42. Licensed under the GNU GPL v3, see [LICENSE](LICENSE).

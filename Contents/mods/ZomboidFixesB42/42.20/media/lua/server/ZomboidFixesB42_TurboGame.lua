@@ -25,6 +25,15 @@
     cartridge goes into. Turbo Game kept it in global mod data under the local player
     number, which is 0 on every client, so every player on a server shared one value.
 
+    What the games save -- best scores, and Sudoku's win counts and the puzzle in
+    progress -- travels with the device the same way. Turbo Game kept it in global
+    mod data, which a server never stores, so on a server it was gone on relog, and
+    in single player every console in the world shared one set. The client file
+    keeps it on the console each game was played on instead, and reports every
+    change here. Only keys of the game on the cartridge in that console are taken,
+    best scores and win counts only ever go up, and the Sudoku puzzle has to be the
+    shape the game writes.
+
     Mood effects are measured on the client, where the games run, and replayed here.
     A tampered client could lie about them, so they are only accepted while the
     player carries a loaded, charged console, and are capped at rates somewhat above
@@ -48,7 +57,10 @@ local BATTERY_TYPE = "Base.Battery"
 local CHARGE_KEY = "turboBattery"
 local CARTRIDGE_KEY = "insertedCartridge"
 
+local DATA_KEY = ZomboidFixesB42.TURBO_DATA_KEY
+
 local MAX_NAME_LENGTH = 100
+local MAX_SCORE = 1000000000
 
 -- Mood caps, per second since the player's last report, plus a one-off allowance for
 -- the bursts some games give at once (a Minesweeper win takes 0.5 off stress and
@@ -78,6 +90,17 @@ local function readCharge(item)
     local charge = tonumber(item:getModData()[CHARGE_KEY])
     if not charge or charge ~= charge then return 100 end
     return math.max(0, math.min(100, charge))
+end
+
+--- A copy of what the games saved on a console or a device, or nil if nothing.
+local function copyData(item)
+    local data = item:getModData()[DATA_KEY]
+    if type(data) ~= "table" then return nil end
+    local copy = {}
+    for key, value in pairs(data) do
+        copy[key] = value
+    end
+    return copy
 end
 
 --- An item by ID, directly in the player's main inventory, where Turbo Game's menu
@@ -132,9 +155,14 @@ local function onInsert(player, args)
 
     local inventory = player:getInventory()
     local charge = readCharge(target)
+    local data = copyData(target)
     removeItem(inventory, target)
     removeItem(inventory, cartridge)
-    addItem(inventory, CONSOLE_TYPE, { [CARTRIDGE_KEY] = cartridgeType, [CHARGE_KEY] = charge }, name)
+    addItem(inventory, CONSOLE_TYPE, {
+        [CARTRIDGE_KEY] = cartridgeType,
+        [CHARGE_KEY] = charge,
+        [DATA_KEY] = data,
+    }, name)
 end
 
 local function onEject(player, args)
@@ -146,8 +174,9 @@ local function onEject(player, args)
 
     local inventory = player:getInventory()
     local charge = readCharge(console)
+    local data = copyData(console)
     removeItem(inventory, console)
-    addItem(inventory, VANILLA_CONSOLE_TYPE, { [CHARGE_KEY] = charge })
+    addItem(inventory, VANILLA_CONSOLE_TYPE, { [CHARGE_KEY] = charge, [DATA_KEY] = data })
     if isCartridgeType(cartridgeType) then
         addItem(inventory, cartridgeType, {})
     end
@@ -251,11 +280,110 @@ local function onReport(player, args)
     end
 end
 
+local MAX_ELAPSED = 100000000
+
+--- A value that is one of the given strings, or nil.
+local function oneOf(choices)
+    return function(value)
+        if type(value) == "string" and choices[value] then return value end
+        return nil
+    end
+end
+
+local function cleanElapsed(value)
+    if type(value) == "number" and value >= 0 and value <= MAX_ELAPSED then return value end
+    return nil
+end
+
+--- A fresh copy of a 9 by 9 Sudoku grid of whole numbers 0-9, or nil if it is not
+-- one. Copied rather than kept, so nothing else the client put in it is stored.
+local function cleanGrid(value)
+    if type(value) ~= "table" then return nil end
+    local grid = {}
+    for row = 1, 9 do
+        local cells = value[row]
+        if type(cells) ~= "table" then return nil end
+        grid[row] = {}
+        for col = 1, 9 do
+            local n = cells[col]
+            if type(n) ~= "number" or n < 0 or n > 9 or n ~= math.floor(n) then return nil end
+            grid[row][col] = n
+        end
+    end
+    return grid
+end
+
+--- A fresh copy of Sudoku's pencil marks, nine flags for each of the 81 cells.
+local function cleanNotes(value)
+    if type(value) ~= "table" then return nil end
+    local notes = {}
+    for row = 1, 9 do
+        local cells = value[row]
+        if type(cells) ~= "table" then return nil end
+        notes[row] = {}
+        for col = 1, 9 do
+            local marks = cells[col]
+            if type(marks) ~= "table" then return nil end
+            notes[row][col] = {}
+            for i = 1, 9 do
+                notes[row][col][i] = marks[i] == true
+            end
+        end
+    end
+    return notes
+end
+
+-- The Sudoku puzzle in progress, which is replaced as a whole. Every other key is a
+-- best score or a win count, which only goes up.
+local SUDOKU_STATE = {
+    sudokuDifficulty = oneOf({ easy = true, medium = true, hard = true }),
+    sudokuGameState = oneOf({ playing = true, won = true }),
+    sudokuElapsed = cleanElapsed,
+    sudokuPuzzle = cleanGrid,
+    sudokuSolution = cleanGrid,
+    sudokuUserGrid = cleanGrid,
+    sudokuNotes = cleanNotes,
+}
+
+local function onSaveData(player, args)
+    local console = findOwnItem(player, args.console)
+    if not console or console:getFullType() ~= CONSOLE_TYPE then return end
+    if type(args.data) ~= "table" then return end
+
+    local md = console:getModData()
+    local cartridgeType = md[CARTRIDGE_KEY]
+    if not cartridgeType then return end
+
+    local changed = false
+    for key, value in pairs(args.data) do
+        if ZomboidFixesB42.TURBO_GAME_KEYS[key] == cartridgeType then
+            if type(md[DATA_KEY]) ~= "table" then md[DATA_KEY] = {} end
+            local data = md[DATA_KEY]
+            local clean = SUDOKU_STATE[key]
+            if clean then
+                value = clean(value)
+                if value ~= nil then
+                    data[key] = value
+                    changed = true
+                end
+            elseif type(value) == "number" and value <= MAX_SCORE and value > (tonumber(data[key]) or 0) then
+                data[key] = value
+                changed = true
+            end
+        end
+    end
+
+    if changed then
+        syncItemModData(player, console)
+    end
+end
+
 local handlers = {
     [ZomboidFixesB42.CMD_TURBO_INSERT] = onInsert,
     [ZomboidFixesB42.CMD_TURBO_EJECT] = onEject,
     [ZomboidFixesB42.CMD_TURBO_BATTERY] = onInsertBattery,
     [ZomboidFixesB42.CMD_TURBO_REPORT] = onReport,
+    [ZomboidFixesB42.CMD_TURBO_DATA] = onSaveData,
 }
 
 local function onClientCommand(module, command, player, args)
