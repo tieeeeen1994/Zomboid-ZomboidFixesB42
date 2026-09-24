@@ -43,6 +43,11 @@
     books, so a flashlight in hand or a lit car dashboard is enough light. Play is
     greyed out with the reason while either is true, and an open game window is
     closed with the reason shown over the player's head when either becomes true.
+
+    Escape. Only a few of the games close on Escape, and those still let the press
+    through to open the pause menu. Every game window opened from Play takes key
+    events the way vanilla windows such as the hutch do: it consumes Escape, so the
+    pause menu stays shut, and closes when the key is let go.
 --]]
 
 ZomboidFixesB42 = ZomboidFixesB42 or {}
@@ -243,6 +248,25 @@ local function onPlayerUpdate(player)
     end
 end
 
+--[[ Escape ------------------------------------------------------------------- ]]
+
+local function isKeyConsumed(self, key)
+    return key == Keyboard.KEY_ESCAPE
+end
+
+local function onKeyRelease(self, key)
+    if key == Keyboard.KEY_ESCAPE and self:isVisible() then self:close() end
+end
+
+--- Make a game window close on Escape. Set on the window rather than its class, so
+-- the mood measuring never wraps them.
+local function closeOnEscape(panel)
+    if type(panel) ~= "table" then return end
+    panel.isKeyConsumed = isKeyConsumed
+    panel.onKeyRelease = onKeyRelease
+    panel:setWantKeyEvents(true)
+end
+
 --[[ Context menu ------------------------------------------------------------- ]]
 
 local function removeOptions(context, name)
@@ -350,6 +374,7 @@ local function onFillInventoryObjectContextMenu(playerNum, context, items)
                         activeConsole = console
                         openGame(...)
                         wrapOpenPanels()
+                        closeOnEscape(_G[cfg.panel])
                     end
                 end
             end
