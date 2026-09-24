@@ -82,6 +82,11 @@ local REFRESH_MS = 1000
 -- A change the server has not confirmed by then is dropped, and the window shows
 -- the server's value again.
 local PENDING_MS = 3000
+-- With no answer for this long the window says the server is not answering. That
+-- is what happens when the server runs a version of the mod without the server
+-- half of this feature (a client's local copy of a mod can be newer than the
+-- Workshop copy the server downloads): the request just goes unanswered.
+local NO_ANSWER_MS = 5000
 
 -- Marks this connection's change numbers; see the server file.
 local SESSION = getTimestampMs()
@@ -122,6 +127,7 @@ function BodyStatsWindow:new(x, y, width, height, admin, username, target)
     o.queue = {}
     o.queued = false
     o.lastReply = 0
+    o.lastAnswer = getTimestampMs()
     o.lastRequest = 0
     o.lastFlush = 0
     o.status = isClient() and getText("IGUI_ZomboidFixesB42_BodyStats_Waiting") or nil
@@ -322,6 +328,11 @@ function BodyStatsWindow:update()
         self:request()
     end
 
+    -- Still asking every second, so the next answer puts the window right again.
+    if now - self.lastAnswer >= NO_ANSWER_MS then
+        self.status = getText("IGUI_ZomboidFixesB42_BodyStats_NoAnswer")
+    end
+
     for key, pending in pairs(self.pending) do
         if now - pending.time >= PENDING_MS and not self.queue[key] then
             self.pending[key] = nil
@@ -340,6 +351,7 @@ function BodyStatsWindow:onState(args)
     local n = tonumber(args.n) or 0
     if n <= self.lastReply then return end
     self.lastReply = n
+    self.lastAnswer = getTimestampMs()
 
     if args.status ~= "ok" then
         self.status = getText(STATUS_TEXT[args.status] or STATUS_TEXT.denied, self.username)
