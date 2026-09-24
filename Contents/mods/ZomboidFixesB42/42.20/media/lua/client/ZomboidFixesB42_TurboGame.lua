@@ -31,6 +31,18 @@
     The battery and mood reports are only needed with a server: in single player the
     client's copy is the only copy, and replaying the change would count it twice.
 
+    Saved data. The games save their best scores, and Sudoku its win counts and the
+    puzzle in progress, in one global mod data table, which a server never stores
+    and which every console in a world shares. The global table is not used at all:
+    ModData.getOrCreate hands Turbo Game a stand-in for it, and ModData.transmit
+    ignores it. Every key a game reads or writes through the stand-in belongs to
+    exactly one game, and goes to the console that game's window was opened from.
+    A window reads its data while Play is still making it, before it can be tied to
+    the console, so for that moment the console Play was chosen on is used. Writes
+    change the client's copy of the console and are reported to the server once a
+    second, which keeps them on the console. This runs in single player too, where
+    it gives each console its own scores.
+
     Movement. The games read WASD and the arrow keys straight from the keyboard, so
     the character walked around while the player played. While any game window is
     open the player's movement is blocked, the same flag the game sets while climbing
@@ -60,6 +72,10 @@ end
 local CONSOLE_TYPE = "TurboGame.HandheldConsole"
 local VANILLA_CONSOLE_TYPE = "Base.VideoGame"
 local CARTRIDGE_KEY = "insertedCartridge"
+local DATA_KEY = ZomboidFixesB42.TURBO_DATA_KEY
+
+-- Turbo Game's global mod data table.
+local GLOBAL_TAG = "TurboGame"
 
 local REPORT_INTERVAL_MS = 1000
 
@@ -184,12 +200,104 @@ local function report()
     pending.boredom, pending.unhappiness, pending.stress = 0, 0, 0
 end
 
+--[[ Saved data -------------------------------------------------------------- ]]
+
+-- The console each game window made from Play was played on, by window.
+local boundPanels = {}
+
+-- The cartridge and console Play is making a window for, while it does. Cleared
+-- every tick, so a game that throws while opening cannot leave it set.
+local opening = nil
+
+-- The keys written to each console's data and not yet reported, by console.
+local unsent = {}
+
+local lastDataTime = 0
+
+--- The console a game's saved data belongs to right now, or nil if none.
+local function consoleFor(cartridgeType)
+    if opening and opening.cartridge == cartridgeType then return opening.console end
+    local cfg = findCartridgeConfig(cartridgeType)
+    local panel = cfg and cfg.panel and _G[cfg.panel]
+    if type(panel) ~= "table" then return nil end
+    return boundPanels[panel]
+end
+
+local function readData(_, key)
+    local cartridgeType = ZomboidFixesB42.TURBO_GAME_KEYS[key]
+    local console = cartridgeType and consoleFor(cartridgeType)
+    if not console then return nil end
+    local data = console:getModData()[DATA_KEY]
+    if type(data) ~= "table" then return nil end
+    return data[key]
+end
+
+--- Written to the client's copy of the console, which it keeps until the server's
+-- syncs back.
+local function writeData(_, key, value)
+    local cartridgeType = ZomboidFixesB42.TURBO_GAME_KEYS[key]
+    local console = cartridgeType and consoleFor(cartridgeType)
+    if not console then return end
+    local md = console:getModData()
+    if type(md[DATA_KEY]) ~= "table" then md[DATA_KEY] = {} end
+    md[DATA_KEY][key] = value
+    unsent[console] = unsent[console] or {}
+    unsent[console][key] = true
+end
+
+-- What Turbo Game gets in place of its global table. It is kept empty, so every
+-- read and write goes through readData and writeData.
+local standIn = setmetatable({}, { __index = readData, __newindex = writeData })
+
+--- Tie the window Play just opened to the console it was played on. A window that
+-- is already tied is one Play only brought to the top.
+local function bindPanel(console, cfg)
+    local panel = _G[cfg.panel]
+    if type(panel) ~= "table" or boundPanels[panel] then return end
+    boundPanels[panel] = console
+end
+
+--- Report what the games wrote, and let go of windows that have closed.
+local function reportData()
+    lastDataTime = getTimestampMs()
+
+    local player = getSpecificPlayer(0)
+    if player then
+        for console, keys in pairs(unsent) do
+            local saved = console:getModData()[DATA_KEY]
+            if type(saved) == "table" then
+                local data = {}
+                for key in pairs(keys) do data[key] = saved[key] end
+                send(player, ZomboidFixesB42.CMD_TURBO_DATA, {
+                    console = tostring(console:getID()),
+                    data = data,
+                })
+            end
+        end
+    end
+    unsent = {}
+
+    local closed = {}
+    for panel in pairs(boundPanels) do
+        if not panel:isVisible() then table.insert(closed, panel) end
+    end
+    for _, panel in ipairs(closed) do
+        boundPanels[panel] = nil
+    end
+end
+
 local function onTick()
     depth = 0
-    if not isMeasuring() then return end
-    if getTimestampMs() - lastReportTime < REPORT_INTERVAL_MS then return end
-    wrapOpenPanels()
-    report()
+    opening = nil
+    if not isEnabled() then return end
+    local now = getTimestampMs()
+    if now - lastDataTime >= REPORT_INTERVAL_MS then
+        reportData()
+    end
+    if isClient() and now - lastReportTime >= REPORT_INTERVAL_MS then
+        wrapOpenPanels()
+        report()
+    end
 end
 
 --[[ Movement and interruptions ---------------------------------------------- ]]
@@ -304,6 +412,9 @@ end
 
 local function ejectCartridge(player, console, cfg)
     closePanel(cfg)
+    -- Closing a game can save it, and this has to reach the server before the
+    -- eject, while the console still exists there.
+    reportData()
     if isClient() then report() end
     send(player, ZomboidFixesB42.CMD_TURBO_EJECT, { console = tostring(console:getID()) })
 end
@@ -372,7 +483,10 @@ local function onFillInventoryObjectContextMenu(playerNum, context, items)
                     local openGame = play.onSelect
                     play.onSelect = function(...)
                         activeConsole = console
+                        opening = { cartridge = cfg.cartridge, console = console }
                         openGame(...)
+                        opening = nil
+                        bindPanel(console, cfg)
                         wrapOpenPanels()
                         closeOnEscape(_G[cfg.panel])
                     end
@@ -409,6 +523,18 @@ local function install()
             return activeConsole
         end
         return getConsoleItem(player)
+    end
+
+    -- Turbo Game only ever uses these two on its table.
+    local getOrCreate = ModData.getOrCreate
+    ModData.getOrCreate = function(tag)
+        if tag == GLOBAL_TAG and isEnabled() then return standIn end
+        return getOrCreate(tag)
+    end
+    local transmit = ModData.transmit
+    ModData.transmit = function(tag)
+        if tag == GLOBAL_TAG and isEnabled() then return end
+        return transmit(tag)
     end
 
     Events.OnFillInventoryObjectContextMenu.Add(onFillInventoryObjectContextMenu)
