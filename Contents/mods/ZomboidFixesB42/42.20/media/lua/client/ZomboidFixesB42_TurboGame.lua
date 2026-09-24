@@ -30,6 +30,19 @@
 
     The battery and mood reports are only needed with a server: in single player the
     client's copy is the only copy, and replaying the change would count it twice.
+
+    Movement. The games read WASD and the arrow keys straight from the keyboard, so
+    the character walked around while the player played. While any game window is
+    open the player's movement is blocked, the same flag the game sets while climbing
+    through a window, and it is set again every update because timed actions and
+    stagger states clear it when they end. Closing the window clears it, unless the
+    player is knocked down or on the floor, whose states clear it themselves.
+
+    Interruptions. A game cannot be played with a zombie near, by the same rule as
+    multiplayer fast forward, or when it is too dark to read, by the same check as
+    books, so a flashlight in hand or a lit car dashboard is enough light. Play is
+    greyed out with the reason while either is true, and an open game window is
+    closed with the reason shown over the player's head when either becomes true.
 --]]
 
 ZomboidFixesB42 = ZomboidFixesB42 or {}
@@ -174,6 +187,62 @@ local function onTick()
     report()
 end
 
+--[[ Movement and interruptions ---------------------------------------------- ]]
+
+local INTERRUPT_CHECK_MS = 500
+
+-- Whether this file is the one blocking the player's movement.
+local blockingMovement = false
+
+local lastInterruptCheck = 0
+
+local function isGameOpen()
+    for _, cfg in ipairs(TurboGame_Cartridges) do
+        local panel = cfg.panel and _G[cfg.panel]
+        if type(panel) == "table" and panel:isVisible() then return true end
+    end
+    return false
+end
+
+--- Why the player cannot play right now, as a translation key, or nil if they can.
+local function cannotPlayReason(player)
+    if ZomboidFixesB42.isZombieNear(player) then return "IGUI_ZomboidFixesB42_TurboGame_ZombieNear" end
+    if player:tooDarkToRead() then return "ContextMenu_TooDarkToSee" end
+    return nil
+end
+
+--- Close every open game window if the player can no longer play. Returns whether
+-- it did.
+local function interrupt(player)
+    local now = getTimestampMs()
+    if now - lastInterruptCheck < INTERRUPT_CHECK_MS then return false end
+    lastInterruptCheck = now
+
+    local reason = cannotPlayReason(player)
+    if not reason then return false end
+    for _, cfg in ipairs(TurboGame_Cartridges) do
+        closePanel(cfg)
+    end
+    HaloTextHelper.addBadText(player, getText(reason))
+    return true
+end
+
+--- Runs before the player's input is read, so a blocked key press never moves them.
+local function onPlayerUpdate(player)
+    if player ~= getSpecificPlayer(0) then return end
+    local playing = isEnabled() and isGameOpen()
+    if playing and interrupt(player) then playing = false end
+    if playing then
+        player:setBlockMovement(true)
+        blockingMovement = true
+    elseif blockingMovement then
+        blockingMovement = false
+        if not player:isOnFloor() and not player:isKnockedDown() then
+            player:setBlockMovement(false)
+        end
+    end
+end
+
 --[[ Context menu ------------------------------------------------------------- ]]
 
 local function removeOptions(context, name)
@@ -269,6 +338,12 @@ local function onFillInventoryObjectContextMenu(playerNum, context, items)
 
             if cfg then
                 local play = context:getOptionFromName(getText(cfg.playKey))
+                local reason = play and cannotPlayReason(player)
+                if reason then
+                    play.notAvailable = true
+                    play.toolTip = ISInventoryPaneContextMenu.addToolTip()
+                    play.toolTip.description = getText(reason)
+                end
                 if play and play.onSelect then
                     local openGame = play.onSelect
                     play.onSelect = function(...)
@@ -313,6 +388,7 @@ local function install()
 
     Events.OnFillInventoryObjectContextMenu.Add(onFillInventoryObjectContextMenu)
     Events.OnTick.Add(onTick)
+    Events.OnPlayerUpdate.Add(onPlayerUpdate)
 end
 
 Events.OnGameStart.Add(install)

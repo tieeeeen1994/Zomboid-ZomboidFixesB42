@@ -60,6 +60,37 @@ function ZomboidFixesB42.isFastForwardSpeed(speed)
     return false
 end
 
+-- A zombie this close to a player, on the same floor, counts as near them.
+local NEAR_ZOMBIE = 4
+-- A zombie this close that is already coming for the player counts too.
+local HUNTING_ZOMBIE = 7
+
+--- Whether a living zombie is close to a player, or closing in on them. Never true
+-- in ghost mode, where zombies ignore the player.
+function ZomboidFixesB42.isZombieNear(player)
+    if player:isGhostMode() then return false end
+    local cell = getCell()
+    local px, py, pz = math.floor(player:getX()), math.floor(player:getY()), math.floor(player:getZ())
+    for x = px - HUNTING_ZOMBIE, px + HUNTING_ZOMBIE do
+        for y = py - HUNTING_ZOMBIE, py + HUNTING_ZOMBIE do
+            local square = cell:getGridSquare(x, y, pz)
+            if square then
+                local movers = square:getMovingObjects()
+                for i = 0, movers:size() - 1 do
+                    local zombie = movers:get(i)
+                    if instanceof(zombie, "IsoZombie") and not zombie:isDead() then
+                        local distance = player:DistTo(zombie)
+                        if distance <= NEAR_ZOMBIE or zombie:getTarget() == player then
+                            return true
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return false
+end
+
 -- How long a cheated item transfer takes, in the same units as the vanilla
 -- ISInventoryTransferAction maxTime (container to inventory is around 50 before
 -- weight and capacity scaling). Deliberately short rather than zero: at maxTime 1

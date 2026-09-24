@@ -31,13 +31,6 @@ if not isServer() then return end
 
 ZomboidFixesB42 = ZomboidFixesB42 or {}
 
--- A zombie this close to anyone, on the same floor, stops fast forward for
--- everyone -- as happens in single player, where IsoPlayer's line of sight update
--- drops the speed to 1 for a zombie within 4 tiles (7 with a crowd in view).
-local NEAR_ZOMBIE = 4
--- A zombie this close that is already coming for someone stops it too.
-local HUNTING_ZOMBIE = 7
-
 -- onlineID -> chosen speed. Only speeds above 1 are kept: no entry is normal speed.
 local votes = {}
 -- The multiplier this file last gave GameTime.
@@ -121,33 +114,12 @@ local function stopAll()
     broadcast(state)
 end
 
-local function zombieNear(player)
-    if player:isGhostMode() then return false end
-    local cell = getCell()
-    local px, py, pz = math.floor(player:getX()), math.floor(player:getY()), math.floor(player:getZ())
-    for x = px - HUNTING_ZOMBIE, px + HUNTING_ZOMBIE do
-        for y = py - HUNTING_ZOMBIE, py + HUNTING_ZOMBIE do
-            local square = cell:getGridSquare(x, y, pz)
-            if square then
-                local movers = square:getMovingObjects()
-                for i = 0, movers:size() - 1 do
-                    local zombie = movers:get(i)
-                    if instanceof(zombie, "IsoZombie") and not zombie:isDead() then
-                        local distance = player:DistTo(zombie)
-                        if distance <= NEAR_ZOMBIE or zombie:getTarget() == player then
-                            return true
-                        end
-                    end
-                end
-            end
-        end
-    end
-    return false
-end
-
+-- A zombie close to anyone stops fast forward for everyone, as in single player,
+-- where IsoPlayer's line of sight update drops the speed to 1 for a zombie within
+-- 4 tiles (7 with a crowd in view).
 local function anyZombieNear()
     for _, player in ipairs(livingPlayers()) do
-        if zombieNear(player) then return true end
+        if ZomboidFixesB42.isZombieNear(player) then return true end
     end
     return false
 end

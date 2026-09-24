@@ -1,5 +1,6 @@
 {
     "IGUI_ZomboidFixesB42_FastForward_NormalHint": "Normal speed - stops fast forward for everyone",
     "IGUI_ZomboidFixesB42_FastForward_Ready": "%1x speed: %2 of %3 players ready",
-    "IGUI_ZomboidFixesB42_FastForward_Running": "Fast forward %1x"
+    "IGUI_ZomboidFixesB42_FastForward_Running": "Fast forward %1x",
+    "IGUI_ZomboidFixesB42_TurboGame_ZombieNear": "Zombies are too close."
 }
