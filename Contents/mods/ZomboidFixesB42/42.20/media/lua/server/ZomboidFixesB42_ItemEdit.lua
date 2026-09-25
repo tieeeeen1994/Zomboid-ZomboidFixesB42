@@ -19,6 +19,11 @@ require "ISUI/AdminPanel/ISItemEditPanel"
 
 ZomboidFixesB42 = ZomboidFixesB42 or {}
 
+local function isEnabled()
+    local vars = SandboxVars and SandboxVars.ZomboidFixesB42
+    return vars ~= nil and vars.ItemEditorSync == true
+end
+
 local registry = nil
 local registryBuilt = false
 
@@ -188,6 +193,8 @@ local function applySetter(item, args)
 end
 
 local function onApplyItemEdit(player, args)
+    if not isEnabled() then return end
+
     local role = player and player:getRole()
     if not role or not role:hasCapability(Capability.EditItem) then
         print("ZomboidFixesB42.applyItemEdit The player's access level is not sufficient to perform this action")

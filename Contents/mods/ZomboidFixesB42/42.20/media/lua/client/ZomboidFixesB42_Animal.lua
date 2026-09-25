@@ -40,6 +40,13 @@ require "ISUI/Animal/ISAnimalUI"
 
 ZomboidFixesB42 = ZomboidFixesB42 or {}
 
+local function isEnabled()
+    local vars = SandboxVars and SandboxVars.ZomboidFixesB42
+    return vars ~= nil and vars.AnimalGenderChange == true
+end
+
+local vanillaOnChangeGender = ISAnimalUI.onChangeGender
+
 --- Find the inventory item carrying this animal, if any.
 local function findCarriedAnimalItem(container, animal, depth)
     depth = depth or 0
@@ -99,6 +106,8 @@ local function reopenWindow(window, animal)
 end
 
 function ISAnimalUI:onChangeGender()
+    if not isEnabled() then return vanillaOnChangeGender(self) end
+
     local animal = self.animal
     if not animal then return end
 

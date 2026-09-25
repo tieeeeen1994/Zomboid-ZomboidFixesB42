@@ -58,6 +58,11 @@ local vanillaRefreshZoneIcons = ISSearchManager.refreshZoneIcons
 local vanillaMoveAllZoneIconsToSquare = ISSearchManager.moveAllZoneIconsToSquare
 local vanillaComplete = ISForageAction.complete
 
+local function isEnabled()
+    local vars = SandboxVars and SandboxVars.ZomboidFixesB42
+    return vars ~= nil and vars.ForagingDebugFixes == true
+end
+
 local function characterOf(manager)
     return manager.character or getPlayer()
 end
@@ -65,7 +70,7 @@ end
 -- 1. CREATING ICONS ---------------------------------------------------------
 
 function ISSearchManager:createSpecificIcon(_square, _itemType, _zoneData, _isBonus, _isFocus, _count)
-    if not isClient() then
+    if not isClient() or not isEnabled() then
         return vanillaCreateSpecificIcon(self, _square, _itemType, _zoneData, _isBonus, _isFocus, _count)
     end
 
@@ -115,7 +120,7 @@ local function moveIconLocally(icon, x, y, z)
 end
 
 function ISSearchManager:moveAllZoneIconsToSquare(_square)
-    if not isClient() then
+    if not isClient() or not isEnabled() then
         return vanillaMoveAllZoneIconsToSquare(self, _square)
     end
 
@@ -145,7 +150,7 @@ end
 -- 3. REFRESHING A ZONE -----------------------------------------------------
 
 function ISSearchManager:refreshZoneIcons(_square)
-    if not isClient() then
+    if not isClient() or not isEnabled() then
         return vanillaRefreshZoneIcons(self, _square)
     end
 
@@ -206,7 +211,7 @@ Events.OnServerCommand.Add(onServerCommand)
 -- 4. PICKING UP ------------------------------------------------------------
 
 function ISForageAction:complete()
-    if not isClient() then
+    if not isClient() or not isEnabled() then
         return vanillaComplete(self)
     end
 

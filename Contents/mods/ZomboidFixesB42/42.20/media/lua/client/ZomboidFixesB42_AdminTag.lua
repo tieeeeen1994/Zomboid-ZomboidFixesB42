@@ -33,6 +33,9 @@
     tag is computed and drawn. The cheat flags it reads are the per-player ones that
     ExtraInfoPacket replicates, not the admin panel's client-side globals such as
     ISBuildMenu.cheat, which only describe the local player.
+
+    With AdminTagEveryCheat off and HideAdminTag off this does nothing, and the
+    tag is vanilla's own calculation again from the next tick.
 --]]
 
 ZomboidFixesB42 = ZomboidFixesB42 or {}
@@ -70,6 +73,11 @@ local CHEAT_GETTERS = {
 local function hideTagSetting()
     local vars = SandboxVars and SandboxVars.ZomboidFixesB42
     return vars ~= nil and vars.HideAdminTag == true
+end
+
+local function everyCheatSetting()
+    local vars = SandboxVars and SandboxVars.ZomboidFixesB42
+    return vars ~= nil and vars.AdminTagEveryCheat == true
 end
 
 local function hasAnyCheat(player)
@@ -110,6 +118,7 @@ end
 
 local function onTick()
     local hidden = hideTagSetting()
+    if not hidden and not everyCheatSetting() then return end
 
     -- Everyone this client knows about. Empty in single player.
     local online = getOnlinePlayers()

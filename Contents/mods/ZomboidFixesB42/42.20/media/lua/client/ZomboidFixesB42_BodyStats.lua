@@ -52,6 +52,9 @@
       - An ISTickBox calls back with (target, index, selected, arg1, arg2,
         tickBox) after selected[index] has flipped, and ignores clicks while
         tickBox.enable is false.
+
+    None of the three ways in is offered while the BodyStatsEditor sandbox option
+    is off, and the server refuses a window that is already open.
 --]]
 
 require "ISUI/ISPanel"
@@ -94,6 +97,11 @@ local seq = 0
 
 -- Open windows, by the username they show.
 local windows = {}
+
+local function isEnabled()
+    local vars = SandboxVars and SandboxVars.ZomboidFixesB42
+    return vars ~= nil and vars.BodyStatsEditor == true
+end
 
 local function hasCapability(player, name)
     local role = player and player:getRole()
@@ -344,6 +352,7 @@ local STATUS_TEXT = {
     offline = "IGUI_ZomboidFixesB42_BodyStats_Offline",
     dead = "IGUI_ZomboidFixesB42_BodyStats_Dead",
     denied = "IGUI_ZomboidFixesB42_BodyStats_Denied",
+    disabled = "IGUI_ZomboidFixesB42_BodyStats_Disabled",
 }
 
 function BodyStatsWindow:onState(args)
@@ -421,6 +430,7 @@ Events.OnServerCommand.Add(onServerCommand)
 --- Whether this admin may open the editor from a window about this player. Single
 -- player follows the Player Stats window's own rule for its edit buttons.
 local function canOpenFrom(ui)
+    if not isEnabled() then return false end
     if not isClient() then return getCore():getDebug() end
     return hasCapability(ui.admin, "CanModifyBodyStats") and ui:canModifyThis()
 end
@@ -429,6 +439,7 @@ local vanillaStatsCreate = ISPlayerStatsUI.create
 
 function ISPlayerStatsUI:create()
     vanillaStatsCreate(self)
+    if not isEnabled() then return end
 
     local title = getText("IGUI_ZomboidFixesB42_BodyStats_Button")
     local width = math.max(self.buttonWidth, getTextManager():MeasureStringX(UIFont.Small, title) + UI_BORDER_SPACING * 2)
@@ -479,6 +490,8 @@ end
 local vanillaAdminCreate = ISAdminPanelUI.create
 
 function ISAdminPanelUI:create()
+    if not isEnabled() then return vanillaAdminCreate(self) end
+
     -- Added first, so that create's own sort puts it in the grid with the rest:
     -- create lays out every child it has at that point, alphabetically.
     self.zomboidFixesBodyBtn = ISButton:new(0, 0, 200, BUTTON_HGT, getText("IGUI_ZomboidFixesB42_BodyStats_AdminButton"), self, ISAdminPanelUI.onOptionMouseDown)
@@ -497,7 +510,7 @@ local vanillaAdminUpdateButtons = ISAdminPanelUI.updateButtons
 function ISAdminPanelUI:updateButtons()
     vanillaAdminUpdateButtons(self)
     if self.zomboidFixesBodyBtn then
-        self.zomboidFixesBodyBtn.enable = hasCapability(getPlayer(), "CanModifyBodyStats")
+        self.zomboidFixesBodyBtn.enable = isEnabled() and hasCapability(getPlayer(), "CanModifyBodyStats")
     end
 end
 
@@ -506,7 +519,7 @@ local vanillaAdminOnOptionMouseDown = ISAdminPanelUI.onOptionMouseDown
 function ISAdminPanelUI:onOptionMouseDown(button, x, y)
     if button.internal == "ZOMBOIDFIXES_BODYSTATS" then
         local player = getPlayer()
-        if player and hasCapability(player, "CanModifyBodyStats") then
+        if player and isEnabled() and hasCapability(player, "CanModifyBodyStats") then
             ZomboidFixesB42.openBodyStats(player, player:getUsername(), player)
         end
         return
@@ -531,7 +544,7 @@ function ISMiniScoreboardUI:doPlayerListContextMenu(player, x, y)
     ISContextMenu.get = vanillaGet
     if not ok then error(err) end
 
-    if context and player and hasCapability(self.admin, "CanModifyBodyStats") then
+    if context and player and isEnabled() and hasCapability(self.admin, "CanModifyBodyStats") then
         context:addOption(getText("IGUI_ZomboidFixesB42_BodyStats_ContextMenu"), self.admin,
             ZomboidFixesB42.openBodyStats, player.username)
     end

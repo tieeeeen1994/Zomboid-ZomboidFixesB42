@@ -21,8 +21,14 @@ ZomboidFixesB42 = ZomboidFixesB42 or {}
 -- here so a tampered client cannot hand us an unbounded list to walk.
 local MAX_ITEMS_PER_COMMAND = 250
 
+local function isEnabled()
+    local vars = SandboxVars and SandboxVars.ZomboidFixesB42
+    return vars ~= nil and vars.FastTransfers == true
+end
+
 --- Is this player actually allowed to cheat?
 local function isAllowed(player)
+    if not isEnabled() then return false end
     if not player or player:isDead() then return false end
 
     -- Matches the gate inside IsoPlayer.isTimedActionInstant().

@@ -21,5 +21,6 @@
     "IGUI_ZomboidFixesB42_Chopper_Sent": "Chopper sent to a random player",
     "IGUI_ZomboidFixesB42_Chopper_Stopped": "Chopper stopped",
     "IGUI_ZomboidFixesB42_Chopper_Denied": "You are not allowed to call the chopper",
-    "IGUI_ZomboidFixesB42_Chopper_Disabled": "Chopper controls are off in sandbox options"
+    "IGUI_ZomboidFixesB42_Chopper_Disabled": "Chopper controls are off in sandbox options",
+    "IGUI_ZomboidFixesB42_BodyStats_Disabled": "The body stats editor is switched off in the sandbox options."
 }

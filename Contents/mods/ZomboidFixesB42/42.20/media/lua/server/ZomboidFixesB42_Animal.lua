@@ -39,8 +39,13 @@ local function resolveAnimal(player, target, id)
     return nil, nil
 end
 
+local function isEnabled()
+    local vars = SandboxVars and SandboxVars.ZomboidFixesB42
+    return vars ~= nil and vars.AnimalGenderChange == true
+end
+
 local function onSetAnimalGender(player, args)
-    if not player then return end
+    if not player or not isEnabled() then return end
 
     local role = player:getRole()
     if not role or not role:hasCapability(Capability.AnimalCheats) then

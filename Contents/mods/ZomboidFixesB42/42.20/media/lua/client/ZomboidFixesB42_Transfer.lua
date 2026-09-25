@@ -33,9 +33,9 @@
     signal with the item actually arriving. So a transfer takes one round trip to
     the server, with no bar, instead of the full vanilla transfer time.
 
-    Everything here is opt-in per action: if the containers involved cannot be
-    addressed over the wire, zfixFast is never set and the action runs exactly as
-    vanilla does today.
+    Everything here is opt-in per action: if the FastTransfers sandbox option is
+    off, or the containers involved cannot be addressed over the wire, zfixFast is
+    never set and the action runs exactly as vanilla does today.
 --]]
 
 require "TimedActions/ISInventoryTransferAction"
@@ -71,8 +71,13 @@ local vanilla = {
 -- fast path on that basis means the server refuses the move and the action waits
 -- for something that is never coming. This is the same flag the server checks, and
 -- it is the one the admin panel toggles.
+local function isEnabled()
+    local vars = SandboxVars and SandboxVars.ZomboidFixesB42
+    return vars ~= nil and vars.FastTransfers == true
+end
+
 local function wantsFastTransfer(character)
-    if not isClient() or character == nil then return false end
+    if not isClient() or character == nil or not isEnabled() then return false end
     return character:isTimedActionInstantCheat() and not character:isAccessLevel("None")
 end
 
