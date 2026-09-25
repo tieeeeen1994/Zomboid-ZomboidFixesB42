@@ -194,9 +194,109 @@ Body-stat editing belongs to `Capability.CanModifyBodyStats` (admin and moderato
 - `ISPlayerStatsUI:render()` positions every button every frame (Manage Inventory at the bottom of the right column);
   `updateButtons()` is called from render.
 
+## The whole admin surface (inventory for the admin hotbar)
+
+Where every admin tool lives, and how it runs, so a feature touching "all admin tools" starts here.
+
+- **Admin Powers**: `ISAdminPowerUI.OptionList` (public registry, 24 entries: Invisible, GodMod, NoClip, FastMove,
+  TimedActionInstant, UnlimitedCarry/Endurance/Ammo, KnowAllRecipes, Build/Farming/Fishing/Health/Mechanics/Moveable
+  cheats, CanSeeAll, CanHearAll, ZombiesDontAttack, BrushTool, LootZed, LootLog, AnimalCheat, AnimalExtraValues,
+  AlwaysDay). Each option: `id, text, tooltip, capability, getValue(self), setValue(self, v)` reading `self.player`.
+  Save = `option.player = p; option:setValue(v)` for each, then `sendPlayerExtraInfo(p)`; gated by
+  `role:hasAdminPower()` + the option's capability.
+- **Admin panel windows**: `ISAdminPanelUI:onOptionMouseDown(button)` opens each by `button.internal` (CHECKSTATS,
+  ADMINPOWER, ITEMLIST, SEEOPTIONS, NONPVPZONE, SEEFACTIONS, SEEROLES, SEEUSERS, SEESAFEHOUSES, SAFEZONE, SEETICKETS,
+  MINISCOREBOARD, SANDBOX, CLIMATE, STATISTICS, PVPLOGTOOL, ZONE_EDITOR) and only calls `self:updateButtons()` on the
+  panel afterwards, so it can be called with a stub `{ updateButtons = function() end }`. Capabilities: see its
+  `updateButtons`. The sidebar Admin button shows for `role:hasAdminTool()`.
+- **Tools menu** (`client/DebugUIs/AdminContextMenu.lua`, `OnFillWorldObjectContextMenu`, gate `isClient() and (isAdmin()
+  or getAccessLevel() == "moderator")`, added with `addDebugOption("Tools")`): Teleport (`ISTeleportDebugUI`), Remove item
+  tool, Spawn Vehicle (`ISSpawnVehicleUI`), Horde Manager (`ISSpawnHordeUI:new(0, 0, player, square)`), Trigger Thunder
+  (`ISTriggerThunderUI`), Make noise (`addSound(player, x, y, z, radius, volume)`; a client's world sound is sent to the
+  server by `WorldSoundManager`), Remove All Zombies, plus Vehicle and Door submenus for the clicked object.
+- **Debug menu** (`client/DebugUIs/DebugContextMenu.lua`): built by **Java** (`ISWorldObjectContextMenuLogic` calls
+  `DebugContextMenu.doDebugMenu`), shown in MP to any role with `UseDebugContextMenu` (no `-debug` needed). Main (teleport,
+  remove item tool, spawn vehicle, horde manager, spawn points, player model / cursor show-hide), UIs (tile picker, filming
+  tools...), Brush Tool, Ramps, Make Noise, Objects (door/window/fence/generator/campfire/mannequin/compost debug), DeadBody,
+  Zombies (remove all, add zombie, select + per-zombie actions), Animals (remove all, cheat toggle, add enclosure, add
+  animal by type/breed: `animal.add {type, breed, x, y, z, skeleton}`), Players (teleport players here =
+  `teleportPlayers(player)`, TeleportUserAction needs TeleportPlayerToAnotherPlayer), Vehicles (add = `addVehicle`, remove =
+  `removeVehicle(player, vehicle)`, remove all = `removeAllVehicles` → `/remove vehicles`), Randomized Road/Zone/Building
+  stories (`sendDebugStory(square, 0|1, name)`, DebugStory packet needs CreateStory; zone stories refused next to a fence,
+  `square:hasFenceInVicinity()`; building stories run client side only).
+- `addVehicle(script, x, y, z)` on a client **ignores its arguments** and sends `/addvehicle <random script>`.
+- `ISSelectCursor:new(character, ui, nil)` + `getCell():setDrag(cursor, playerNum)` picks a square; it calls
+  `ui:onSquareSelected(square)` (method call on `ui`, the third argument is ignored) and is only valid while `ui.cursor ~= nil`.
+- Online players for a picker: `scoreboardUpdate()` → `Events.OnScoreboardUpdate(usernames, displayNames, steamIDs)`
+  (everyone online); `getOnlinePlayers()` on a client only holds the players it has loaded.
+- Climate Control (`ISAdmPanelClimate`): `getClimateManager():getClimateFloat(i)` (0..12: desaturation, global light,
+  night, precipitation, temperature, fog, wind, wind angle, clouds, ambient, view distance, daylight, humidity),
+  `getClimateBool(0)` (snow), `getClimateColor(0)` (global light) each with `isEnableAdmin/setEnableAdmin`,
+  `getAdminValue/setAdminValue` (colour: `setAdminValueExterior/Interior(r, g, b, a)`), then
+  `transmitClientChangeAdminVars()`; `transmitRequestAdminVars()` refreshes the client's copy. Weather tab:
+  `transmitTriggerStorm/Tropical/Blizzard(hours)`, `transmitGenerateWeather(strength, 0 warm | 1 cold)`,
+  `transmitStopWeather()`. `isRaining()` exists.
+- Server options: `ServerOptions.getInstance():getPublicOptions()` (names), `getOptionByName(n)` (ConfigOption;
+  `instanceof(o, "BooleanConfigOption")`); the window sends `/changeoption Name "value"` then `/reloadoptions` and updates
+  its local copy with `option:asConfigOption():setValueFromObject(v)`.
+
+### Chat commands (`zombie/commands/serverCommands`, exact syntax and capability)
+
+`/additem ["user"] "M.Type" [count]` AddItem · `/addkey "user" id ["name"]` AddItem · `/addvehicle Script [x,y,z | "user"]`
+ManipulateVehicle (z must be 0) · `/addxp "user" Perk=n [-true|-false]` AddXP · `/alarm` (executor must be in a room)
+MakeEventsAlarmGunshot · `/gunshot` (meta gunshot) MakeEventsAlarmGunshot · `/chopper [start|stop]` MakeEventsAlarmGunshot ·
+`/lightning ["user"]` MakeEventsAlarmGunshot · `/thunder ["user"]` StartStopRain · `/startrain [0-100]`, `/stoprain`,
+`/startstorm [hours]`, `/stopweather` StartStopRain · `/createhorde n ["user"]` and
+`/createhorde2 -x -y -z -count -radius -outfit -crawler -isFallOnFront -isFakeDead -knockedDown -isInvulnerable -isSitting
+-health -isRecordingAnims -heightOffset -isRagdolling -onFire` (count ≤ 500) CreateHorde ·
+`/removezombies -x -y -z -radius [-reanimated]` or `-remove true` ManipulateZombie · `/remove animals|zombies|corpses|vehicles`
+**AnimalCheats for every subsystem** · `/godmod(e) [-true|-false]`, `/godmodplayer "user" [-true|-false]`,
+`/invisible`, `/invisibleplayer`, `/noclip "user" [-true|-false]` (others need ToggleNoclipEveryone) ·
+`/teleport "user"` TeleportToPlayer · `/teleportplayer "a" "b"` TeleportPlayerToAnotherPlayer ·
+`/teleportto ["user"] x,y,z` TeleportToCoordinates · `/kick "user" [-r "reason"]` KickUser ·
+`/banuser "user" [-ip] [-r "reason"]`, `/voiceban "user" -true|-false` BanUnbanUser · `/servermsg "text"`
+DisplayServerMessage · `/save` SaveWorld · `/changeoption`, `/reloadoptions` ChangeAndReloadServerOptions ·
+`/checkModsNeedUpdate` ManipulateMods · `/setaccesslevel`, `/grantadmin`, `/removeadmin` ChangeAccessLevel. Without the
+`-true/-false` flag, the god mode / invisible / noclip commands flip the current state.
+
+### Vanilla client-command handlers with **no permission check** (any client can call them)
+
+`server/ClientCommands.lua`: `object.addFireOnSquare`, `object.addSmokeOnSquare`, `object.addExplosionOnSquare`
+(the Brush Tool's fire control), `event.thunder` (Trigger Thunder window), `player.setWeight`, `object.addFluidDebug`,
+`deadBody.addBody`, and most other `object.*`, `fireplace/bbq.setFuel`, `hutch.dirt/nestBoxDirt`, `animal.rename`.
+`server/Vehicles/VehicleCommands.lua`: `vehicle.remove` (permanently removes any vehicle by id). Only their callers' UIs
+are gated. Candidates for a hardening fix.
+
+### UI building blocks learned for the hotbar
+
+- `ISEquippedItem:initialise()` stacks sidebar buttons at `prev:getBottom() + 15`, sized to the sidebar texture
+  (read `adminBtn:getWidth()`); `adminBtn`/`warManagerBtn` exist only when `isClient()`. `prerender()` re-places
+  `warManagerBtn` under `adminBtn` every frame; `shrinkWrap()` sizes the panel to its ISButtons.
+- `ISButton` draws everything in its own `prerender`/`render`; a subclass can replace both (call `self:updateTooltip()`).
+  `onRightMouseUp(x, y)` is not handled by ISButton, so a subclass can take it.
+- `ISScrollingListBox:prerender` calls `doDrawItem(y, item, alt)` for **every** row every frame (skip off-screen rows:
+  visible while `y + h >= -getYScroll()` and `y <= -getYScroll() + height`); `onMouseDown(x, y)` gets `y` in content
+  coordinates, so `rowAt(x, y)` works directly.
+- `PZAPI.ModOptions:create(id, name)` / `addKeyBind(id, name, key, tooltip)` / `getOption(id):getValue()`. Saved values are
+  only read back by `PZAPI.ModOptions:load()`, which vanilla calls when it builds the options screen — call it at
+  `OnGameStart` to have saved key binds in game.
+- Textures: `tryGetTexture(name)` = `getSharedTexture` (loose files and pack entries) then `media/textures/`, nil if
+  missing. Map symbols (`MapSymbolDefinitions.getInstance():getSymbolCount()/getSymbolByIndex(i)`, `getId()`,
+  `getTexturePath()`, 91 in 42.20) are white, so they tint. Item icons: script item `getIcon()` (or
+  `getIconsForTexture():get(0)`) as `Item_<icon>`; `ISUIElement:drawScriptItemIcon(scriptItem, x, y, a, w, h)`.
+  Traits/professions: `CharacterTraitDefinition.getTraits()` / `CharacterProfessionDefinition.getProfessions()` →
+  `getTexture()`. Tiles: `getWorld():getAllTilesName()` → `"<set>_<n>"`, n < 256. Lua cannot list folders.
+- `getText(key, arg)` formats a Lua number as a Java Double ("1.0"); pass `string.format("%d", n)`.
+- `media/ui/circle.png` is a white disc, handy for tinted status dots.
+
 ## Features built on these findings
 
 - `*_BodyStats.lua` (shared/server/client): admin body stats editor. Server applies every change
   (`BodyStats.apply`) and replies with a full snapshot; the window polls every second, batches slider changes every
   200 ms, numbers each change (session + seq per field, stale ones dropped server side) and shows the dragged value
   until acked. Gate: `Capability.CanModifyBodyStats` + target role position <= admin's.
+- `*_AdminHotbar*.lua` (client only): admin hotbar. Core (bar, slots, settings dialog, pickers, persistence per
+  server in `Zomboid/Lua/ZomboidFixesB42_AdminHotbar_<ip>_<port>.ini`, sidebar button, ModOptions keys), Actions (the
+  catalog, one `Hotbar.registerAction` per admin tool), Capture ("Add to Hotbar" in vanilla windows), Icons (icon refs
+  `sym:` / `item:` / `tex:`, picker; the media/ui path list is generated from the install). A slot = action + settings;
+  toggles read their state back from the game every 200 ms; `window = true` slots open the vanilla window.

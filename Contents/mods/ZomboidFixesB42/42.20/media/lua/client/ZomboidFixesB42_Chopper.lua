@@ -41,6 +41,9 @@ local function send(player, action)
     sendClientCommand(player, ZomboidFixesB42.MODULE, ZomboidFixesB42.CMD_CHOPPER, { action = action })
 end
 
+-- For the admin hotbar's Send / Stop Chopper.
+ZomboidFixesB42.Chopper = { isEnabled = isEnabled, canUse = canUse, send = send }
+
 local function addOption(menu, player, textKey, tooltipKey, action)
     local option = menu:addOption(getText(textKey), player, send, action)
     local tooltip = ISWorldObjectContextMenu.addToolTip()

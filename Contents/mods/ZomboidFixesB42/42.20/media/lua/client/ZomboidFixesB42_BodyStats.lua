@@ -55,6 +55,10 @@
 
     None of the three ways in is offered while the BodyStatsEditor sandbox option
     is off, and the server refuses a window that is already open.
+
+    The window's Add to Hotbar button saves the fields changed since it opened, with
+    their values, as a body preset for the admin hotbar, which sends them again
+    through ZomboidFixesB42.sendBodyStats with the same change numbering.
 --]]
 
 require "ISUI/ISPanel"
@@ -151,6 +155,19 @@ function BodyStatsWindow:createChildren()
     self.closeBtn:instantiate()
     self.closeBtn:enableCancelColor()
     self:addChild(self.closeBtn)
+
+    local Hotbar = ZomboidFixesB42.AdminHotbar
+    if isClient() and Hotbar and Hotbar.canUse(self.admin) then
+        local title = getText("IGUI_ZomboidFixesB42_AdminHotbar_AddToHotbar")
+        local width = getTextManager():MeasureStringX(UIFont.Small, title) + UI_BORDER_SPACING * 2
+        self.hotbarBtn = ISButton:new(self.closeBtn:getX() - UI_BORDER_SPACING - width, self.closeBtn:getY(), width, BUTTON_HGT,
+            title, self, BodyStatsWindow.onAddToHotbar)
+        self.hotbarBtn:initialise()
+        self.hotbarBtn:instantiate()
+        self.hotbarBtn.borderColor = { r = 1, g = 1, b = 1, a = 0.3 }
+        self.hotbarBtn.tooltip = getText("IGUI_ZomboidFixesB42_AdminHotbar_BodyCaptureTooltip")
+        self:addChild(self.hotbarBtn)
+    end
 
     -- The title, then a line for the status.
     local top = UI_BORDER_SPACING + 1 + FONT_HGT_MEDIUM + UI_BORDER_SPACING + FONT_HGT_SMALL + UI_BORDER_SPACING
@@ -284,6 +301,10 @@ end
 function BodyStatsWindow:change(field, value)
     if not field or not self:isEditable() then return end
 
+    -- What Add to Hotbar saves.
+    self.changed = self.changed or {}
+    self.changed[field.key] = value
+
     if not isClient() then
         BodyStats.apply(self.target, field.key, value)
         return
@@ -386,6 +407,48 @@ function BodyStatsWindow:close()
     self:removeFromUIManager()
     if windows[self.username] == self then
         windows[self.username] = nil
+    end
+end
+
+function BodyStatsWindow:onAddToHotbar()
+    local Hotbar = ZomboidFixesB42.AdminHotbar
+    if not Hotbar then return end
+    local preset, any = {}, false
+    for key, value in pairs(self.changed or {}) do
+        preset[key] = value
+        any = true
+    end
+    if not any then
+        Hotbar.say(self.admin, getText("IGUI_ZomboidFixesB42_AdminHotbar_BodyNothingChanged"), true)
+        return
+    end
+    Hotbar.capture("players.body", { player = self.username, preset = preset })
+end
+
+--- Send a set of field values to the server, as the window does: numbered changes
+-- in one set command, god mode and invisibility as the server's own commands.
+-- Used by the admin hotbar's body presets.
+function ZomboidFixesB42.sendBodyStats(admin, username, values)
+    if not admin or type(username) ~= "string" or type(values) ~= "table" then return end
+    local queue, any = {}, false
+    for key, value in pairs(values) do
+        local field = BodyStats.getField(key)
+        if field and field.command then
+            if hasCapability(admin, field.capability) then
+                SendCommandToServer(field.command .. " \"" .. username .. "\" " .. (value and "-true" or "-false"))
+            end
+        elseif field then
+            seq = seq + 1
+            queue[key] = { v = value, seq = seq }
+            any = true
+        end
+    end
+    if any then
+        sendClientCommand(admin, ZomboidFixesB42.MODULE, ZomboidFixesB42.CMD_BODY_STATS_SET, {
+            target = username,
+            session = SESSION,
+            values = queue,
+        })
     end
 end
 
