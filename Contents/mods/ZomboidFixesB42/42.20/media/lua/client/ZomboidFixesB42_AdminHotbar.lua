@@ -2705,10 +2705,9 @@ end
     matches the held modifiers exactly, so "Shift + 1" here no longer also picks
     item hotbar slot 1, and "1" no longer fires "Shift + 1".
 
-    They used to be PZAPI.ModOptions key binds, which keep only the key code: the
-    options screen showed "SHIFT + 1", but getValue() and ModOptions.ini have no
-    modifiers, so the bind was really "1". Binds made there are moved over once
-    (moveModOptionsKeys).
+    Not PZAPI.ModOptions key binds: those keep only the key code (the options
+    screen shows "SHIFT + 1", but getValue() and ModOptions.ini have no modifiers,
+    so the bind is really "1").
 --]]
 
 local KEY_SECTION = "[ZF Admin Hotbar]"
@@ -2776,61 +2775,6 @@ end
 
 Events.OnKeyPressed.Add(onKeyPressed)
 
---[[
-    Moving binds made under Options > Mods (ModOptions.ini lines
-    "keybind|ZomboidFixesB42|<id>|<key>") into the key bindings, once. A bind is only
-    taken when the new one is still unset, and only once the options screen exists:
-    MainOptions.saveKeys writes keysB42.ini from the screen's entries
-    (MainOptions.keyText), so those are updated too, then the file is saved and read
-    back (saveKeys clears the keys it does not reload). A marker file stops it from
-    ever happening again, even if the binds are cleared later.
---]]
-local MOVED_MARKER = "ZomboidFixesB42_AdminHotbar_KeysMoved.txt"
-local OLD_IDS = { adminHotbarToggle = KEY_TOGGLE }
-for i = 1, SLOT_KEYS do OLD_IDS["adminHotbarSlot" .. i] = slotKeyName(i) end
-
-local function moveModOptionsKeys()
-    if not MainOptions or not MainOptions.keyText or #MainOptions.keyText == 0 then return end
-    local marker = getFileReader(MOVED_MARKER, false)
-    if marker then
-        marker:close()
-        return
-    end
-
-    local reader = getFileReader("ModOptions.ini", false)
-    local moved = 0
-    if reader then
-        while true do
-            local line = reader:readLine()
-            if not line then break end
-            local id, key = string.match(line, "^keybind|ZomboidFixesB42|([%w_]+)|(%d+)")
-            local name = id and OLD_IDS[id]
-            key = tonumber(key)
-            if name and key and key > 0 and getCore():getKey(name) == 0 then
-                for _, entry in ipairs(MainOptions.keyText) do
-                    if not entry.value and entry.txt and entry.txt:getName() == name then
-                        entry.keyCode = key
-                        entry.shift, entry.ctrl, entry.alt = false, false, false
-                        if entry.btn then entry.btn:setTitle(getKeyName(key)) end
-                        moved = moved + 1
-                    end
-                end
-            end
-        end
-        reader:close()
-    end
-    if moved > 0 then
-        MainOptions.saveKeys()
-        MainOptions.loadKeys()
-    end
-
-    local writer = getFileWriter(MOVED_MARKER, true, false)
-    if writer then
-        writer:write("Admin hotbar keys moved from Options > Mods to Options > Key Bindings.\r\n")
-        writer:close()
-    end
-end
-
 -- Start ------------------------------------------------------------------------------------------
 
 local function onGameStart()
@@ -2839,7 +2783,6 @@ local function onGameStart()
     if MainOptions and MainOptions.loadKeys and not bindOf(KEY_TOGGLE) then
         MainOptions.loadKeys()
     end
-    moveModOptionsKeys()
     Hotbar.load()
     Hotbar.refreshBar()
 end
