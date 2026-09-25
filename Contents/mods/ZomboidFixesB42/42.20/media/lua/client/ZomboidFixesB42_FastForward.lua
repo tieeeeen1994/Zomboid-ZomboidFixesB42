@@ -4,11 +4,14 @@
     Puts the single player speed controls back on screen in multiplayer, in the
     same place, with the same buttons and the same keys (Normal Speed, Fast Forward
     x1/x2/x3). A button here is a vote, not a speed: the server only speeds the
-    game up once every living player has picked fast forward, runs it at the
-    slowest speed anyone picked, and clears every vote the moment anyone goes back
-    to normal speed. See the server file for how the speed itself is changed.
+    game up while every living player has picked fast forward, and runs it at the
+    slowest speed anyone picked. Normal Speed takes back only your own vote: the
+    game drops to normal at once (it needs everyone's), but the other players keep
+    theirs, so it speeds up again as soon as you vote again. See the server file for
+    how the speed itself is changed.
 
-    Three single player rules come along with it:
+    Three single player rules come along with it, each taking back only the vote of
+    the player concerned:
 
       - Moving your character stops fast forward (IsoPlayer.updateInternal drops
         SpeedControls to 1 when the player moves). In multiplayer this also
@@ -17,7 +20,18 @@
         speed limit (AntiCheatSpeed, 20) and gets kicked.
       - Finishing a timed action stops it. Single player makes this an option
         each player can turn off; here it always applies.
-      - A zombie close to anyone stops it; the server checks that.
+      - A zombie close to anyone stops it; the server checks that, and this one
+        clears everyone's vote.
+
+    Auto fast forward (its own sandbox option, with the speed it votes for): starting
+    a timed action votes for that speed on the player's behalf, and the action ending
+    takes the vote back. So the game runs fast while every player is busy with an
+    action (or has voted by hand), drops to normal while anyone is idle, and speeds up
+    again as soon as they start the next one, without anyone touching the buttons.
+    Walking or driving also takes the vote back (the anti-cheat speed limit), and the
+    player votes again once standing still at the action. Pressing Normal Speed holds
+    that player's auto vote off until their next action, and so does the server
+    clearing the votes for a zombie, so a stop is still a stop.
 --]]
 
 if not isClient() then return end
@@ -53,6 +67,43 @@ local function isEnabled()
     return vars ~= nil and vars.MultiplayerFastForward == true
 end
 
+local function isAutoEnabled()
+    local vars = SandboxVars and SandboxVars.ZomboidFixesB42
+    return vars ~= nil and vars.MultiplayerFastForward == true and vars.AutoFastForwardActions == true
+end
+
+--- The speed an auto vote picks: the AutoFastForwardSpeed enum (1..3) is Fast
+-- Forward x1/x2/x3, the speeds after normal in FAST_FORWARD_SPEEDS.
+local function autoSpeed()
+    local vars = SandboxVars and SandboxVars.ZomboidFixesB42
+    local index = math.floor(tonumber(vars and vars.AutoFastForwardSpeed) or 2)
+    return ZomboidFixesB42.FAST_FORWARD_SPEEDS[index + 1] or ZomboidFixesB42.FAST_FORWARD_SPEEDS[3]
+end
+
+-- A broadcast sent before the server had our auto vote can still arrive after it;
+-- a cleared vote only counts as a stop once the vote is this old.
+local AUTO_GRACE_MS = 1500
+-- At most one auto vote a second per player, so stopping and starting to walk
+-- between actions does not flood the server.
+local AUTO_REVOTE_MS = 1000
+
+-- Local player index -> { voted, votedAt, heldFor }: voted = this player's vote is an
+-- auto vote; heldFor = the action during which auto voting is held off after a stop.
+local auto = {}
+
+local function autoOf(index)
+    if not auto[index] then auto[index] = { voted = false, votedAt = 0, heldFor = nil } end
+    return auto[index]
+end
+
+--- What the player is busy with: the timed action at the head of their queue, or
+-- true for a busy state without one (ISTimedActionQueue.isPlayerDoingAction), or nil.
+local function currentAction(player)
+    if not ISTimedActionQueue.isPlayerDoingAction(player) then return nil end
+    local queue = ISTimedActionQueue.queues and ISTimedActionQueue.queues[player]
+    return (queue and queue.queue and queue.queue[1]) or true
+end
+
 local function voteOf(player)
     if not player then return 1 end
     return state.votes[tostring(player:getOnlineID())] or 1
@@ -78,24 +129,32 @@ local function readyFor(speed)
     return count
 end
 
+--- One player's own vote; speed 1 takes it back. Only that player's vote changes.
+local function sendVote(player, speed)
+    sendClientCommand(player, ZomboidFixesB42.MODULE, ZomboidFixesB42.CMD_FAST_FORWARD_VOTE, { speed = speed })
+    -- Shown straight away rather than after the round trip, which also stops a
+    -- moving player sending this again every frame until the reply lands.
+    state.votes[tostring(player:getOnlineID())] = speed
+    if speed == 1 then
+        -- The game needs everyone's vote, so it is back to normal speed now; this
+        -- client slows down at once instead of waiting for the server to say so
+        -- (a moving player at fast forward speed trips the anti-cheat).
+        state.speed = 1
+    end
+end
+
 --- Vote for a speed on behalf of everyone playing on this machine. Split screen
 -- players are all counted by the server, so they all have to vote.
 local function vote(speed)
-    local players = localPlayers()
-    if #players == 0 then return end
-
-    if speed == 1 then
-        -- Cancelling clears everyone, so once is enough.
-        sendClientCommand(players[1], ZomboidFixesB42.MODULE, ZomboidFixesB42.CMD_FAST_FORWARD_VOTE, { speed = 1 })
-        -- Shown straight away rather than after the round trip, which also stops
-        -- a moving player sending this again every frame until the reply lands.
-        for id in pairs(state.votes) do state.votes[id] = 1 end
-        return
-    end
-
-    for _, player in ipairs(players) do
-        sendClientCommand(player, ZomboidFixesB42.MODULE, ZomboidFixesB42.CMD_FAST_FORWARD_VOTE, { speed = speed })
-        state.votes[tostring(player:getOnlineID())] = speed
+    for _, player in ipairs(localPlayers()) do
+        if speed == 1 then
+            -- Normal Speed pressed: a stop holds auto voting off until this
+            -- player's next action.
+            local a = autoOf(player:getPlayerNum())
+            a.voted = false
+            a.heldFor = currentAction(player)
+        end
+        sendVote(player, speed)
     end
 end
 
@@ -266,7 +325,9 @@ end
 local function onPlayerUpdate(player)
     if not player or not player:isLocalPlayer() then return end
     if voteOf(player) > 1 and isMoving(player) then
-        vote(1)
+        -- Only this player's vote. An auto vote comes again once standing still.
+        autoOf(player:getPlayerNum()).voted = false
+        sendVote(player, 1)
     end
 end
 
@@ -280,15 +341,52 @@ local function checkActionsFinished()
     for i = 0, getNumActivePlayers() - 1 do
         local player = getSpecificPlayer(i)
         local doing = player ~= nil and not player:isDead() and ISTimedActionQueue.isPlayerDoingAction(player)
-        if wasDoingAction[i] and not doing and voteOf(player) > 1 then
-            vote(1)
+        -- An auto vote is taken back by updateAutoVotes instead.
+        if wasDoingAction[i] and not doing and voteOf(player) > 1 and not autoOf(i).voted then
+            sendVote(player, 1)
         end
         wasDoingAction[i] = doing
     end
 end
 
+--- Auto fast forward: vote for each local player busy with an action, take the vote
+-- back when the action is over or the player moves.
+local function updateAutoVotes()
+    local enabled = isAutoEnabled()
+    local now = getTimestampMs()
+    for i = 0, getNumActivePlayers() - 1 do
+        local player = getSpecificPlayer(i)
+        local a = autoOf(i)
+        if not player or player:isDead() then
+            a.voted = false
+            a.heldFor = nil
+        else
+            local current = currentAction(player)
+            if a.heldFor ~= nil and a.heldFor ~= current then a.heldFor = nil end
+            local busy = enabled and current ~= nil and not isMoving(player)
+            local myVote = voteOf(player)
+            if a.voted then
+                if not busy then
+                    a.voted = false
+                    if myVote > 1 then sendVote(player, 1) end
+                elseif myVote <= 1 and now - a.votedAt > AUTO_GRACE_MS then
+                    -- Cleared by the server (a zombie close to someone): a stop
+                    -- holds until the next action.
+                    a.voted = false
+                    a.heldFor = current
+                end
+            elseif busy and a.heldFor == nil and myVote <= 1 and now - a.votedAt > AUTO_REVOTE_MS then
+                a.voted = true
+                a.votedAt = now
+                sendVote(player, autoSpeed())
+            end
+        end
+    end
+end
+
 local function onTick()
     checkActionsFinished()
+    updateAutoVotes()
     applySpeed()
 end
 

@@ -21,6 +21,9 @@
       - A setting left on "Ask when used" is asked for at click time: a menu of
         online players, a square picked on the map with vanilla's ISSelectCursor
         (the Horde Manager's picker), a searchable list, or a prompt.
+      - A slot can have steps: more actions, each with its own settings, run after
+        its own on the same click (see "Using a slot").
+      - A second click on a slot that opened a window closes it.
 
     Everything goes through vanilla commands and packets (or this mod's own Body
     Stats and Chopper commands), which check the sender's capability on the server,
@@ -208,11 +211,14 @@ end
 --           optional, noAsk, hint }),
 --   available(admin) -> ok, reason
 --   run(ctx), openUI(ctx) (optional), confirm (default for "ask before running"),
---   toggle = { isOn(ctx) -> true/false/nil, set(ctx, on), applies(ctx) (optional) }
+--   toggle = { isOn(ctx) -> true/false/nil, set(ctx, on), applies(ctx) (optional) },
+--   opensWindow (run opens a window, which a second click closes; always true for
+--   the windows category and for openUI)
 function Hotbar.registerAction(action)
     if not Hotbar.actions[action.id] then
         table.insert(Hotbar.actionOrder, action.id)
     end
+    if action.category == "windows" then action.opensWindow = true end
     action.params = action.params or {}
     action.paramByKey = {}
     for _, spec in ipairs(action.params) do
@@ -244,6 +250,26 @@ function Hotbar.hasPlayerParam(action)
         if spec.type == "player" then return spec.key end
     end
     return nil
+end
+
+--- A slot's parts in the order they run: the slot itself, then its steps. A step has
+-- the same shape as a slot (action, settings, window), so everything that reads a
+-- slot's action and settings reads a step the same way.
+function Hotbar.partsOf(slot)
+    local parts = { slot }
+    for _, step in ipairs(slot.steps or {}) do
+        table.insert(parts, step)
+    end
+    return parts
+end
+
+--- "Ask before running" when the slot does not say: if any part's action asks.
+function Hotbar.defaultConfirm(slot)
+    for _, part in ipairs(Hotbar.partsOf(slot)) do
+        local action = Hotbar.getAction(part.action)
+        if action and action.confirm == true then return true end
+    end
+    return false
 end
 
 -- State ------------------------------------------------------------------------
@@ -385,6 +411,10 @@ function Hotbar.save()
             confirm = slot.confirm, window = slot.window,
         }, "", fields)
         flatten(slot.settings or {}, "s.", fields)
+        -- steps.#1.action, steps.#1.settings.<key>, steps.#1.window...
+        if slot.steps and #slot.steps > 0 then
+            flatten({ steps = slot.steps }, "", fields)
+        end
         writer:write("slot;" .. table.concat(fields, ";") .. "\r\n")
     end
     writer:close()
@@ -426,6 +456,25 @@ function Hotbar.load()
             state.labels = record.labels == true
             if type(record.on) == "table" and record.on.r then state.on = record.on end
         elseif kind == "slot" and Hotbar.getAction(record.action) then
+            local steps = nil
+            if type(record.steps) == "table" then
+                -- Numbered from 1; a step whose action no longer exists is dropped.
+                local count = 0
+                for index in pairs(record.steps) do
+                    if type(index) == "number" and index > count then count = index end
+                end
+                for index = 1, count do
+                    local step = record.steps[index]
+                    if type(step) == "table" and Hotbar.getAction(step.action) then
+                        steps = steps or {}
+                        table.insert(steps, {
+                            action = step.action,
+                            settings = type(step.settings) == "table" and step.settings or {},
+                            window = step.window == true,
+                        })
+                    end
+                end
+            end
             table.insert(state.slots, {
                 action = record.action,
                 label = record.label,
@@ -434,6 +483,7 @@ function Hotbar.load()
                 confirm = record.confirm,
                 window = record.window == true,
                 settings = type(record.s) == "table" and record.s or {},
+                steps = steps,
             })
         end
     end
@@ -760,8 +810,15 @@ function Hotbar.peek(slot, admin)
     return { admin = admin, slot = slot, action = action, values = values }
 end
 
---- Does clicking this slot ask for something?
+--- Does clicking this slot ask for something (in any of its parts)?
 function Hotbar.asksWhenUsed(slot)
+    for _, part in ipairs(Hotbar.partsOf(slot)) do
+        if Hotbar.partAsks(part) then return true end
+    end
+    return false
+end
+
+function Hotbar.partAsks(slot)
     local action = Hotbar.getAction(slot.action)
     if not action or slot.window then return false end
     for _, spec in ipairs(action.params) do
@@ -798,34 +855,46 @@ function Hotbar.choiceText(spec, value)
     return tostring(value)
 end
 
-local function resolveOne(slot, action, spec, admin, values, done)
+--- shared holds the player, square and vehicle already asked for during this click,
+-- so a slot with steps asks for each of them once and every step uses the answer.
+local function resolveOne(slot, action, spec, admin, values, done, shared)
     local raw = settingOf(slot, spec)
     local value = peekValue(slot, spec, admin, values)
 
     if spec.type == "player" then
         if value or spec.optional then return done(value) end
+        if shared.player then return done(shared.player) end
         -- Nobody else to choose from (single player without split screen): no menu.
         if not isClient() and getNumActivePlayers() < 2 then return done(Hotbar.nameOf(admin)) end
-        return Hotbar.pickPlayer(admin, done)
+        return Hotbar.pickPlayer(admin, function(name)
+            shared.player = name
+            done(name)
+        end)
     elseif spec.type == "location" then
         if value then return done(value) end
         if raw == "@player" then
             Hotbar.say(admin, txt("PlayerNotLoaded"), true)
             return
         end
-        return Hotbar.pickSquare(admin, function(square) done(squareToLocation(square)) end)
+        if shared.location then return done(shared.location) end
+        return Hotbar.pickSquare(admin, function(square)
+            shared.location = squareToLocation(square)
+            done(shared.location)
+        end)
     elseif spec.type == "vehicle" then
         if value then return done(value) end
         if raw ~= "@pick" then
             Hotbar.say(admin, txt("NoVehicleNear"), true)
             return
         end
+        if shared.vehicle then return done(shared.vehicle) end
         return Hotbar.pickSquare(admin, function(square)
             local vehicle = square:getVehicleContainer()
             if not vehicle then
                 Hotbar.say(admin, txt("NoVehicleThere"), true)
                 return
             end
+            shared.vehicle = vehicle
             done(vehicle)
         end)
     elseif spec.type == "number" then
@@ -847,11 +916,12 @@ local function resolveOne(slot, action, spec, admin, values, done)
     return done(value)
 end
 
---- Resolve every setting, asking where needed, then call done(ctx).
-local function resolve(slot, admin, done)
+--- Resolve every setting of one slot or step, asking where needed, then call done(ctx).
+local function resolve(slot, admin, done, shared)
     local action = Hotbar.getAction(slot.action)
     local values = {}
     local index = 0
+    shared = shared or {}
     local function step()
         index = index + 1
         local spec = action.params[index]
@@ -861,7 +931,7 @@ local function resolve(slot, admin, done)
         resolveOne(slot, action, spec, admin, values, function(value)
             values[spec.key] = value
             step()
-        end)
+        end, shared)
     end
     step()
 end
@@ -873,6 +943,21 @@ function Hotbar.availability(action, admin)
     if admin:isDead() then return false, txt("Dead") end
     if action.available then
         return action.available(admin)
+    end
+    return true
+end
+
+--- A slot can be used when every part can; the reason names the step that cannot.
+function Hotbar.slotAvailability(slot, admin)
+    for index, part in ipairs(Hotbar.partsOf(slot)) do
+        local action = Hotbar.getAction(part.action)
+        local ok, reason = Hotbar.availability(action, admin)
+        if not ok then
+            if index > 1 then
+                reason = txt("StepUnavailable", string.format("%d", index), Hotbar.titleOf(action, part), reason or "")
+            end
+            return false, reason
+        end
     end
     return true
 end
@@ -891,7 +976,7 @@ local function computeState(slot, admin, now)
         state.reason = txt("Unknown")
         return state
     end
-    local ok, reason = Hotbar.availability(action, admin)
+    local ok, reason = Hotbar.slotAvailability(slot, admin)
     state.available = ok
     state.reason = reason
     state.asks = Hotbar.asksWhenUsed(slot)
@@ -940,47 +1025,239 @@ function Hotbar.anyToggleOn(admin)
     return false
 end
 
+-- Windows a slot opened ---------------------------------------------------------------
+
+--[[
+    Clicking a slot whose action opened a window closes that window again. Which
+    window an action opens is not known up front: vanilla's own handlers create it,
+    and UIManager.AddUI only queues the element until the next UIManager.update, so it
+    is not in UIManager.getUI() straight after the call. So the top-level UIs are
+    listed before running, and the ones that become visible until WINDOW_WATCH_MS
+    after the last part ran are remembered on the slot. Only actions marked opensWindow are
+    watched: other UIs come and go by themselves, and some are not windows at all.
+    Every forage, stash and world item icon is an ISBaseIcon (an ISPanel) added to
+    the UIManager, and they appear as the player walks or teleports. Those icons,
+    tooltips, context menus and Java-only elements are never taken for the window.
+
+    Closing uses the window's own closeModal or close, what vanilla calls when it
+    reopens a window (ISAdminPanelUI calls instance:close() / closeModal()). The base
+    close of ISPanel, ISPanelJoypad and ISCollapsableWindow only hides, so a window
+    still in the UIManager afterwards is hidden and removed, unless its class keeps
+    it as the instance vanilla shows again.
+--]]
+local WINDOW_WATCH_MS = 1500
+local IGNORED_UI = { ISToolTip = true, ISToolTipInv = true, ISContextMenu = true, ISBaseIcon = true }
+local watchedSlots = {}
+
+--- A UI table that could be the window: not one of the ignored classes, or derived
+-- from one (derive sets each class's Type and chains them by metatable).
+local function isWindowTable(window)
+    local class = window
+    while class do
+        if IGNORED_UI[class.Type] then return false end
+        class = getmetatable(class)
+    end
+    return true
+end
+
+local function isOpen(ui)
+    return UIManager.getUI():contains(ui) and ui:isVisible() == true
+end
+
+local function openWindowsOf(slot)
+    local open = {}
+    for _, ui in ipairs(slot.openWindows or {}) do
+        if isOpen(ui) then table.insert(open, ui) end
+    end
+    slot.openWindows = #open > 0 and open or nil
+    return open
+end
+
+local function closeWindow(ui)
+    local window = ui:getTable()
+    if window.closeModal then
+        window:closeModal()
+    elseif window.close then
+        window:close()
+    end
+    if UIManager.getUI():contains(ui) then
+        if ui:isVisible() then ui:setVisible(false) end
+        local class = getmetatable(window)
+        if not (class and class.instance == window) then window:removeFromUIManager() end
+    end
+end
+
+--- Close what this slot opened last time, if any of it is still open.
+local function closeSlotWindows(slot)
+    local open = openWindowsOf(slot)
+    if #open == 0 then return false end
+    for _, ui in ipairs(open) do closeWindow(ui) end
+    slot.openWindows = nil
+    return true
+end
+
+--- Start noting the windows that appear from now on, for WINDOW_WATCH_MS.
+local function startWatch(slot)
+    local before = {}
+    local uis = UIManager.getUI()
+    for i = 0, uis:size() - 1 do
+        -- Only visible ones: a singleton window hidden by its close is shown again as is.
+        local ui = uis:get(i)
+        if ui:isVisible() == true then before[ui] = true end
+    end
+    watchedSlots[slot] = { before = before, untilMs = getTimestampMs() + WINDOW_WATCH_MS }
+    slot.openWindows = nil
+end
+
+--- Keep watching for WINDOW_WATCH_MS after a later step runs.
+local function extendWatch(slot)
+    local watch = watchedSlots[slot]
+    if watch then watch.untilMs = getTimestampMs() + WINDOW_WATCH_MS end
+end
+
+local function onWatchTick()
+    local now = getTimestampMs()
+    local uis = nil
+    local done = {}
+    for slot, watch in pairs(watchedSlots) do
+        uis = uis or UIManager.getUI()
+        for i = 0, uis:size() - 1 do
+            local ui = uis:get(i)
+            if not watch.before[ui] and ui:isVisible() == true then
+                watch.before[ui] = true
+                local window = ui:getTable()
+                if window and isWindowTable(window) then
+                    slot.openWindows = slot.openWindows or {}
+                    table.insert(slot.openWindows, ui)
+                end
+            end
+        end
+        if now > watch.untilMs then table.insert(done, slot) end
+    end
+    for _, slot in ipairs(done) do watchedSlots[slot] = nil end
+end
+
+Events.OnTick.Add(onWatchTick)
+
 -- Using a slot ---------------------------------------------------------------------
 
-local function runResolved(ctx)
+--[[
+    A slot runs its own action, then each of its steps. Everything is worked out
+    before the first part runs: the settings of every part are resolved in order, and
+    a player, square or vehicle left on "Ask when used" is asked for once and shared
+    by every part that asks for one (pick a square, then spawn a horde and make noise
+    on it). "My position" is therefore where the admin stood when clicking, even after
+    a teleport step. Then "Ask before running" is asked once for the whole slot, and
+    the parts run STEP_GAP_MS apart: chat commands and client commands are separate
+    packets, and the gap keeps them reaching the server in order.
+--]]
+local STEP_GAP_MS = 300
+local scheduled = {}
+
+local function after(ms, fn)
+    table.insert(scheduled, { atMs = getTimestampMs() + ms, fn = fn })
+end
+
+local function onScheduleTick()
+    if #scheduled == 0 then return end
+    local now = getTimestampMs()
+    local due = {}
+    for i = #scheduled, 1, -1 do
+        if scheduled[i].atMs <= now then
+            table.insert(due, 1, scheduled[i])
+            table.remove(scheduled, i)
+        end
+    end
+    for _, item in ipairs(due) do item.fn() end
+end
+
+Events.OnTick.Add(onScheduleTick)
+
+--- Run one resolved part. Only the slot's own toggle shows as pending on the slot.
+local function runResolved(ctx, owner)
     local action = ctx.action
-    local slot = ctx.slot
+    if ctx.openWindow then
+        return action.openUI(ctx)
+    end
     if isToggle(action, ctx) then
         local current = action.toggle.isOn(ctx)
         local want = nil
         if current ~= nil then want = not current end
         action.toggle.set(ctx, want)
-        slot.pending = { want = want, untilMs = getTimestampMs() + PENDING_MS }
-        Hotbar.invalidate(slot)
+        if ctx.slot == owner then
+            owner.pending = { want = want, untilMs = getTimestampMs() + PENDING_MS }
+            Hotbar.invalidate(owner)
+        end
         return
     end
     if action.run then action.run(ctx) end
 end
 
+--- Does running this part open a window a second click should close?
+local function partOpensWindow(part)
+    local action = Hotbar.getAction(part.action)
+    if not action then return false end
+    return (part.window and action.openUI ~= nil) or action.opensWindow == true
+end
+
+local function runParts(slot, contexts)
+    local watch = false
+    for _, part in ipairs(Hotbar.partsOf(slot)) do
+        if partOpensWindow(part) then watch = true end
+    end
+    if watch then startWatch(slot) end
+    local function runAt(index)
+        local ctx = contexts[index]
+        if not ctx then return end
+        if watch then extendWatch(slot) end
+        runResolved(ctx, slot)
+        if contexts[index + 1] then
+            after(STEP_GAP_MS, function() runAt(index + 1) end)
+        end
+    end
+    runAt(1)
+end
+
 function Hotbar.activate(slot, admin)
     admin = admin or getPlayer()
     if not admin or not Hotbar.canUse(admin) then return end
-    local action = Hotbar.getAction(slot.action)
-    local ok, reason = Hotbar.availability(action, admin)
+    -- A second click closes the window the first one opened.
+    if closeSlotWindows(slot) then return end
+    local ok, reason = Hotbar.slotAvailability(slot, admin)
     if not ok then
         Hotbar.say(admin, reason, true)
         return
     end
 
-    if slot.window and action.openUI then
-        action.openUI(Hotbar.peek(slot, admin))
-        return
-    end
-
-    resolve(slot, admin, function(ctx)
-        local wantsConfirm = slot.confirm
-        if wantsConfirm == nil then wantsConfirm = action.confirm == true end
-        if wantsConfirm then
-            Hotbar.confirm(txt("ConfirmRun", Hotbar.slotTitle(slot)), function() runResolved(ctx) end)
-        else
-            runResolved(ctx)
+    local parts = Hotbar.partsOf(slot)
+    local contexts = {}
+    local shared = {}
+    local function resolveAt(index)
+        local part = parts[index]
+        if not part then
+            local wantsConfirm = slot.confirm
+            if wantsConfirm == nil then wantsConfirm = Hotbar.defaultConfirm(slot) end
+            if wantsConfirm then
+                Hotbar.confirm(txt("ConfirmRun", Hotbar.slotTitle(slot)), function() runParts(slot, contexts) end)
+            else
+                runParts(slot, contexts)
+            end
+            return
         end
-    end)
+        local action = Hotbar.getAction(part.action)
+        if part.window and action.openUI then
+            -- "Open the window instead": nothing to ask, the window takes it from here.
+            local ctx = Hotbar.peek(part, admin)
+            ctx.openWindow = true
+            contexts[index] = ctx
+            return resolveAt(index + 1)
+        end
+        resolve(part, admin, function(ctx)
+            contexts[index] = ctx
+            resolveAt(index + 1)
+        end, shared)
+    end
+    resolveAt(1)
 end
 
 -- Slots on the bar ---------------------------------------------------------------------
@@ -1185,6 +1462,13 @@ function SlotButton:render()
 
     if state.asks and state.available then
         self:drawText("?", 3, cell - FONT_HGT_SMALL - 1, 0.6, 0.85, 1, alpha, UIFont.Small)
+    end
+    -- "+N": the slot also runs N steps after its own action.
+    local steps = self.slot.steps and #self.slot.steps or 0
+    if steps > 0 then
+        local text = "+" .. string.format("%d", steps)
+        local textWidth = getTextManager():MeasureStringX(UIFont.Small, text)
+        self:drawText(text, self.width - textWidth - 3, cell - FONT_HGT_SMALL - 1, 1, 0.85, 0.4, alpha, UIFont.Small)
     end
     if self.keyText then
         self:drawText(self.keyText, 3, 1, 1, 1, 1, 0.8 * alpha, UIFont.Small)
@@ -1444,19 +1728,40 @@ function Bar:prerender()
     end
 end
 
+--- One line per setting of a slot or step, indented for a step.
+local function settingLines(part, action, lines, indent)
+    if part.window and action.openUI then
+        table.insert(lines, indent .. txt("OpensWindow"))
+        return
+    end
+    for _, spec in ipairs(action.params) do
+        local summary = Hotbar.describeSetting(part, spec)
+        if summary then table.insert(lines, indent .. spec.title .. ": " .. summary) end
+    end
+end
+
 function Bar:tooltipFor(slot, state)
     local action = Hotbar.getAction(slot.action)
     local lines = { Hotbar.slotTitle(slot) }
-    if action and action.tooltip then table.insert(lines, action.tooltip) end
+    local steps = slot.steps or {}
+    if action and action.tooltip and #steps == 0 then table.insert(lines, action.tooltip) end
     if action then
-        if slot.window and action.openUI then
-            table.insert(lines, txt("OpensWindow"))
+        if #steps > 0 then
+            table.insert(lines, "1. " .. Hotbar.titleOf(action, slot))
+            settingLines(slot, action, lines, "    ")
         else
-            for _, spec in ipairs(action.params) do
-                local summary = Hotbar.describeSetting(slot, spec)
-                if summary then table.insert(lines, spec.title .. ": " .. summary) end
-            end
+            settingLines(slot, action, lines, "")
         end
+    end
+    for index, step in ipairs(steps) do
+        local stepAction = Hotbar.getAction(step.action)
+        if stepAction then
+            table.insert(lines, string.format("%d", index + 1) .. ". " .. Hotbar.titleOf(stepAction, step))
+            settingLines(step, stepAction, lines, "    ")
+        end
+    end
+    if #steps > 0 and Hotbar.asksWhenUsed(slot) then
+        table.insert(lines, txt("StepsAskOnce"))
     end
     if state.toggle then
         if state.pending then
@@ -1520,6 +1825,11 @@ end
 
 --- "Add shortcut" as a submenu of parent (or a new menu at the mouse).
 function Bar:fillAddMenu(context, insertAt)
+    self:fillActionMenu(context, function(actionId) self:onAddAction(actionId, insertAt) end)
+end
+
+--- Every action by category; onPick(actionId) when one is chosen.
+function Bar:fillActionMenu(context, onPick)
     local admin = getPlayer()
     for _, category in ipairs(Hotbar.categories) do
         local actions = sortedActions(category.id)
@@ -1528,7 +1838,7 @@ function Bar:fillAddMenu(context, insertAt)
             local sub = ISContextMenu:getNew(context)
             context:addSubMenu(option, sub)
             for _, action in ipairs(actions) do
-                local item = sub:addOption(Hotbar.titleOf(action, nil), self, Bar.onAddAction, action.id, insertAt)
+                local item = sub:addOption(Hotbar.titleOf(action, nil), action.id, onPick)
                 local ok, reason = Hotbar.availability(action, admin)
                 if not ok then
                     item.notAvailable = true
@@ -1598,6 +1908,7 @@ function Bar:showMenu(slot, index)
                 Hotbar.save()
             end)
         end)
+        self:addStepMenu(context, slot)
         local before = state.vertical and txt("MoveUp") or txt("MoveLeft")
         local after = state.vertical and txt("MoveDown") or txt("MoveRight")
         if index and index > 1 then
@@ -1650,6 +1961,93 @@ function Bar:showMenu(slot, index)
         end)
     end)
     context:addOption(txt("Hide"), self, function() Hotbar.setVisible(false) end)
+end
+
+--- "Add a step" (any action, run after the slot's own) and, once there are steps,
+-- "Steps" to edit, reorder or remove each of them.
+function Bar:addStepMenu(context, slot)
+    local addOption = context:addOption(txt("AddStep"), nil, nil)
+    local addMenu = ISContextMenu:getNew(context)
+    context:addSubMenu(addOption, addMenu)
+    self:fillActionMenu(addMenu, function(actionId) Hotbar.addStep(slot, actionId) end)
+    local tooltip = ISWorldObjectContextMenu.addToolTip()
+    tooltip.description = txt("AddStepTooltip")
+    addOption.toolTip = tooltip
+
+    local steps = slot.steps or {}
+    if #steps == 0 then return end
+    local stepsOption = context:addOption(txt("Steps"), nil, nil)
+    local stepsMenu = ISContextMenu:getNew(context)
+    context:addSubMenu(stepsOption, stepsMenu)
+    for index, step in ipairs(steps) do
+        local title = string.format("%d", index + 1) .. ". " .. Hotbar.titleOf(Hotbar.getAction(step.action), step)
+        local stepOption = stepsMenu:addOption(title, nil, nil)
+        local stepMenu = ISContextMenu:getNew(stepsMenu)
+        stepsMenu:addSubMenu(stepOption, stepMenu)
+        stepMenu:addOption(txt("Edit"), step, function(s) Hotbar.editStep(slot, s) end)
+        if index > 1 then
+            stepMenu:addOption(txt("StepEarlier"), step, function(s) Hotbar.moveStep(slot, s, -1) end)
+        end
+        if index < #steps then
+            stepMenu:addOption(txt("StepLater"), step, function(s) Hotbar.moveStep(slot, s, 1) end)
+        end
+        stepMenu:addOption(txt("Remove"), step, function(s) Hotbar.removeStep(slot, s) end)
+    end
+end
+
+local function stepsChanged(slot)
+    if slot.steps and #slot.steps == 0 then slot.steps = nil end
+    slot.pending = nil
+    Hotbar.invalidate(slot)
+    Hotbar.save()
+    Hotbar.refreshBar()
+end
+
+--- Add a step to a slot, through the settings dialog when the action has settings.
+function Hotbar.addStep(slot, actionId)
+    local action = Hotbar.getAction(actionId)
+    if not action then return end
+    local function add(saved)
+        slot.steps = slot.steps or {}
+        table.insert(slot.steps, { action = saved.action, settings = saved.settings or {}, window = saved.window == true })
+        stepsChanged(slot)
+    end
+    local step = { action = actionId, settings = {}, window = false }
+    if #action.params == 0 and not action.openUI then return add(step) end
+    Hotbar.openSettings(step, add, true)
+end
+
+function Hotbar.editStep(slot, step)
+    Hotbar.openSettings(step, function(saved)
+        step.settings = saved.settings or {}
+        step.window = saved.window == true
+        stepsChanged(slot)
+    end, true)
+end
+
+function Hotbar.moveStep(slot, step, delta)
+    local steps = slot.steps or {}
+    for i, other in ipairs(steps) do
+        if other == step then
+            local j = i + delta
+            if j >= 1 and j <= #steps then
+                steps[i], steps[j] = steps[j], steps[i]
+                stepsChanged(slot)
+            end
+            return
+        end
+    end
+end
+
+function Hotbar.removeStep(slot, step)
+    local steps = slot.steps or {}
+    for i, other in ipairs(steps) do
+        if other == step then
+            table.remove(steps, i)
+            stepsChanged(slot)
+            return
+        end
+    end
 end
 
 function Bar:pickOnColour()
@@ -1786,13 +2184,16 @@ local function wrapLines(text, width, font)
     return lines
 end
 
-function Settings:new(slot, onSave)
+--- isStep: the dialog edits a step of a slot, which has settings only (the label,
+-- icon and "Ask before running" belong to the slot).
+function Settings:new(slot, onSave, isStep)
     local width = LABEL_WIDTH + CONTROL_WIDTH + UI_BORDER_SPACING * 3
     local core = getCore()
     local o = ISPanel:new(core:getScreenWidth() / 2 - width / 2, 120, width, 200)
     setmetatable(o, self)
     self.__index = self
     o.slot = slot
+    o.isStep = isStep == true
     o.action = Hotbar.getAction(slot.action)
     o.onSave = onSave
     o.settings = {}
@@ -1881,6 +2282,11 @@ function Settings:createChildren()
         y = self:addParamRow(spec, cx, y)
     end
 
+    if self.isStep then
+        y = y + UI_BORDER_SPACING
+        return self:addSaveCancel(y)
+    end
+
     self:addLabel(txt("Label"), y)
     self.labelEntry = self:addEntry(cx, y, CONTROL_WIDTH, self.slot.label or "")
     self.labelEntry:setPlaceholderText(Hotbar.titleOf(action, self.slot))
@@ -1895,10 +2301,14 @@ function Settings:createChildren()
     y = y + iconSize + UI_BORDER_SPACING
 
     local confirm = self.slot.confirm
-    if confirm == nil then confirm = action.confirm == true end
+    if confirm == nil then confirm = Hotbar.defaultConfirm(self.slot) end
     self.confirmTick = self:addTick(cx, y, CONTROL_WIDTH, txt("AskBeforeRunning"), confirm)
     y = y + BUTTON_HGT + UI_BORDER_SPACING * 2
 
+    self:addSaveCancel(y)
+end
+
+function Settings:addSaveCancel(y)
     local buttonWidth = 110
     self.saveButton = self:addButton(self.width / 2 - buttonWidth - 5, y, buttonWidth, getText("IGUI_RadioSave"), Settings.onSaveClicked)
     self.saveButton:enableAcceptColor()
@@ -2118,14 +2528,16 @@ function Settings:onSaveClicked()
         action = self.slot.action,
         settings = self:collectSettings(),
         window = self.windowTick ~= nil and self.windowTick.selected[1] == true,
-        icon = self.icon,
-        tint = self.tint,
     }
-    local label = string.trim(self.labelEntry:getText() or "")
-    slot.label = label ~= "" and label or nil
-    local confirm = self.confirmTick.selected[1] == true
-    if confirm ~= (self.action.confirm == true) then
-        slot.confirm = confirm
+    if not self.isStep then
+        slot.icon = self.icon
+        slot.tint = self.tint
+        local label = string.trim(self.labelEntry:getText() or "")
+        slot.label = label ~= "" and label or nil
+        local confirm = self.confirmTick.selected[1] == true
+        if confirm ~= Hotbar.defaultConfirm(self.slot) then
+            slot.confirm = confirm
+        end
     end
     self:close()
     self.onSave(slot)
@@ -2141,11 +2553,12 @@ function Settings:close()
     self:removeFromUIManager()
 end
 
---- Open the settings dialog for a slot (new or existing). onSave(slot) gets a new table.
-function Hotbar.openSettings(slot, onSave)
+--- Open the settings dialog for a slot or a step (new or existing). onSave(slot) gets
+-- a new table.
+function Hotbar.openSettings(slot, onSave, isStep)
     local action = Hotbar.getAction(slot.action)
     if not action then return end
-    local window = Settings:new(slot, onSave)
+    local window = Settings:new(slot, onSave, isStep)
     window:initialise()
     window:addToUIManager()
     window:bringToTop()

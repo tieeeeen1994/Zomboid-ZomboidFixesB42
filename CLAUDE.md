@@ -188,6 +188,19 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
 - Setting another player's skill level from a client, vanilla style: `/addxp "user" Perk=amount -false`
   (`AddXPCommand`, needs Capability.AddXP; negative amounts lower the level).
 
+### Time speed and timed actions in multiplayer
+
+- `GameTime.getMultiplier()` = `multiplier` (what `setMultiplier` sets) × fpsMultiplier (server: 60 / FPS, it runs at
+  10) × bias × perObjectMultiplier × 0.8; the server's clock advances by it and reaches clients by `SyncClockPacket`
+  every 10 s. Only `IsoPlayer`'s zombie-within-4-tiles check (runs on the server too) and `SpeedControls` reset it.
+  The dedicated server runs `IngameState.update`, so `Events.OnTick` fires there.
+- Timed actions run **on the server** (`zombie/core/NetTimedAction`, `ActionManager`): at start
+  `endTime = serverTimeMs + adjustMaxTime(getDuration()) * 20`, real milliseconds, **no multiplier**; completed when
+  `getServerTimeMills()` passes it, then a Done packet ends the client's copy. The server calls `adjustMaxTime` only
+  there (the table is built with `Type.new(args)` and gets `netAction` = the Java action; `create()` is client side).
+  PZ's `KahluaTableImpl.rawget` falls back to the metatable, so class methods are found. `netAction:setDuration(ms)`
+  moves a running action's end (`endTime = startTime + ms`).
+
 ## Roles and capabilities
 
 `zombie/characters/Capability.java` is the full list. Default roles (`zombie/characters/Roles.java` ~358–490):
@@ -292,7 +305,12 @@ MakeEventsAlarmGunshot · `/gunshot` (meta gunshot) MakeEventsAlarmGunshot · `/
 `/teleportto ["user"] x,y,z` TeleportToCoordinates · `/kick "user" [-r "reason"]` KickUser ·
 `/banuser "user" [-ip] [-r "reason"]`, `/voiceban "user" -true|-false` BanUnbanUser · `/servermsg "text"`
 DisplayServerMessage · `/save` SaveWorld · `/changeoption`, `/reloadoptions` ChangeAndReloadServerOptions ·
-`/checkModsNeedUpdate` ManipulateMods · `/setaccesslevel`, `/grantadmin`, `/removeadmin` ChangeAccessLevel. Without the
+`/checkModsNeedUpdate` ManipulateMods · `/setaccesslevel`, `/grantadmin`, `/removeadmin` ChangeAccessLevel ·
+`/unbanuser "user"` BanUnbanUser · `/removeitem "M.Type" n` EditItem (the **executor's own** inventory, 0 = all) ·
+`/removemapsymbolsforuser "user"` EditMapSymbols · `/releasesafehouse "title"`, `/addtosafehouse "title" "user"`,
+`/kickfromsafehouse "title" "user"` CanSetupSafehouses (found by title) · `/setTimeSpeed n` (`/sts`) ConnectWithDebug.
+Debug menu entries that only act on the client in MP: Set Alarm (`def:setAlarmed`), Randomized Building,
+Spawn Survivor Horde, vehicle Jump / Landmine. Without the
 `-true/-false` flag, the god mode / invisible / noclip commands flip the current state.
 
 ### Vanilla client-command handlers with **no permission check** (any client can call them)
@@ -353,6 +371,15 @@ are gated. Candidates for a hardening fix.
   Traits/professions: `CharacterTraitDefinition.getTraits()` / `CharacterProfessionDefinition.getProfessions()` →
   `getTexture()`. Tiles: `getWorld():getAllTilesName()` → `"<set>_<n>"`, n < 256. Lua cannot list folders.
 - `getText(key, arg)` formats a Lua number as a Java Double ("1.0"); pass `string.format("%d", n)`.
+- `UIManager.AddUI` / `RemoveElement` only queue; `UIManager.getUI()` (top-level Java elements, `ui:getTable()` →
+  the Lua table) changes at the next `UIManager.update`. Base `close()` of ISPanel / ISPanelJoypad /
+  ISCollapsableWindow only hides; vanilla reopens windows with `instance:close()` or `closeModal()`. Every forage,
+  stash and world item icon is an `ISBaseIcon` (ISPanel) in the UIManager, appearing as the player moves.
+- Foraging debug (`ISSearchManager.createDebugContextMenu`): `ISSearchManager.getManager(player)`,
+  `getAndActivateZoneAtXY(x, y)` (nil outside a forage zone), `createSpecificIcon(square, fullType, zoneData, nil, nil, n)`,
+  `createAllIconsOnSquare(square, catName|nil)`, `refreshZoneIcons(square)`, `moveAllZoneIconsToSquare(square)`, all
+  local only; overlays `ISSearchManager.showDebug` / `showDebugLocations` (drawn only with showDebug, in search mode).
+  `forageSystem.itemDefs` is keyed by full type, `catDefs` by name (`IGUI_SearchMode_Categories_<name>`).
 - `media/ui/circle.png` is a white disc, handy for tinted status dots. `media/ui` holds ~1540 loose PNGs (moodles in
   32/48/64/80/96/128 folders, sidebar icons in 48/64/80/96/128 with `_<size>` suffixes, emotes, speed controls,
   `LootableMaps/map_*.png` = the map symbols). The sidebar Admin icon is grey (Off) / reddish (On), so it tints.
@@ -421,6 +448,10 @@ are gated. Candidates for a hardening fix.
   catalog, one `Hotbar.registerAction` per admin tool), Capture ("Add to Hotbar" in vanilla windows), Icons (icon refs
   `sym:` / `item:` / `tex:`, picker; the media/ui path list is generated from the install). A slot = action + settings;
   toggles read their state back from the game every 200 ms; `window = true` slots open the vanilla window.
+  Actions marked `opensWindow` (plus openUI and the windows category) remember the UIs that appear within 1.5 s
+  and a second click closes them. `slot.steps` = extra `{ action, settings, window }` run after the slot's own
+  (`Hotbar.partsOf`): all resolved first (asked player / square / vehicle shared), one confirm, then 300 ms apart;
+  saved as `steps.#n.*` on the slot line.
   Single player: only with `-debug` (`isDebugEnabled()`), every capability assumed, each action has vanilla's single
   player branch, server-only actions greyed out; the sidebar button goes under the lowest button (no Admin button),
   slots saved to `ZomboidFixesB42_AdminHotbar_SinglePlayer.ini`.
