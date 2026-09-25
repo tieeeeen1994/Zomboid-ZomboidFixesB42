@@ -23,5 +23,6 @@ description=- Admins who join are fully healed and briefly in god mode, so a rev
 description=- Admins can change any player's body stats (hunger, mood, health, calories, weight and more) like the debug Body panel, and the changes stick for everyone.
 description=- Admins can send and stop the chopper from the right-click Tools menu, and stopping it reaches every player, even one who still hears a chopper that already left (beta).
 description=- An admin hotbar: one-click shortcuts to every admin tool, each with its own settings, opened from the sidebar (single player: with -debug) (beta).
+description=- Picking a square in the debug Horde Manager or Tile Picker no longer walks your character there.
 description=Must be installed on both the server and clients. Every fix is on by default and can be turned off in the sandbox options; the few that are off by default say so.
 modversion=1.0
