@@ -23,7 +23,6 @@
     "IGUI_ZomboidFixesB42_Chopper_Denied": "You are not allowed to call the chopper",
     "IGUI_ZomboidFixesB42_Chopper_Disabled": "Chopper controls are off in sandbox options",
     "IGUI_ZomboidFixesB42_BodyStats_Disabled": "The body stats editor is switched off in the sandbox options.",
-    "IGUI_ZomboidFixesB42_ModOptions": "Zomboid Fixes",
     "IGUI_ZomboidFixesB42_AdminHotbar_SidebarTooltip": "Admin Hotbar (beta)",
     "IGUI_ZomboidFixesB42_AdminHotbar_AddShortcut": "Add shortcut",
     "IGUI_ZomboidFixesB42_AdminHotbar_AddShortcutTooltip": "Add a shortcut. Right-click the bar or a slot for more.",
@@ -331,9 +330,6 @@
     "IGUI_ZomboidFixesB42_AdminHotbar_IconTint": "Tint...",
     "IGUI_ZomboidFixesB42_AdminHotbar_IconNoTint": "No tint",
     "IGUI_ZomboidFixesB42_AdminHotbar_IconPickTileset": "Pick a tile set on the left.",
-    "IGUI_ZomboidFixesB42_AdminHotbar_KeyToggle": "Show or hide the admin hotbar",
-    "IGUI_ZomboidFixesB42_AdminHotbar_KeyToggleTooltip": "For admins and moderators on a server with the Admin Hotbar sandbox option on.",
-    "IGUI_ZomboidFixesB42_AdminHotbar_KeySlot": "Admin hotbar slot %1",
     "IGUI_ZomboidFixesB42_AdminHotbar_MultiplayerOnly": "Multiplayer only.",
     "IGUI_ZomboidFixesB42_AdminHotbar_NeedsOtherPlayer": "Needs another player (split screen in single player)."
 }

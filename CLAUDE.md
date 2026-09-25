@@ -367,7 +367,14 @@ are gated. Candidates for a hardening fix.
   and shows them (`MainOptions.keyPressHandler` sets `keyCode, shift, ctrl, alt` on `option.element`), but
   `getValue()` is the bare key and ModOptions.ini saves only it; the screen copies `option.shift/ctrl` (not `alt`)
   back into its entry. Vanilla's own rule is `Core.invalidBindingShiftCtrl` (raw keys 42/54 Shift, 29/157 Ctrl,
-  56/184 Alt). The admin hotbar keeps the modifiers in its own file by wrapping `PZAPI.ModOptions.save`.
+  56/184 Alt). So mod keys belong in the **vanilla key bindings** instead: append `{ value = "[Section]" }` and
+  `{ value = "Name", key = 0 }` to the global `keyBinding` table (shared/keyBinding.lua) at load;
+  `MainOptions.loadKeys` (run when the options screen is built) calls `getCore():addKeyBinding(name, key, altKey,
+  shift, ctrl, alt)` and restores/saves them in `keysB42.ini`; test with `getCore():isKey(name, key)`. Labels:
+  `UI_optionscreen_binding_<name>` (section: name without brackets) in `Translate/EN/UI.json`; no tooltips. The label
+  column is sized by the widest internal name, so keep names short. `MainOptions.keys` holds each bind's
+  `key/shift/ctrl/alt`; `MainOptions.saveKeys` writes from the screen's `MainOptions.keyText` and clears Core's keys
+  (follow it with `loadKeys`). The admin hotbar's keys are there ("ZF Admin Hotbar ...").
 - Textures: `tryGetTexture(name)` = `getSharedTexture` (loose files and pack entries) then `media/textures/`, nil if
   missing. Map symbols (`MapSymbolDefinitions.getInstance():getSymbolCount()/getSymbolByIndex(i)`, `getId()`,
   `getTexturePath()`, 91 in 42.20) are white, so they tint. Item icons: script item `getIcon()` (or
