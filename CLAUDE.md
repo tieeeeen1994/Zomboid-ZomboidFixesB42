@@ -23,6 +23,39 @@ mkdir classes src && (cd classes && unzip -q "$JAR" 'zombie/*')
 "$JAVA" -Xmx6g -jar vineflower.jar -dgs=1 -rsy=1 -log=WARN -thr=8 classes src   # ~5080 classes -> ~3078 .java, a few minutes
 ```
 
+Decompiling only a few classes takes seconds: `unzip -q -o "$JAR" 'zombie/Lua/LuaManager*.class'` (any glob) into an
+empty folder and point Vineflower at it. `strings` fails on `.class` files on macOS ("fat file"); read constant-pool
+names with Python instead (`re.findall(rb'[A-Za-z_][A-Za-z0-9_]{3,}', data)`), e.g. to check which enum constants
+or methods exist.
+
+## Tooling on this Mac
+
+- No Lua interpreter. Syntax-check with luaparser: `pip3 install --target <scratch>/py luaparser`, then
+  `PYTHONPATH=<scratch>/py python3 -c "from luaparser import ast; ast.parse(open(f).read())"`. It only checks syntax;
+  walking its AST for free names is a cheap way to spot typos in globals.
+- Python 3 with Pillow and `sips` are available (image sizes, generating lists of game files).
+- The shell is zsh: `$var[...]` is array subscripting, so `"$f[:.]"` inside a grep pattern breaks; use Python for
+  such loops.
+
+## Lua environment (Kahlua) and load order
+
+- Files load alphabetically per folder, shared, then client, then server; `.` sorts before `_`, so
+  `ZomboidFixesB42.lua` loads before `ZomboidFixesB42_X.lua`, and `ZomboidFixesB42_AdminHotbar.lua` before
+  `ZomboidFixesB42_AdminHotbarActions.lua`. `require "ZomboidFixesB42_AdminHotbar"` (path relative to the lua/client,
+  shared or server folder) forces an order.
+- Client Lua already loads at the main menu (`isClient()` false there) and reloads with the server's mods when joining
+  multiplayer. `media/lua/server` also loads on clients and in single player (hence the `if isClient() then return end`
+  guards); a dedicated server does not load `media/lua/client`.
+- Pitfalls: `cond and nil or x` always gives `x` (write an if); a `string.gsub` replacement string treats `%` as special
+  (escape user text with `gsub(s, "%%", "%%%%")`); `string.gsub` returns two values, so wrap it in parentheses when
+  returning or concatenating at the end of a list; there is no `next()`; `gsub` with a function replacement works;
+  vanilla never uses `string.byte/char`, so avoid them. `tostring` of an integer-valued number gives "5", but
+  `getText(key, n)` gives "5.0" — pass `string.format("%d", n)`.
+- Files: `getFileWriter(name, createIfNull, append)` / `getFileReader(name, createIfNull)` (nil if missing) read and
+  write `Zomboid/Lua/<name>`. Server identity on a client: `getServerIP()`, `getServerPort()` ("" in single player);
+  save name: `getWorld():getWorld()` (`getCurrentSaveName()` is the full save folder path).
+- Keys: `Events.OnKeyPressed(key)`, `getKeyName(key)`; mod key binds via `PZAPI.ModOptions` (see below).
+
 ## Mod conventions
 
 - One feature = `client/ZomboidFixesB42_<Feature>.lua` + `server/ZomboidFixesB42_<Feature>.lua` (+ `shared/` if both need it).
@@ -227,6 +260,9 @@ Where every admin tool lives, and how it runs, so a feature touching "all admin 
 - `addVehicle(script, x, y, z)` on a client **ignores its arguments** and sends `/addvehicle <random script>`.
 - `ISSelectCursor:new(character, ui, nil)` + `getCell():setDrag(cursor, playerNum)` picks a square; it calls
   `ui:onSquareSelected(square)` (method call on `ui`, the third argument is ignored) and is only valid while `ui.cursor ~= nil`.
+  It is an `ISBuildingObject`, so `tryBuild` first **walks the player to the square** (`walkTo`) unless
+  `cursor.skipWalk2 = true` or the build cheat is on; set `skipWalk2` for a pure picker. Vanilla's Horde Manager
+  (`ISSpawnHordeUI:onSelectNewSquare`) and Tile Picker do not, so picking a square there makes the character walk to it.
 - Online players for a picker: `scoreboardUpdate()` → `Events.OnScoreboardUpdate(usernames, displayNames, steamIDs)`
   (everyone online); `getOnlinePlayers()` on a client only holds the players it has loaded.
 - Climate Control (`ISAdmPanelClimate`): `getClimateManager():getClimateFloat(i)` (0..12: desaturation, global light,
@@ -267,6 +303,36 @@ DisplayServerMessage · `/save` SaveWorld · `/changeoption`, `/reloadoptions` C
 `server/Vehicles/VehicleCommands.lua`: `vehicle.remove` (permanently removes any vehicle by id). Only their callers' UIs
 are gated. Candidates for a hardening fix.
 
+### Single player vs a server (what breaks, what to call instead)
+
+- A single player character's role is `Roles.getDefaultForNewUser()` (`IsoPlayer.role` default): **no admin
+  capability**, so `hasCapability`, `hasAdminTool`, `hasAdminPower` are all false. Vanilla gates its single player admin
+  tools on `isDebugEnabled()` instead (Admin Powers, DebugContextMenu, Player Stats edit buttons); the admin panel's
+  buttons all follow the role, so it closes itself in single player.
+- `getAccessLevel()` reads `GameClient.connection` → **NullPointerException in single player**. `isAdmin()` is safe
+  (false). `getPlayerFromUsername` only searches a server's players; single player names are forename+surname
+  (`IsoPlayer.updateUsername`), search `getSpecificPlayer(0..getNumActivePlayers()-1)`. `getOnlinePlayers()` is empty.
+- Chat commands (`SendCommandToServer`), `sendPlayerExtraInfo`, `sendDebugStory`, `scoreboardUpdate`,
+  `teleportPlayers` are network only. `transmitClimatePacket` (every `transmit*` of ClimateManager) does nothing outside
+  a client or server; `transmitServer*` (start/stop rain, storm, stop weather, lightning) only work on the server.
+- `sendClientCommand` in single player reaches the server Lua (`ClientCommands.lua`, `VehicleCommands.lua` load with
+  `if isClient() then return end`), but handlers that check `player:getRole():hasCapability(...)` refuse (the role).
+  `checkPermissions(player, cap)` (vehicle commands) returns true outside a server. Unchecked handlers (fire, smoke,
+  explosion) work.
+- Single player equivalents: `player:teleportTo(x, y, z)`; `instanceItem(type)` + `getInventory():AddItem` (Item List);
+  `addZombiesInOutfit(x, y, z, 1, outfit, femaleChance, crawler, fallOnFront, fakeDead, knockedDown, invulnerable,
+  sitting, health, recordingAnims, heightOffset, ragdoll, onFire)` (Horde Manager); `addVehicle(script, x, y, z)` uses
+  its coordinates (empty script = random); `getClimateManager():triggerCustomWeatherStage(WeatherPeriod.STAGE_STORM |
+  STAGE_TROPICAL_STORM | STAGE_BLIZZARD, hours)`, `triggerCustomWeather(strength, warmFront)`, `stopWeatherAndThunder()`,
+  rain = precipitation float 3 `setAdminValue` + `setEnableAdmin` (what /startrain does); `getThunderStorm():
+  triggerThunderEvent(x, y, strike, light, rumble)` runs locally outside a server; `getAmbientStreamManager():doGunEvent()`,
+  `:doAlarm(roomDef)` + `buildingDef:setAlarmed(true)` (/alarm); `testHelicopter()` / `endHelicopter()` (both modes).
+- Vanilla functions that already branch on `isClient()`, safe to call in both: `DebugContextMenu.AddAnimal`,
+  `OnGetBuildingKey(nil, playerNum)`, `doRandomizedVehicleStory(square, rvs)`, `doRandomizedZoneStory(square, rzs)`,
+  `onAddEnclosure(player)`, `onTeleportValid`, `removeAllVehicles(player)`, `removeVehicle(player, vehicle)`,
+  `AdminContextMenu.onHordeManager/onSpawnVehicle/onTeleportUI`. Single player only: `DebugContextMenu.OnRemoveAllZombies()`,
+  `OnRemoveAllAnimals()`.
+
 ### UI building blocks learned for the hotbar
 
 - `ISEquippedItem:initialise()` stacks sidebar buttons at `prev:getBottom() + 15`, sized to the sidebar texture
@@ -287,7 +353,62 @@ are gated. Candidates for a hardening fix.
   Traits/professions: `CharacterTraitDefinition.getTraits()` / `CharacterProfessionDefinition.getProfessions()` →
   `getTexture()`. Tiles: `getWorld():getAllTilesName()` → `"<set>_<n>"`, n < 256. Lua cannot list folders.
 - `getText(key, arg)` formats a Lua number as a Java Double ("1.0"); pass `string.format("%d", n)`.
-- `media/ui/circle.png` is a white disc, handy for tinted status dots.
+- `media/ui/circle.png` is a white disc, handy for tinted status dots. `media/ui` holds ~1540 loose PNGs (moodles in
+  32/48/64/80/96/128 folders, sidebar icons in 48/64/80/96/128 with `_<size>` suffixes, emotes, speed controls,
+  `LootableMaps/map_*.png` = the map symbols). The sidebar Admin icon is grey (Off) / reddish (On), so it tints.
+- Item icon names differ from item names (`Base.Pistol` → `Item_HandGun3`, `Base.NoiseTrap` → `Item_NoiseMaker`), and some
+  items have no `Icon` in their script at all (`Base.Key1`, `Base.Screwdriver`, `Base.Hammer`), so resolve through the
+  script item, never by guessing `Item_<name>`.
+
+### UI API cheat sheet (vanilla signatures, 42.20)
+
+- Any `addChild` instantiates the child (and the parent) if needed; `getChildren()` is a table keyed by id; a child's
+  class name is `child.Type` (from `derive`). `ISLabel:new(x, y, height, text, r, g, b, a, font, bLeft)`.
+- `ISComboBox:new(x, y, w, h, target, onChange)` (onChange may be nil), `addOptionWithData(text, data)`,
+  `getOptionData(i)`, `selected` (index), `selectData(data)`, `setEditable(true)` for a typed filter.
+- `ISTextEntryBox:new(text, x, y, w, h)` → `initialise()`, `instantiate()` before `setOnlyNumbers`,
+  `setPlaceholderText`, `setClearButton(true)`; `getText()` / `getInternalText()`; change callback
+  `entry.onTextChangeFunction(entry.target, entry)`.
+- `ISTickBox:new(x, y, w, h, name, target, method)` (method may be nil); `selected[i]`.
+- `ISScrollingListBox`: `addItem(text, item)`, `clear()`, `items[i].item`, `selected`, `itemheight`, `font`,
+  `setOnMouseDownFunction(target, fn)` / `setOnMouseDoubleClick(target, fn)` → `fn(target, items[selected].item)`;
+  replace `doDrawItem(y, item, alt)` (called as `list:doDrawItem`) and return the next y.
+- `ISModalDialog:new(x, y, w, h, text, yesno, target, onclick)` → `onclick(target, button)`, `button.internal == "YES"`.
+- `ISTextBox:new(x, y, w, h, title, default, target, onclick)` → `onclick(target, button)`, `button.internal == "OK"`,
+  text in `button.parent.entry:getText()`; `setOnlyNumbers(true)` after `initialise()`.
+- `ISColorPicker:new(x, y)`, `pickedTarget`, `setInitialColor(ColorInfo.new(r, g, b, 1))`,
+  `setPickedFunc(fn)` → `fn(pickedTarget, { r, g, b }, mouseUp)`; it removes itself once picked.
+- `ISContextMenu.get(playerNum, x, y)`; `addOption(text, target, fn, args...)` → `fn(target, args...)`;
+  `ISContextMenu:getNew(parent)` + `addSubMenu(option, sub)`; find a vanilla submenu with
+  `getOptionFromName(name)` + `getSubMenu(option.subOption)`; `option.notAvailable = true` greys it; tooltip:
+  `option.toolTip = ISWorldObjectContextMenu.addToolTip()` then set `.description`; `setOptionChecked(option, bool)`.
+  To add to a menu a vanilla function builds without returning it, wrap `ISContextMenu.get` for the duration of the call
+  (nested wrappers from several files work).
+- `ISButton:new(x, y, w, h, title, target, onclick)` → `onclick(target, button)`; `tooltip` string (with `\n`);
+  `setImage`, `textureColor = { r, g, b, a }`, `enableAcceptColor/enableCancelColor`, `setEnable`.
+- Feedback over a player's head: `HaloTextHelper.addText(player, text)` / `addBadText`.
+- Drag and drop inside a panel: on `onMouseDown` remember the mouse, in `onMouseMove` and `onMouseMoveOutside` (both
+  keep arriving while the button is pressed) start the drag past a few pixels with `self:setCapture(true)`, finish in
+  `onMouseUp` / `onMouseUpOutside` (release the capture, reset `pressed` so ISButton does not also click). A ghost that
+  follows the mouse is a top-level panel with `setAlwaysOnTop(true)` and `setWantMouseEvents(false)`, moved in its own
+  `prerender`. The admin hotbar's slot reordering is the worked example.
+
+### Data lists available to Lua
+
+- Items: `getScriptManager():getAllItems()` (Item List skips `getObsolete()` and `isHidden()`), `getItem(fullType)`,
+  `getDisplayName()`, `getFullName()`; `instanceItem("Module.Type")`.
+- Vehicles: `getScriptManager():getAllVehicleScripts()`, `getVehicle(fullName)`, display name
+  `getText("IGUI_VehicleName" .. script:getName())`; `player:getVehicle()`, `player:getNearVehicle()`,
+  `vehicle:isHotwired()`, `isAlarmed()`, `getId()`; vehicle client commands take `{ vehicle = id, ... }`
+  (`cheatHotwire {hotwired, broken}`, `setAlarmed {alarmed}`, `repair`, `getKey`).
+- Zombie outfits: `getAllOutfits(false)` (male) / `getAllOutfits(true)` (female), ArrayLists with `contains`.
+- Animals: `getAllAnimalsDefinitions()` → `getAnimalType()`, `getGroup()`, `getBreeds()` (`getName()`),
+  `canBeSkeleton()`; `AnimalDefinitions.getDef(type):getBreedByName(name)`; names `IGUI_AnimalType_<type>`,
+  `IGUI_Breed_<breed>`.
+- Perks: `for i = 1, Perks.getMaxIndex() do local perk = PerkFactory.getPerk(Perks.fromIndex(i - 1))`, skip
+  `perk:getParent() == Perks.None`; id for `/addxp` = `tostring(perk:getType())`; back with `Perks.FromString(id)`.
+- Stories: `getWorld():getRandomizedVehicleStoryList()` / `getRandomizedZoneList()` → `getName()`.
+- Players: `getNumActivePlayers()` + `getSpecificPlayer(i)` (local); `player:teleportTo(x, y, z)`.
 
 ## Features built on these findings
 
@@ -300,3 +421,6 @@ are gated. Candidates for a hardening fix.
   catalog, one `Hotbar.registerAction` per admin tool), Capture ("Add to Hotbar" in vanilla windows), Icons (icon refs
   `sym:` / `item:` / `tex:`, picker; the media/ui path list is generated from the install). A slot = action + settings;
   toggles read their state back from the game every 200 ms; `window = true` slots open the vanilla window.
+  Single player: only with `-debug` (`isDebugEnabled()`), every capability assumed, each action has vanilla's single
+  player branch, server-only actions greyed out; the sidebar button goes under the lowest button (no Admin button),
+  slots saved to `ZomboidFixesB42_AdminHotbar_SinglePlayer.ini`.

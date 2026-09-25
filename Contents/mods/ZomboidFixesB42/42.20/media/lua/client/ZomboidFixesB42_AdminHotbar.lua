@@ -28,19 +28,32 @@
     hasAdminTool(), the rule vanilla uses for the sidebar Admin button, and each
     action is greyed out when the role lacks what it needs.
 
+    Single player follows vanilla's rule for its admin tools there: they only exist
+    with the -debug launch option (isDebugEnabled()). A single player character's
+    role is Roles.getDefaultForNewUser(), which holds no admin capability at all, so
+    vanilla gates its single player tools on debug mode instead of the role, and so
+    does the bar: with -debug every action is offered, and each runs through the
+    single player branch vanilla's own window has for it (direct calls; chat
+    commands and most network packets do nothing without a server). Actions that
+    only make sense on a server (kick, ban, server messages and options, the network
+    admin windows) are greyed out. getAccessLevel() and getPlayerFromUsername() read
+    the client connection, which single player does not have, so neither is called
+    there.
+
     The sidebar button is added to ISEquippedItem, which stacks its buttons in
     initialise() and moves the war button under the Admin button every frame in
     prerender(), so the button goes in after initialise and is placed after
-    prerender. It reuses the Admin button's own image, tinted, with the map symbol
-    Lightning over it, so the mod ships no image files: every icon is a texture the
-    game already has (see ZomboidFixesB42_AdminHotbarIcons.lua).
+    prerender. Its icon is drawn, not shipped: the game's white disc texture tinted
+    green (bar shown) or red (hidden), with three slots in a row. The mod ships no
+    image files: every slot icon is a texture the game already has (see
+    ZomboidFixesB42_AdminHotbarIcons.lua). Single player has
+    no Admin button (vanilla only creates it on a client), so there the button goes
+    under the lowest sidebar button instead.
 
     Slots are saved per client and per server, in Zomboid/Lua, because usernames
-    and coordinates mean nothing on another server. Keys are PZAPI.ModOptions key
-    binds (Options > Mods), unbound by default.
+    and coordinates mean nothing on another server; single player has one file of
+    its own. Keys are PZAPI.ModOptions key binds (Options > Mods), unbound by default.
 --]]
-
-if not isClient() then return end
 
 require "ISUI/ISPanel"
 require "ISUI/ISButton"
@@ -93,22 +106,54 @@ function Hotbar.isEnabled()
     return vars ~= nil and vars.AdminHotbar == true
 end
 
+function Hotbar.isMultiplayer()
+    return isClient()
+end
+
+--- On a server, the role's capability. In single player (only reached with -debug)
+-- every capability, as vanilla's single player tools assume.
 function Hotbar.hasCapability(player, name)
+    if not isClient() then return player ~= nil end
     local role = player and player:getRole()
     local capability = name and Capability[name]
     return role ~= nil and capability ~= nil and role:hasCapability(capability)
 end
 
---- The bar is for roles that get the sidebar Admin button.
+--- The bar is for roles that get the sidebar Admin button; in single player, for
+-- debug mode, where vanilla offers its admin tools.
 function Hotbar.canUse(player)
     if not Hotbar.isEnabled() or not player then return false end
+    if not isClient() then return isDebugEnabled() == true end
     local role = player:getRole()
     return role ~= nil and role:hasAdminTool()
 end
 
---- AdminContextMenu's own gate for the right-click Tools menu.
+--- AdminContextMenu's own gate for the right-click Tools menu. getAccessLevel()
+-- reads the client connection, so single player never calls it.
 function Hotbar.canUseTools()
+    if not isClient() then return true end
     return isAdmin() or getAccessLevel() == "moderator"
+end
+
+-- Players ----------------------------------------------------------------------------
+
+--- A player's name as the bar uses it. In single player it is the character's
+-- forename and surname (IsoPlayer.updateUsername).
+function Hotbar.nameOf(player)
+    if not player then return nil end
+    return player:getUsername() or player:getDisplayName() or ""
+end
+
+--- The player object for a name, if this client has it. getPlayerFromUsername
+-- only knows a server's players, so single player searches its local players.
+function Hotbar.findPlayer(name)
+    if not name then return nil end
+    if isClient() then return getPlayerFromUsername(name) end
+    for i = 0, getNumActivePlayers() - 1 do
+        local player = getSpecificPlayer(i)
+        if player and Hotbar.nameOf(player) == name then return player end
+    end
+    return nil
 end
 
 -- Commands and feedback ---------------------------------------------------------
@@ -117,7 +162,13 @@ function Hotbar.quote(text)
     return "\"" .. (string.gsub(tostring(text), "\"", "\\\"")) .. "\""
 end
 
+--- Chat commands only exist on a server. Every action that uses one has a single
+-- player branch or is greyed out there, so this is only a safety net.
 function Hotbar.command(text)
+    if not isClient() then
+        Hotbar.say(getPlayer(), Hotbar.txt("MultiplayerOnly"), true)
+        return
+    end
     SendCommandToServer(text)
 end
 
@@ -202,6 +253,12 @@ local DEFAULT_SLOTS = {
     "teleport.ui", "window:ITEMLIST", "window:MINISCOREBOARD", "window:CHECKSTATS", "window:ADMINPANEL",
 }
 
+-- Single player has no scoreboard or admin panel (its buttons all need a role).
+local DEFAULT_SLOTS_SP = {
+    "power:GodMod", "power:Invisible", "power:NoClip", "power:FastMove", "power:TimedActionInstant",
+    "teleport.ui", "window:ITEMLIST", "window:CLIMATE", "window:CHECKSTATS", "window:ADMINPOWER",
+}
+
 local function newSlot(actionId)
     local action = Hotbar.getAction(actionId)
     return {
@@ -222,7 +279,7 @@ local function defaultState()
         on = { r = 0.2, g = 0.72, b = 0.28 },
         slots = {},
     }
-    for _, id in ipairs(DEFAULT_SLOTS) do
+    for _, id in ipairs(isClient() and DEFAULT_SLOTS or DEFAULT_SLOTS_SP) do
         if Hotbar.getAction(id) then
             table.insert(state.slots, newSlot(id))
         end
@@ -301,6 +358,9 @@ local function unflattenInto(target, dotted, value)
 end
 
 local function fileName()
+    if not isClient() then
+        return "ZomboidFixesB42_AdminHotbar_SinglePlayer.ini"
+    end
     local server = tostring(getServerIP() or "") .. "_" .. tostring(getServerPort() or "")
     return "ZomboidFixesB42_AdminHotbar_" .. string.gsub(server, "[^%w]", "_") .. ".ini"
 end
@@ -406,9 +466,21 @@ end
 
 Events.OnScoreboardUpdate.Add(onScoreboardUpdate)
 
---- Everyone the bar can offer: the last scoreboard answer, plus anyone loaded.
+--- Everyone the bar can offer: the last scoreboard answer, plus anyone loaded. In
+-- single player, the local (split screen) players.
 function Hotbar.playerChoices()
     local seen, list = {}, {}
+    if not isClient() then
+        for i = 0, getNumActivePlayers() - 1 do
+            local player = getSpecificPlayer(i)
+            local name = Hotbar.nameOf(player)
+            if name and not seen[name] then
+                seen[name] = true
+                table.insert(list, { username = name, display = name })
+            end
+        end
+        return list
+    end
     for _, entry in ipairs(Hotbar.onlinePlayers) do
         if not seen[entry.username] then
             seen[entry.username] = true
@@ -435,9 +507,10 @@ end
 --- A menu of online players at the mouse. onPick(username).
 function Hotbar.pickPlayer(admin, onPick)
     local context = ISContextMenu.get(admin:getPlayerNum(), getMouseX(), getMouseY())
-    context:addOption(txt("Myself", admin:getUsername()), admin:getUsername(), onPick)
+    local me = Hotbar.nameOf(admin)
+    context:addOption(txt("Myself", me), me, onPick)
     for _, entry in ipairs(Hotbar.playerChoices()) do
-        if entry.username ~= admin:getUsername() then
+        if entry.username ~= me then
             local name = entry.display
             if entry.display ~= entry.username then
                 name = entry.display .. " (" .. entry.username .. ")"
@@ -460,6 +533,9 @@ function Hotbar.pickSquare(admin, onPick)
         if square then onPick(square) end
     end
     picker.cursor = ISSelectCursor:new(admin, picker, nil)
+    -- ISSelectCursor is a building cursor: ISBuildingObject:tryBuild walks the player to
+    -- the square before "building" unless skipWalk2 is set (or the build cheat is on).
+    picker.cursor.skipWalk2 = true
     getCell():setDrag(picker.cursor, admin:getPlayerNum())
     Hotbar.say(admin, txt("PickSquareHint"))
 end
@@ -652,14 +728,14 @@ end
 local function peekValue(slot, spec, admin, values)
     local raw = settingOf(slot, spec)
     if spec.type == "player" then
-        if raw == "@me" then return admin:getUsername() end
+        if raw == "@me" then return Hotbar.nameOf(admin) end
         if raw == nil or raw == "@ask" or raw == "" then return nil end
         return raw
     elseif spec.type == "location" then
         if raw == "@me" then return positionOf(admin) end
         if raw == "@player" then
             local name = values[Hotbar.hasPlayerParam(Hotbar.getAction(slot.action)) or ""]
-            local player = name and getPlayerFromUsername(name)
+            local player = Hotbar.findPlayer(name)
             return player and positionOf(player) or nil
         end
         return Hotbar.parseCoords(raw)
@@ -690,7 +766,10 @@ function Hotbar.asksWhenUsed(slot)
     if not action or slot.window then return false end
     for _, spec in ipairs(action.params) do
         local raw = settingOf(slot, spec)
-        if spec.type == "player" and (raw == nil or raw == "@ask") and not spec.optional then return true end
+        if spec.type == "player" and (raw == nil or raw == "@ask") and not spec.optional
+                and (isClient() or getNumActivePlayers() > 1) then
+            return true
+        end
         if spec.type == "location" and (raw == nil or raw == "@pick") then return true end
         if spec.type == "vehicle" and raw == "@pick" then return true end
         if (spec.type == "choice" or spec.type == "text" or spec.type == "number")
@@ -725,6 +804,8 @@ local function resolveOne(slot, action, spec, admin, values, done)
 
     if spec.type == "player" then
         if value or spec.optional then return done(value) end
+        -- Nobody else to choose from (single player without split screen): no menu.
+        if not isClient() and getNumActivePlayers() < 2 then return done(Hotbar.nameOf(admin)) end
         return Hotbar.pickPlayer(admin, done)
     elseif spec.type == "location" then
         if value then return done(value) end
@@ -929,6 +1010,24 @@ function Hotbar.removeSlot(slot)
     Hotbar.refreshBar()
 end
 
+--- Move a slot so it lands before the slot now at insertBefore (#slots + 1 = the end).
+function Hotbar.moveSlotTo(slot, insertBefore)
+    local slots = Hotbar.state.slots
+    for i, other in ipairs(slots) do
+        if other == slot then
+            local target = insertBefore > i and insertBefore - 1 or insertBefore
+            target = math.max(1, math.min(#slots, target))
+            if target ~= i then
+                table.remove(slots, i)
+                table.insert(slots, target, slot)
+                Hotbar.save()
+                Hotbar.refreshBar()
+            end
+            return
+        end
+    end
+end
+
 function Hotbar.moveSlot(slot, delta)
     local slots = Hotbar.state.slots
     for i, other in ipairs(slots) do
@@ -1022,6 +1121,11 @@ function SlotButton:prerender()
         border = { r = AMBER.r, g = AMBER.g, b = AMBER.b, a = 1 }
     end
 
+    if self.bar.dragging == self then
+        -- Its place while it is carried: an empty outline.
+        self:drawRectBorder(0, 0, w, h, 0.6, 0.6, 0.6, 0.6)
+        return
+    end
     self:drawRect(0, 0, w, h, bg.a, bg.r, bg.g, bg.b)
     self:drawRectBorder(0, 0, w, h, border.a, border.r, border.g, border.b)
     if state.toggle and state.on == true and state.available and not state.pending then
@@ -1032,12 +1136,13 @@ function SlotButton:prerender()
             self:drawRect(0, 0, w, h, 0.12, 1, 1, 1)
         end
         -- Only built while hovered: it names every setting.
-        self.tooltip = self.bar:tooltipFor(self.slot, state)
+        self.tooltip = not self.bar.dragging and self.bar:tooltipFor(self.slot, state) or nil
     end
     self:updateTooltip()
 end
 
 function SlotButton:render()
+    if self.bar.dragging == self then return end
     local cell = self.bar.cell
     local pad = math.max(3, math.floor(cell / 10))
     local iconSize = cell - pad * 2
@@ -1088,6 +1193,93 @@ function SlotButton:render()
         local label = truncate(Hotbar.slotTitle(self.slot), self.width - 4, UIFont.Small)
         self:drawTextCentre(label, self.width / 2, cell, 0.95, 0.95, 0.95, alpha, UIFont.Small)
     end
+end
+
+-- Dragging a slot along the bar reorders it. A press only turns into a drag once the
+-- mouse has moved this far, so an ordinary click still uses the slot.
+local DRAG_THRESHOLD = 6
+
+--- The slot's icon following the mouse while it is dragged. Top level so it draws over
+-- everything, and deaf to the mouse so the drop lands on what is under it.
+local DragGhost = ISPanel:derive("ZomboidFixesB42_AdminHotbarGhost")
+
+function DragGhost:new(button)
+    local o = ISPanel:new(getMouseX(), getMouseY(), button.bar.cell, button.bar.cell)
+    setmetatable(o, self)
+    self.__index = self
+    o.button = button
+    o.background = false
+    return o
+end
+
+function DragGhost:prerender()
+    self:setX(getMouseX() - self.width / 2)
+    self:setY(getMouseY() - self.height / 2)
+    self:drawRect(0, 0, self.width, self.height, 0.6, 0.07, 0.07, 0.07)
+    self:drawRectBorder(0, 0, self.width, self.height, 0.9, 0.8, 0.8, 0.8)
+    local texture = Hotbar.iconTexture(self.button.slot)
+    if texture then
+        local pad = math.max(3, math.floor(self.width / 10))
+        local tint = self.button.slot.tint or { r = 1, g = 1, b = 1 }
+        self:drawTextureScaledAspect(texture, pad, pad, self.width - pad * 2, self.height - pad * 2, 0.9, tint.r, tint.g, tint.b)
+    end
+end
+
+function SlotButton:onMouseDown(x, y)
+    ISButton.onMouseDown(self, x, y)
+    if self.slot then
+        self.dragFrom = { x = getMouseX(), y = getMouseY() }
+    end
+end
+
+function SlotButton:checkDrag()
+    if not self.pressed or not self.dragFrom or self.bar.dragging then return end
+    local moved = math.abs(getMouseX() - self.dragFrom.x) + math.abs(getMouseY() - self.dragFrom.y)
+    if moved < DRAG_THRESHOLD then return end
+    self.bar.dragging = self
+    self:setCapture(true)
+    local ghost = DragGhost:new(self)
+    ghost:initialise()
+    ghost:addToUIManager()
+    ghost:setAlwaysOnTop(true)
+    ghost:setWantMouseEvents(false)
+    self.ghost = ghost
+end
+
+function SlotButton:onMouseMove(dx, dy)
+    ISButton.onMouseMove(self, dx, dy)
+    self:checkDrag()
+end
+
+function SlotButton:onMouseMoveOutside(dx, dy)
+    ISButton.onMouseMoveOutside(self, dx, dy)
+    self:checkDrag()
+end
+
+function SlotButton:endDrag()
+    self:setCapture(false)
+    self.pressed = false
+    self.dragFrom = nil
+    if self.ghost then
+        self.ghost:removeFromUIManager()
+        self.ghost = nil
+    end
+    local bar = self.bar
+    bar.dragging = nil
+    local target = bar:dropIndex()
+    if target then Hotbar.moveSlotTo(self.slot, target) end
+end
+
+function SlotButton:onMouseUp(x, y)
+    if self.bar.dragging == self then return self:endDrag() end
+    self.dragFrom = nil
+    return ISButton.onMouseUp(self, x, y)
+end
+
+function SlotButton:onMouseUpOutside(x, y)
+    if self.bar.dragging == self then return self:endDrag() end
+    self.dragFrom = nil
+    return ISButton.onMouseUpOutside(self, x, y)
 end
 
 function SlotButton:onRightMouseUp(x, y)
@@ -1189,9 +1381,54 @@ function Bar:onSlotClick(button)
     Hotbar.activate(button.slot)
 end
 
+--- Where a dragged slot would land: the index of the slot it would go before, or
+-- #slots + 1 for the end. nil when the mouse has left the bar (the drag is cancelled).
+function Bar:dropIndex()
+    local mx, my = getMouseX() - self:getAbsoluteX(), getMouseY() - self:getAbsoluteY()
+    local margin = self.cell
+    if mx < -margin or my < -margin or mx > self.width + margin or my > self.height + margin then
+        return nil
+    end
+    local vertical = Hotbar.state.vertical
+    local along = vertical and my or mx
+    local count = #Hotbar.state.slots
+    for _, button in ipairs(self.buttons) do
+        if button.index then
+            local middle = vertical and (button:getY() + button:getHeight() / 2) or (button:getX() + button:getWidth() / 2)
+            if along < middle then return button.index end
+        end
+    end
+    return count + 1
+end
+
+function Bar:drawDropMarker()
+    local target = self:dropIndex()
+    if not target then return end
+    local vertical = Hotbar.state.vertical
+    local on = Hotbar.state.on
+    local position
+    for _, button in ipairs(self.buttons) do
+        if button.index == target then
+            position = vertical and button:getY() or button:getX()
+        end
+    end
+    if not position then
+        -- The end: just after the last slot.
+        local last = self.buttons[#self.buttons - 1]
+        if not last then return end
+        position = vertical and last:getBottom() + 3 or last:getRight() + 3
+    end
+    if vertical then
+        self:drawRect(3, position - 3, self.width - 6, 3, 1, on.r, on.g, on.b)
+    else
+        self:drawRect(position - 3, 3, 3, self.height - 6, 1, on.r, on.g, on.b)
+    end
+end
+
 function Bar:prerender()
     self:drawRect(0, 0, self.width, self.height, 0.55, 0, 0, 0)
     self:drawRectBorder(0, 0, self.width, self.height, 0.8, 0.35, 0.35, 0.35)
+    if self.dragging then self:drawDropMarker() end
     -- The grip: a column (or row) of dots that shows where to drag.
     local tex = circle()
     if tex then
@@ -1928,42 +2165,70 @@ end
 
 -- Sidebar button ----------------------------------------------------------------------------
 
-local SIDEBAR_TINT = { r = 1, g = 0.82, b = 0.3, a = 1 }
+-- The bar's own icon, drawn rather than shipped: a disc with three slots in a row,
+-- green while the bar is shown, red while it is hidden.
+local SIDEBAR_ON = { r = 0.2, g = 0.65, b = 0.25 }
+local SIDEBAR_OFF = { r = 0.7, g = 0.2, b = 0.2 }
 
 local function renderSidebarButton(self)
-    ISButton.render(self)
-    local Icons = Hotbar.Icons
-    local bolt = Icons and Icons.texture("sym:Lightning")
-    if bolt then
-        local size = math.floor(self.width * 0.42)
-        self:drawTextureScaledAspect(bolt, self.width - size - 2, self.height - size - 2, size, size, 1, 1, 0.9, 0.3)
+    local tex = circle()
+    local shown = Hotbar.isVisible()
+    local colour = shown and SIDEBAR_ON or SIDEBAR_OFF
+    local lift = self:isMouseOver() and 0.12 or 0
+    local size = math.floor(math.min(self.width, self.height) * 0.86)
+    local x = math.floor((self.width - size) / 2)
+    local y = math.floor((self.height - size) / 2)
+    if tex then
+        self:drawTextureScaled(tex, x - 2, y - 2, size + 4, size + 4, 0.75, 0, 0, 0)
+        self:drawTextureScaled(tex, x, y, size, size, 1,
+            math.min(1, colour.r + lift), math.min(1, colour.g + lift), math.min(1, colour.b + lift))
     end
+    local square = math.max(3, math.floor(size * 0.19))
+    local gap = math.max(2, math.floor(size * 0.1))
+    local left = math.floor(self.width / 2 - (square * 3 + gap * 2) / 2)
+    local top = math.floor(self.height / 2 - square / 2)
+    for i = 0, 2 do
+        self:drawRect(left + i * (square + gap), top, square, square, 0.95, 0.96, 0.96, 0.96)
+    end
+
+    -- A toggle still on while the bar is hidden: a small green dot, so cheats are not forgotten.
     local admin = getPlayer()
-    if admin and not Hotbar.isVisible() and Hotbar.anyToggleOn(admin) then
-        local tex = circle()
+    if tex and admin and not shown and Hotbar.anyToggleOn(admin) then
         local on = Hotbar.state.on
         local dot = math.max(8, math.floor(self.width / 6))
-        if tex then
-            self:drawTextureScaled(tex, self.width - dot - 2, 2, dot, dot, 1, on.r, on.g, on.b)
+        self:drawTextureScaled(tex, self.width - dot - 1, 0, dot + 2, dot + 2, 0.8, 0, 0, 0)
+        self:drawTextureScaled(tex, self.width - dot, 1, dot, dot, 1, on.r, on.g, on.b)
+    end
+end
+
+--- The bottom of the lowest sidebar button, the way ISEquippedItem:shrinkWrap measures.
+local function lowestButtonBottom(sidebar)
+    local bottom = 0
+    for _, child in pairs(sidebar:getChildren()) do
+        if child.Type == "ISButton" and child ~= sidebar.zomboidFixesHotbarBtn then
+            bottom = math.max(bottom, child:getBottom())
         end
     end
+    return bottom
 end
 
 local vanillaInitialise = ISEquippedItem.initialise
 
 function ISEquippedItem:initialise()
     vanillaInitialise(self)
-    if not self.adminBtn then return end
+    -- Sized like the other sidebar buttons (vanilla's texture size is a file local).
+    local model = self.adminBtn or self.healthBtn or self.invBtn
+    if not model then return end
+    -- Under the Admin button on a server; single player has none, so under the lowest button.
+    local top = self.adminBtn and self.adminBtn:getBottom() or lowestButtonBottom(self)
 
-    local button = ISButton:new(0, self.adminBtn:getBottom() + UI_BORDER_SPACING + 5,
-        self.adminBtn:getWidth(), self.adminBtn:getHeight(), "", self, ISEquippedItem.onOptionMouseDown)
-    button:setImage(self.adminIconOff)
+    local button = ISButton:new(0, top + UI_BORDER_SPACING + 5,
+        model:getWidth(), model:getHeight(), "", self, ISEquippedItem.onOptionMouseDown)
     button.internal = "ZOMBOIDFIXES_HOTBAR"
     button:initialise()
     button:instantiate()
     button:setDisplayBackground(false)
     button.borderColor = { r = 1, g = 1, b = 1, a = 0.1 }
-    button.textureColor = { r = SIDEBAR_TINT.r, g = SIDEBAR_TINT.g, b = SIDEBAR_TINT.b, a = SIDEBAR_TINT.a }
     button:ignoreWidthChange()
     button:ignoreHeightChange()
     button.render = renderSidebarButton
@@ -1980,16 +2245,19 @@ function ISEquippedItem:prerender()
     local button = self.zomboidFixesHotbarBtn
     if not button then return end
 
-    local visible = self.adminBtn and self.adminBtn:isVisible() and Hotbar.canUse(self.chr) or false
+    local visible = Hotbar.canUse(self.chr)
+    if self.adminBtn and not self.adminBtn:isVisible() then visible = false end
     button:setVisible(visible)
     if not visible then return end
 
-    button:setY(self.adminBtn:getBottom() + UI_BORDER_SPACING + 5)
-    button:setImage(Hotbar.isVisible() and self.adminIconOn or self.adminIconOff)
     local bottom = button:getBottom()
-    if self.warManagerBtn and self.warManagerBtn:isVisible() then
-        self.warManagerBtn:setY(bottom + UI_BORDER_SPACING)
-        bottom = self.warManagerBtn:getBottom()
+    if self.adminBtn then
+        button:setY(self.adminBtn:getBottom() + UI_BORDER_SPACING + 5)
+        bottom = button:getBottom()
+        if self.warManagerBtn and self.warManagerBtn:isVisible() then
+            self.warManagerBtn:setY(bottom + UI_BORDER_SPACING)
+            bottom = self.warManagerBtn:getBottom()
+        end
     end
     if self.height < bottom then
         self:setHeight(bottom)

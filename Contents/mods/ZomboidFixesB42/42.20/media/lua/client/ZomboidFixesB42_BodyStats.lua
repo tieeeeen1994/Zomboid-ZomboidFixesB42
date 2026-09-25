@@ -157,7 +157,7 @@ function BodyStatsWindow:createChildren()
     self:addChild(self.closeBtn)
 
     local Hotbar = ZomboidFixesB42.AdminHotbar
-    if isClient() and Hotbar and Hotbar.canUse(self.admin) then
+    if Hotbar and Hotbar.canUse(self.admin) then
         local title = getText("IGUI_ZomboidFixesB42_AdminHotbar_AddToHotbar")
         local width = getTextManager():MeasureStringX(UIFont.Small, title) + UI_BORDER_SPACING * 2
         self.hotbarBtn = ISButton:new(self.closeBtn:getX() - UI_BORDER_SPACING - width, self.closeBtn:getY(), width, BUTTON_HGT,
@@ -430,6 +430,21 @@ end
 -- Used by the admin hotbar's body presets.
 function ZomboidFixesB42.sendBodyStats(admin, username, values)
     if not admin or type(username) ~= "string" or type(values) ~= "table" then return end
+
+    -- Single player: the window's own path, straight onto the (local) character.
+    if not isClient() then
+        for i = 0, getNumActivePlayers() - 1 do
+            local target = getSpecificPlayer(i)
+            if target and target:getUsername() == username then
+                for key, value in pairs(values) do
+                    if BodyStats.getField(key) then BodyStats.apply(target, key, value) end
+                end
+                return
+            end
+        end
+        return
+    end
+
     local queue, any = {}, false
     for key, value in pairs(values) do
         local field = BodyStats.getField(key)
