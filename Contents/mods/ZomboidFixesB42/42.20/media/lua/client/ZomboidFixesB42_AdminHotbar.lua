@@ -55,8 +55,8 @@
 
     Slots are saved per client and per server, in Zomboid/Lua, because usernames
     and coordinates mean nothing on another server; single player has one file of
-    its own. Keys are PZAPI.ModOptions key binds (Options > Mods), unbound by default;
-    their Shift / Ctrl / Alt are kept by this file, since ModOptions drops them (see Keys).
+    its own. Keys are vanilla key bindings (Options > Key Bindings, "Admin Hotbar"),
+    unbound by default (see Keys).
 --]]
 
 require "ISUI/ISPanel"
@@ -72,7 +72,7 @@ require "ISUI/ISContextMenu"
 require "ISUI/ISWorldObjectContextMenu"
 require "ISUI/ISColorPicker"
 require "ISUI/ISEquippedItem"
-require "PZAPI/ModOptions"
+require "OptionScreens/MainOptions"
 
 ZomboidFixesB42 = ZomboidFixesB42 or {}
 
@@ -2096,6 +2096,11 @@ function Bar:update()
     end
 
     local now = getTimestampMs()
+    -- Key binds can change in the options screen at any time.
+    if now - (self.lastKeys or 0) >= 1000 then
+        self.lastKeys = now
+        self:updateKeyTexts()
+    end
     if now - self.lastPlayers >= SCOREBOARD_MS then
         self.lastPlayers = now
         Hotbar.requestPlayers()
@@ -2688,163 +2693,66 @@ end
 -- Keys ----------------------------------------------------------------------------------------
 
 --[[
-    The keys are PZAPI.ModOptions key binds (Options > Mods). The options screen
-    records Shift / Ctrl / Alt for a mod key bind like for a vanilla one
-    (MainOptions.keyPressHandler sets keyCode, shift, ctrl, alt on the button's entry,
-    and it shows "SHIFT + 1"), but PZAPI.ModOptions keeps and saves only the key code:
-    option:getValue() is the bare key and ModOptions.ini has no room for modifiers.
-    So "Shift + 1" was just "1". The modifiers are therefore read off the options
-    screen when ModOptions saves, kept in a file of our own (MODIFIERS_FILE, per client
-    like ModOptions.ini), and put back on the options (shift / ctrl / alt) so the
-    screen shows them again; MainOptions copies option.shift and option.ctrl into the
-    screen but not option.alt, so an Alt the screen did not report is kept as it was.
+    The keys are vanilla key bindings (Options > Key Bindings, in a section of their
+    own), added the way the game adds its own: entries appended to the keyBinding
+    table (shared/keyBinding.lua). MainOptions.loadKeys, run whenever the options
+    screen is built, hands every entry to Core.addKeyBinding(name, key, altKey,
+    shift, ctrl, alt) and restores it from keysB42.ini, which it also saves to, so a
+    bind keeps its Shift / Ctrl / Alt, gets vanilla's duplicate check, and is tested
+    with getCore():isKey(name, key). isKey applies vanilla's modifier rule
+    (Core.invalidBindingShiftCtrl): a bind with a modifier only fires while it is
+    held, and a bind without one steps aside when another bind on the same key
+    matches the held modifiers exactly, so "Shift + 1" here no longer also picks
+    item hotbar slot 1, and "1" no longer fires "Shift + 1".
 
-    A key press then follows vanilla's rule for its own binds
-    (Core.invalidBindingShiftCtrl): a bind with a modifier only fires while that
-    modifier is held; a bind without one still fires with modifiers held, unless
-    another bind on the same key matches the held modifiers exactly.
+    They used to be PZAPI.ModOptions key binds, which keep only the key code: the
+    options screen showed "SHIFT + 1", but getValue() and ModOptions.ini have no
+    modifiers, so the bind was really "1". Binds made there are moved over once
+    (moveModOptionsKeys).
 --]]
 
-local MODIFIERS_FILE = "ZomboidFixesB42_AdminHotbar_Keys.ini"
-local KEY_IDS = { "adminHotbarToggle" }
-for i = 1, SLOT_KEYS do table.insert(KEY_IDS, "adminHotbarSlot" .. i) end
+local KEY_SECTION = "[ZF Admin Hotbar]"
+local KEY_TOGGLE = "ZF Admin Hotbar Toggle"
 
-local modOptions = nil
+-- Short internal names: MainOptions sizes the label column by the widest bind name
+-- (not its translation), and keysB42.ini is keyed by them.
+local function slotKeyName(index)
+    return "ZF Admin Hotbar Slot " .. string.format("%d", index)
+end
 
-if PZAPI and PZAPI.ModOptions then
-    modOptions = PZAPI.ModOptions:create("ZomboidFixesB42", getText("IGUI_ZomboidFixesB42_ModOptions"))
-    modOptions:addKeyBind("adminHotbarToggle", txt("KeyToggle"), 0, txt("KeyToggleTooltip"))
+-- keyBinding.lua (shared) is run again whenever Lua reloads, and so is this file.
+local function addKeyBindings()
+    for _, bind in ipairs(keyBinding) do
+        if bind.value == KEY_SECTION then return end
+    end
+    table.insert(keyBinding, { value = KEY_SECTION })
+    table.insert(keyBinding, { value = KEY_TOGGLE, key = 0 })
     for i = 1, SLOT_KEYS do
-        modOptions:addKeyBind("adminHotbarSlot" .. i, txt("KeySlot", Hotbar.int(i)), 0)
+        table.insert(keyBinding, { value = slotKeyName(i), key = 0 })
     end
 end
 
-local function optionOf(id)
-    return modOptions and modOptions:getOption(id) or nil
-end
+if keyBinding then addKeyBindings() end
 
-local function keyOf(id)
-    local option = optionOf(id)
-    return option and option:getValue() or 0
-end
-
-local function loadModifiers()
-    local reader = getFileReader(MODIFIERS_FILE, false)
-    if not reader then return end
-    while true do
-        local line = reader:readLine()
-        if not line then break end
-        local id, shift, ctrl, alt = string.match(line, "^([%w_]+)|([01])|([01])|([01])")
-        local option = id and optionOf(id)
-        if option then
-            option.shift = shift == "1"
-            option.ctrl = ctrl == "1"
-            option.alt = alt == "1"
-        end
+--- The bind as MainOptions.loadKeys left it: { key, shift, ctrl, alt }, or nil.
+local function bindOf(name)
+    for _, bind in ipairs(MainOptions and MainOptions.keys or {}) do
+        if bind.value == name then return bind end
     end
-    reader:close()
-end
-
-local function saveModifiers()
-    local writer = getFileWriter(MODIFIERS_FILE, true, false)
-    if not writer then return end
-    for _, id in ipairs(KEY_IDS) do
-        local option = optionOf(id)
-        if option then
-            local function bit(value) return value == true and "1" or "0" end
-            writer:write(id .. "|" .. bit(option.shift) .. "|" .. bit(option.ctrl) .. "|" .. bit(option.alt) .. "\r\n")
-        end
-    end
-    writer:close()
-end
-
---- Before ModOptions saves: take the modifiers from the options screen's entries.
-local function captureModifiers()
-    for _, id in ipairs(KEY_IDS) do
-        local option = optionOf(id)
-        local element = option and option.element
-        -- Only the screen's key entry has keyCode (option.element is briefly the button).
-        if element and element.keyCode ~= nil then
-            if (tonumber(element.keyCode) or 0) == 0 then
-                option.shift, option.ctrl, option.alt = false, false, false
-            else
-                if element.shift ~= nil then option.shift = element.shift == true end
-                if element.ctrl ~= nil then option.ctrl = element.ctrl == true end
-                if element.alt ~= nil then option.alt = element.alt == true end
-            end
-        end
-    end
-end
-
-if modOptions then
-    loadModifiers()
-    -- Client Lua loads again when joining a server; wrap vanilla's save only once.
-    PZAPI.ModOptions.zomboidFixesVanillaSave = PZAPI.ModOptions.zomboidFixesVanillaSave or PZAPI.ModOptions.save
-    local vanillaSave = PZAPI.ModOptions.zomboidFixesVanillaSave
-    PZAPI.ModOptions.save = function(self, ...)
-        captureModifiers()
-        local result = vanillaSave(self, ...)
-        saveModifiers()
-        if Hotbar.getBar then
-            local bar = Hotbar.getBar()
-            if bar then bar:updateKeyTexts() end
-        end
-        return result
-    end
-end
-
-local function modifiersOf(id)
-    local option = optionOf(id)
-    if not option then return false, false, false end
-    return option.shift == true, option.ctrl == true, option.alt == true
+    return nil
 end
 
 function Hotbar.slotKey(index)
-    return keyOf("adminHotbarSlot" .. index)
+    return getCore():getKey(slotKeyName(index))
 end
 
---- A slot's key as the bar shows it, with its modifiers: "S+1", "C+F2", ... or nil.
+--- A slot's key as the bar shows it, with its modifiers ("S+1", "C+F2"), or nil.
 function Hotbar.slotKeyText(index)
-    local id = "adminHotbarSlot" .. index
-    local key = keyOf(id)
+    local key = Hotbar.slotKey(index)
     if not key or key == 0 then return nil end
-    local shift, ctrl, alt = modifiersOf(id)
-    local prefix = (ctrl and "C+" or "") .. (alt and "A+" or "") .. (shift and "S+" or "")
+    local bind = bindOf(slotKeyName(index)) or {}
+    local prefix = (bind.ctrl and "C+" or "") .. (bind.alt and "A+" or "") .. (bind.shift and "S+" or "")
     return prefix .. getKeyName(key)
-end
-
--- The raw key codes vanilla's own check reads (GameKeyboard.isKeyDownRaw).
-local function heldModifiers()
-    return isKeyDown(42) or isKeyDown(54), isKeyDown(29) or isKeyDown(157), isKeyDown(56) or isKeyDown(184)
-end
-
---- The bind this key press is for, by vanilla's rule; nil when none.
-local function bindFor(key)
-    local shiftDown, ctrlDown, altDown = heldModifiers()
-    local candidates = {}
-    local exact = nil
-    for _, id in ipairs(KEY_IDS) do
-        if keyOf(id) == key then
-            local shift, ctrl, alt = modifiersOf(id)
-            -- Every modifier the bind asks for must be held.
-            if (not shift or shiftDown) and (not ctrl or ctrlDown) and (not alt or altDown) then
-                table.insert(candidates, id)
-                if shift == shiftDown and ctrl == ctrlDown and alt == altDown and not exact then
-                    exact = id
-                end
-            end
-        end
-    end
-    if exact then return exact end
-    -- None matches exactly (say Ctrl+Shift+1 held, binds "1" and "Shift+1"): the one
-    -- asking for the most of what is held.
-    local best, bestCount = nil, -1
-    for _, id in ipairs(candidates) do
-        local shift, ctrl, alt = modifiersOf(id)
-        local count = (shift and 1 or 0) + (ctrl and 1 or 0) + (alt and 1 or 0)
-        if count > bestCount then best, bestCount = id, count end
-    end
-    return best
 end
 
 local function onKeyPressed(key)
@@ -2852,27 +2760,86 @@ local function onKeyPressed(key)
     local admin = getPlayer()
     if not admin or not Hotbar.canUse(admin) then return end
 
-    local id = bindFor(key)
-    if not id then return end
-    if id == "adminHotbarToggle" then
+    local core = getCore()
+    if core:isKey(KEY_TOGGLE, key) then
         Hotbar.toggle()
         return
     end
-    local index = tonumber(string.match(id, "(%d+)$"))
-    local slot = index and Hotbar.state.slots[index]
-    if slot then Hotbar.activate(slot, admin) end
+    for i = 1, SLOT_KEYS do
+        if core:isKey(slotKeyName(i), key) then
+            local slot = Hotbar.state.slots[i]
+            if slot then Hotbar.activate(slot, admin) end
+            return
+        end
+    end
 end
 
 Events.OnKeyPressed.Add(onKeyPressed)
 
+--[[
+    Moving binds made under Options > Mods (ModOptions.ini lines
+    "keybind|ZomboidFixesB42|<id>|<key>") into the key bindings, once. A bind is only
+    taken when the new one is still unset, and only once the options screen exists:
+    MainOptions.saveKeys writes keysB42.ini from the screen's entries
+    (MainOptions.keyText), so those are updated too, then the file is saved and read
+    back (saveKeys clears the keys it does not reload). A marker file stops it from
+    ever happening again, even if the binds are cleared later.
+--]]
+local MOVED_MARKER = "ZomboidFixesB42_AdminHotbar_KeysMoved.txt"
+local OLD_IDS = { adminHotbarToggle = KEY_TOGGLE }
+for i = 1, SLOT_KEYS do OLD_IDS["adminHotbarSlot" .. i] = slotKeyName(i) end
+
+local function moveModOptionsKeys()
+    if not MainOptions or not MainOptions.keyText or #MainOptions.keyText == 0 then return end
+    local marker = getFileReader(MOVED_MARKER, false)
+    if marker then
+        marker:close()
+        return
+    end
+
+    local reader = getFileReader("ModOptions.ini", false)
+    local moved = 0
+    if reader then
+        while true do
+            local line = reader:readLine()
+            if not line then break end
+            local id, key = string.match(line, "^keybind|ZomboidFixesB42|([%w_]+)|(%d+)")
+            local name = id and OLD_IDS[id]
+            key = tonumber(key)
+            if name and key and key > 0 and getCore():getKey(name) == 0 then
+                for _, entry in ipairs(MainOptions.keyText) do
+                    if not entry.value and entry.txt and entry.txt:getName() == name then
+                        entry.keyCode = key
+                        entry.shift, entry.ctrl, entry.alt = false, false, false
+                        if entry.btn then entry.btn:setTitle(getKeyName(key)) end
+                        moved = moved + 1
+                    end
+                end
+            end
+        end
+        reader:close()
+    end
+    if moved > 0 then
+        MainOptions.saveKeys()
+        MainOptions.loadKeys()
+    end
+
+    local writer = getFileWriter(MOVED_MARKER, true, false)
+    if writer then
+        writer:write("Admin hotbar keys moved from Options > Mods to Options > Key Bindings.\r\n")
+        writer:close()
+    end
+end
+
 -- Start ------------------------------------------------------------------------------------------
 
 local function onGameStart()
-    -- Mod key binds are otherwise only read back from ModOptions.ini when the options
-    -- screen is built.
-    if PZAPI and PZAPI.ModOptions and modOptions then
-        PZAPI.ModOptions:load()
+    -- The key bindings reach Core when the options screen is built; if it was built
+    -- before this file added them (a Lua reload without a new screen), load them now.
+    if MainOptions and MainOptions.loadKeys and not bindOf(KEY_TOGGLE) then
+        MainOptions.loadKeys()
     end
+    moveModOptionsKeys()
     Hotbar.load()
     Hotbar.refreshBar()
 end
