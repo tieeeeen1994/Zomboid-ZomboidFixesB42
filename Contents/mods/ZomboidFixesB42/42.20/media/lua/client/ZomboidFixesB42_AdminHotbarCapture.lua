@@ -17,15 +17,14 @@
       Teleport            the coordinates                -> Teleport to location
       Scoreboard          a player                       -> any player action
       Tools menu          the clicked square             -> teleport, noise, horde,
-                                                            fire, explosion there
+      (Debug menu in                                        fire, explosion there
+      single player)
 
     The Body window's button lives in ZomboidFixesB42_BodyStats.lua.
 
     Each vanilla window is left as it is apart from the one button; where there was
     no room, its bottom buttons move down by one row.
 --]]
-
-if not isClient() then return end
 
 require "ZomboidFixesB42_AdminHotbar"
 require "ISUI/AdminPanel/ISItemsListTable"
@@ -315,7 +314,9 @@ local function onFillWorldObjectContextMenu(playerNum, context, worldobjects, te
     if test and ISWorldObjectContextMenu.Test then return true end
     if not canCapture() then return end
 
-    local tools = context:getOptionFromName("Tools")
+    -- AdminContextMenu's Tools menu only exists on a server; single player's admin
+    -- tools are in the Debug menu.
+    local tools = context:getOptionFromName("Tools") or context:getOptionFromName(getText("ContextMenu_Debug"))
     local toolsMenu = tools and tools.subOption and context:getSubMenu(tools.subOption)
     if not toolsMenu then return end
 

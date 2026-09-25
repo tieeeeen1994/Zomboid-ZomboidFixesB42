@@ -23,8 +23,6 @@
     from getWorld():getAllTilesName() the way the Tile Picker walks them.
 --]]
 
-if not isClient() then return end
-
 require "ISUI/ISPanel"
 require "ISUI/ISButton"
 require "ISUI/ISTextEntryBox"

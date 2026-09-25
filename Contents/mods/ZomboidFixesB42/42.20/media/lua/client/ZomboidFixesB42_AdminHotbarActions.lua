@@ -30,9 +30,21 @@
     generator, a selected zombie, a corpse, one animal, a vehicle's colours) stay in
     the right-click menus. Quitting, reloading Lua, world generation, log levels and
     role changes are left to the Custom command action.
---]]
 
-if not isClient() then return end
+    Single player (debug mode only, see the core file) has no server for the chat
+    commands, so each action also has the single player branch vanilla's own window
+    uses: the Item List adds the item to the inventory, the Horde Manager calls
+    addZombiesInOutfit, Spawn Vehicle calls addVehicle with coordinates, teleports
+    call teleportTo, weather calls the ClimateManager directly
+    (triggerCustomWeatherStage, stopWeatherAndThunder, the precipitation admin value
+    /startrain sets), thunder calls ThunderStorm.triggerThunderEvent, which runs
+    locally outside a server, and so on. Where vanilla already has one function for
+    both (DebugContextMenu.AddAnimal, OnGetBuildingKey, doRandomizedVehicleStory,
+    doRandomizedZoneStory, onAddEnclosure, removeAllVehicles, testHelicopter,
+    endHelicopter), it is called for both. The vehicle and fire client commands work
+    in single player too: sendClientCommand reaches the server Lua there, and those
+    handlers do not check the role. Actions that need a server are greyed out.
+--]]
 
 require "ZomboidFixesB42_AdminHotbar"
 require "ISUI/AdminPanel/ISAdminPowerUI"
@@ -83,8 +95,29 @@ local function toolsOr(name)
     end
 end
 
+--- For actions that need someone other than you: in single player that means a
+-- split screen player.
+local function needsOther(check)
+    return function(admin)
+        if not isClient() and getNumActivePlayers() < 2 then return false, txt("NeedsOtherPlayer") end
+        return check(admin)
+    end
+end
+
+--- For actions that only exist on a server: greyed out in single player, else check.
+local function mpOnly(check)
+    return function(admin)
+        if not isClient() then return false, txt("MultiplayerOnly") end
+        if check then return check(admin) end
+        return true
+    end
+end
+
 -- Params --------------------------------------------------------------------------------
 
+--- Actions that make sense on yourself (god mode, add XP, body stats, lightning...)
+-- target you by default; the ones that only make sense on someone else (teleport to,
+-- bring, kick, ban...) ask. Either can be changed in the slot's settings.
 local function playerParam(default, optional)
     return { key = "player", type = "player", title = txt("ParamPlayer"), default = default or "@ask", optional = optional }
 end
@@ -112,11 +145,15 @@ end
 -- Helpers -----------------------------------------------------------------------------------
 
 local function loadedPlayer(ctx)
-    local player = ctx.values.player and getPlayerFromUsername(ctx.values.player)
+    local player = Hotbar.findPlayer(ctx.values.player)
     if not player then
         Hotbar.say(ctx.admin, txt("PlayerNotLoaded"), true)
     end
     return player
+end
+
+local function teleport(player, x, y, z)
+    player:teleportTo(x, y, z)
 end
 
 local function coordsOf(location)
@@ -197,6 +234,8 @@ for _, option in ipairs(ISAdminPowerUI.OptionList or {}) do
         tooltip = power.tooltip,
         icon = POWER_ICONS[power.id] or "sym:Star",
         available = function(admin)
+            -- Admin Powers' own rule: isDebugEnabled() (single player) or the role.
+            if not isClient() then return true end
             local role = admin:getRole()
             if not role or not role:hasAdminPower() then return false, txt("NeedsAdminPower") end
             if power.capability and not role:hasCapability(power.capability) then
@@ -213,7 +252,8 @@ for _, option in ipairs(ISAdminPowerUI.OptionList or {}) do
                 power.player = ctx.admin
                 if on == nil then on = not power:getValue() end
                 power:setValue(on)
-                sendPlayerExtraInfo(ctx.admin)
+                -- Tells the server and every other client; there is no one to tell alone.
+                if isClient() then sendPlayerExtraInfo(ctx.admin) end
             end,
         },
     })
@@ -222,24 +262,32 @@ end
 -- 2. Players --------------------------------------------------------------------------------------------
 
 --- God mode, invisibility and noclip for any player, through the server's own
--- commands: they are the only way these reach every client.
-local function playerFlag(id, command, capability, getter, icon, key)
+-- commands: they are the only way these reach every client. In single player the
+-- flag is set on the (local) player directly.
+local function playerFlag(id, command, capability, getter, setter, icon, key)
     register({
         id = id,
         category = "players",
         title = txt(key),
         tooltip = txt(key .. "Tooltip"),
         icon = icon,
-        params = { playerParam() },
+        params = { playerParam("@me") },
         available = needs(capability),
         toggle = {
             isOn = function(ctx)
-                local player = ctx.values.player and getPlayerFromUsername(ctx.values.player)
+                local player = Hotbar.findPlayer(ctx.values.player)
                 if not player then return nil end
                 local method = player[getter]
                 return method ~= nil and method(player) == true
             end,
             set = function(ctx, on)
+                if not isClient() then
+                    local player = loadedPlayer(ctx)
+                    if not player then return end
+                    if on == nil then on = not player[getter](player) end
+                    player[setter](player, on)
+                    return
+                end
                 local suffix = ""
                 if on == true then suffix = " -true" elseif on == false then suffix = " -false" end
                 cmd(command .. " " .. q(ctx.values.player) .. suffix)
@@ -248,9 +296,9 @@ local function playerFlag(id, command, capability, getter, icon, key)
     })
 end
 
-playerFlag("players.godmode", "/godmodplayer", "ToggleGodModEveryone", "isGodMod", "item:Base.Vest_BulletArmy", "PlayerGodMode")
-playerFlag("players.invisible", "/invisibleplayer", "ToggleInvisibleEveryone", "isInvisible", "item:Base.Hat_BalaclavaFull", "PlayerInvisible")
-playerFlag("players.noclip", "/noclip", "ToggleNoclipEveryone", "isNoClip", "sym:Door", "PlayerNoClip")
+playerFlag("players.godmode", "/godmodplayer", "ToggleGodModEveryone", "isGodMod", "setGodMod", "item:Base.Vest_BulletArmy", "PlayerGodMode")
+playerFlag("players.invisible", "/invisibleplayer", "ToggleInvisibleEveryone", "isInvisible", "setInvisible", "item:Base.Hat_BalaclavaFull", "PlayerInvisible")
+playerFlag("players.noclip", "/noclip", "ToggleNoclipEveryone", "isNoClip", "setNoClip", "sym:Door", "PlayerNoClip")
 
 register({
     id = "players.teleportTo",
@@ -259,8 +307,12 @@ register({
     tooltip = txt("TeleportToPlayerTooltip"),
     icon = "sym:Target",
     params = { playerParam() },
-    available = needs("TeleportToPlayer"),
-    run = function(ctx) cmd("/teleport " .. q(ctx.values.player)) end,
+    available = needsOther(needs("TeleportToPlayer")),
+    run = function(ctx)
+        if isClient() then return cmd("/teleport " .. q(ctx.values.player)) end
+        local player = loadedPlayer(ctx)
+        if player then teleport(ctx.admin, player:getX(), player:getY(), player:getZ()) end
+    end,
 })
 
 register({
@@ -270,9 +322,13 @@ register({
     tooltip = txt("BringPlayerTooltip"),
     icon = "sym:ArrowSouth",
     params = { playerParam() },
-    available = needs("TeleportPlayerToAnotherPlayer"),
+    available = needsOther(needs("TeleportPlayerToAnotherPlayer")),
     run = function(ctx)
-        cmd("/teleportplayer " .. q(ctx.values.player) .. " " .. q(ctx.admin:getUsername()))
+        if isClient() then
+            return cmd("/teleportplayer " .. q(ctx.values.player) .. " " .. q(ctx.admin:getUsername()))
+        end
+        local player = loadedPlayer(ctx)
+        if player then teleport(player, ctx.admin:getX(), ctx.admin:getY(), ctx.admin:getZ()) end
     end,
 })
 
@@ -285,7 +341,12 @@ register({
     params = { playerParam(), locationParam("@pick") },
     available = needs("TeleportToCoordinates"),
     run = function(ctx)
-        cmd("/teleportto " .. q(ctx.values.player) .. " " .. coordsOf(ctx.values.location))
+        local l = ctx.values.location
+        if isClient() then
+            return cmd("/teleportto " .. q(ctx.values.player) .. " " .. coordsOf(l))
+        end
+        local player = loadedPlayer(ctx)
+        if player then teleport(player, l.x + 0.5, l.y + 0.5, l.z) end
     end,
 })
 
@@ -296,7 +357,7 @@ register({
     tooltip = txt("BringEveryoneTooltip"),
     icon = "sym:Columns",
     confirm = true,
-    available = needs("TeleportPlayerToAnotherPlayer"),
+    available = mpOnly(needs("TeleportPlayerToAnotherPlayer")),
     run = function(ctx) teleportPlayers(ctx.admin) end,
 })
 
@@ -324,13 +385,21 @@ register({
     tooltip = txt("AddXpTooltip"),
     icon = "sym:Star",
     params = {
-        playerParam(),
+        playerParam("@me"),
         { key = "perk", type = "choice", title = txt("ParamPerk"), options = perks, search = true },
         numberParam("amount", txt("ParamXp"), nil, -100000, 100000, true, txt("XpHint")),
     },
     available = needs("AddXP"),
     run = function(ctx)
-        cmd("/addxp " .. q(ctx.values.player) .. " " .. ctx.values.perk .. "=" .. int(ctx.values.amount) .. " -false")
+        if isClient() then
+            return cmd("/addxp " .. q(ctx.values.player) .. " " .. ctx.values.perk .. "=" .. int(ctx.values.amount) .. " -false")
+        end
+        -- Player Stats' single player path.
+        local player = loadedPlayer(ctx)
+        local perk = Perks.FromString(ctx.values.perk)
+        if player and perk then
+            player:getXp():AddXP(perk, ctx.values.amount, false, false, false, false)
+        end
     end,
 })
 
@@ -340,7 +409,7 @@ register({
     title = txt("CheckStats"),
     tooltip = txt("CheckStatsTooltip"),
     icon = "item:Base.Clipboard",
-    params = { playerParam() },
+    params = { playerParam("@me") },
     available = needs("CanSeePlayersStats"),
     run = function(ctx)
         local player = loadedPlayer(ctx)
@@ -368,7 +437,7 @@ register({
     tooltip = txt("ManageInventoryTooltip"),
     icon = "item:Base.Bag_ALICEpack",
     params = { playerParam() },
-    available = needs("CanModifyPlayerStatsInThePlayerStatsUI"),
+    available = mpOnly(needs("CanModifyPlayerStatsInThePlayerStatsUI")),
     run = function(ctx)
         local player = loadedPlayer(ctx)
         if not player then return end
@@ -386,7 +455,7 @@ register({
     tooltip = txt("WarningPointTooltip"),
     icon = "sym:Exclamation",
     params = { playerParam(), textParam("reason", txt("ParamReason")), numberParam("amount", txt("ParamAmount"), 1, 1, 100, true) },
-    available = needs("CanModifyPlayerStatsInThePlayerStatsUI"),
+    available = mpOnly(needs("CanModifyPlayerStatsInThePlayerStatsUI")),
     run = function(ctx)
         addWarningPoint(ctx.values.player, ctx.values.reason, math.floor(ctx.values.amount))
     end,
@@ -399,10 +468,10 @@ register({
     tooltip = txt("MuteChatTooltip"),
     icon = "sym:X",
     params = { playerParam() },
-    available = needs("CanModifyPlayerStatsInThePlayerStatsUI"),
+    available = mpOnly(needs("CanModifyPlayerStatsInThePlayerStatsUI")),
     toggle = {
         isOn = function(ctx)
-            local player = ctx.values.player and getPlayerFromUsername(ctx.values.player)
+            local player = Hotbar.findPlayer(ctx.values.player)
             if not player then return nil end
             return player:isAllChatMuted() == true
         end,
@@ -425,7 +494,7 @@ register({
     icon = "sym:CrossedSwords",
     confirm = true,
     params = { playerParam(), textParam("reason", txt("ParamReason"), true) },
-    available = needs("KickUser"),
+    available = mpOnly(needs("KickUser")),
     run = function(ctx)
         local reason = ctx.values.reason
         cmd("/kick " .. q(ctx.values.player) .. (reason and (" -r " .. q(reason)) or ""))
@@ -444,7 +513,7 @@ register({
         textParam("reason", txt("ParamReason"), true),
         boolParam("ip", txt("ParamBanIp"), false, txt("BanIpTick")),
     },
-    available = needs("BanUnbanUser"),
+    available = mpOnly(needs("BanUnbanUser")),
     run = function(ctx)
         local reason = ctx.values.reason
         cmd("/banuser " .. q(ctx.values.player) .. (ctx.values.ip and " -ip" or "") .. (reason and (" -r " .. q(reason)) or ""))
@@ -458,7 +527,7 @@ register({
     tooltip = txt("VoiceBanTooltip"),
     icon = "item:Base.Headphones",
     params = { playerParam(), boolParam("ban", txt("ParamVoiceBan"), true, txt("VoiceBanTick")) },
-    available = needs("BanUnbanUser"),
+    available = mpOnly(needs("BanUnbanUser")),
     run = function(ctx)
         cmd("/voiceban " .. q(ctx.values.player) .. (ctx.values.ban and " -true" or " -false"))
     end,
@@ -476,7 +545,7 @@ register({
     tooltip = txt("BodyStatsTooltip"),
     icon = "sym:MedCross",
     params = {
-        playerParam(),
+        playerParam("@me"),
         {
             key = "preset", type = "preset", title = txt("ParamBodyPreset"),
             summary = function(preset)
@@ -496,7 +565,7 @@ register({
             ZomboidFixesB42.sendBodyStats(ctx.admin, name, ctx.values.preset)
             Hotbar.say(ctx.admin, txt("BodyPresetSent", name))
         elseif ZomboidFixesB42.openBodyStats then
-            ZomboidFixesB42.openBodyStats(ctx.admin, name, getPlayerFromUsername(name))
+            ZomboidFixesB42.openBodyStats(ctx.admin, name, Hotbar.findPlayer(name))
         end
     end,
 })
@@ -511,7 +580,11 @@ register({
     icon = "sym:House",
     params = { locationParam("@pick") },
     available = needs("TeleportToCoordinates"),
-    run = function(ctx) cmd("/teleportto " .. coordsOf(ctx.values.location)) end,
+    run = function(ctx)
+        local l = ctx.values.location
+        if isClient() then return cmd("/teleportto " .. coordsOf(l)) end
+        teleport(ctx.admin, l.x + 0.5, l.y + 0.5, l.z)
+    end,
     openUI = function(ctx) AdminContextMenu.onTeleportUI(ctx.admin) end,
 })
 
@@ -565,7 +638,19 @@ register({
     },
     available = needs("AddItem"),
     run = function(ctx)
-        cmd("/additem " .. q(ctx.values.player) .. " " .. q(ctx.values.item) .. " " .. int(ctx.values.count or 1))
+        local count = math.floor(ctx.values.count or 1)
+        if isClient() then
+            return cmd("/additem " .. q(ctx.values.player) .. " " .. q(ctx.values.item) .. " " .. int(count))
+        end
+        -- Item List's single player path.
+        local player = loadedPlayer(ctx)
+        if not player then return end
+        for _ = 1, count do
+            local item = instanceItem(ctx.values.item)
+            if not item then break end
+            if item:getType() == "CorpseAnimal" then item:createAndStoreDefaultDeadBody(nil) end
+            player:getInventory():AddItem(item)
+        end
     end,
     openUI = function(ctx) openAdminWindow("ITEMLIST") end,
 })
@@ -582,7 +667,8 @@ register({
         if not square or not square:getBuilding() then
             return Hotbar.say(ctx.admin, txt("NotInBuilding"), true)
         end
-        sendClientCommand(ctx.admin, "debugAction", "getBuildingKey", {})
+        -- The Debug menu's Get Building Key, which covers both.
+        DebugContextMenu.OnGetBuildingKey(nil, ctx.admin:getPlayerNum())
     end,
 })
 
@@ -595,7 +681,16 @@ register({
     params = { numberParam("keyId", txt("ParamKeyId"), nil, 0, 2147483647, true), playerParam("@me") },
     available = needs("AddItem"),
     run = function(ctx)
-        cmd("/addkey " .. q(ctx.values.player) .. " " .. q(int(ctx.values.keyId)))
+        if isClient() then
+            return cmd("/addkey " .. q(ctx.values.player) .. " " .. q(int(ctx.values.keyId)))
+        end
+        -- AdminContextMenu.OnGetDoorKey's single player path.
+        local player = loadedPlayer(ctx)
+        local key = player and instanceItem("Base.Key1")
+        if key then
+            key:setKeyId(math.floor(ctx.values.keyId))
+            player:getInventory():AddItem(key)
+        end
     end,
 })
 
@@ -655,7 +750,11 @@ register({
         local location = ctx.values.location
         -- AddVehicleCommand refuses anything above the ground floor.
         if location.z ~= 0 then return Hotbar.say(ctx.admin, txt("VehicleGroundOnly"), true) end
-        cmd("/addvehicle " .. ctx.values.vehicle .. " " .. coordsOf(location))
+        if isClient() then
+            return cmd("/addvehicle " .. ctx.values.vehicle .. " " .. coordsOf(location))
+        end
+        -- Spawn Vehicle's single player path.
+        addVehicle(ctx.values.vehicle, location.x, location.y, location.z)
     end,
     openUI = function(ctx) AdminContextMenu.onSpawnVehicle(ctx.admin) end,
 })
@@ -668,8 +767,12 @@ register({
     icon = "sym:SteeringWheel",
     available = needs("ManipulateVehicle"),
     -- On a client addVehicle ignores its arguments and sends /addvehicle with a
-    -- random script, which the server spawns where the admin stands.
-    run = function(ctx) addVehicle("", 0, 0, 0) end,
+    -- random script, which the server spawns where the admin stands. In single
+    -- player an empty script also means a random one, at the given coordinates.
+    run = function(ctx)
+        local admin = ctx.admin
+        addVehicle("", math.floor(admin:getX()), math.floor(admin:getY()), math.floor(admin:getZ()))
+    end,
 })
 
 local function vehicleCommand(id, key, icon, command, argsOf)
@@ -720,7 +823,8 @@ register({
     confirm = true,
     -- The /remove command needs AnimalCheats whatever it removes.
     available = needs("AnimalCheats"),
-    run = function(ctx) cmd("/remove vehicles") end,
+    -- /remove vehicles on a client, VehicleManager.removeVehicles in single player.
+    run = function(ctx) removeAllVehicles(ctx.admin) end,
 })
 
 register({
@@ -759,6 +863,9 @@ local function outfits()
     return outfitChoices
 end
 
+-- How far single player's Remove corpses reaches, around the admin.
+local CORPSE_RADIUS = 60
+
 local HORDE_FLAGS = {
     { key = "knockedDown", title = "IGUI_SpawnHorde_KnockedDown", arg = "-knockedDown" },
     { key = "crawler", title = "IGUI_SpawnHorde_Crawler", arg = "-crawler" },
@@ -791,6 +898,36 @@ local function hordeCommand(location, values)
     return table.concat(parts, " ")
 end
 
+--- ISSpawnHordeUI's single player path: one addZombiesInOutfit per zombie, spread
+-- over the radius, with the female chance an outfit for one sex needs.
+local function spawnHordeLocally(location, values)
+    local outfit = values.outfit
+    if outfit == "" then outfit = nil end
+    local femaleChance = nil
+    if outfit then
+        local male, female = getAllOutfits(false), getAllOutfits(true)
+        if male:contains(outfit) and not female:contains(outfit) then femaleChance = 0 end
+        if female:contains(outfit) and not male:contains(outfit) then femaleChance = 100 end
+    end
+    local radius = math.floor(values.radius or 0)
+    for _ = 1, math.floor(values.count or 1) do
+        local x = ZombRand(location.x - radius, location.x + radius + 1)
+        local y = ZombRand(location.y - radius, location.y + radius + 1)
+        addZombiesInOutfit(x, y, location.z, 1, outfit, femaleChance,
+            values.crawler == true, values.fallOnFront == true, values.fakeDead == true, values.knockedDown == true,
+            values.invulnerable == true, values.sitting == true, values.health or 1, false, 0,
+            values.ragdoll == true, values.onFire == true)
+    end
+end
+
+local function spawnHorde(location, values)
+    if isClient() then
+        cmd(hordeCommand(location, values))
+    else
+        spawnHordeLocally(location, values)
+    end
+end
+
 local hordeParams = {
     locationParam("@me"),
     numberParam("count", txt("ParamCount"), 10, 1, 500, true),
@@ -819,7 +956,7 @@ register({
     icon = "sym:Z",
     params = hordeParams,
     available = needs("CreateHorde"),
-    run = function(ctx) cmd(hordeCommand(ctx.values.location, ctx.values)) end,
+    run = function(ctx) spawnHorde(ctx.values.location, ctx.values) end,
     openUI = openHordeManager,
 })
 
@@ -829,9 +966,18 @@ register({
     title = txt("HordeNearPlayer"),
     tooltip = txt("HordeNearPlayerTooltip"),
     icon = "sym:Skull",
-    params = { playerParam(), numberParam("count", txt("ParamCount"), 10, 1, 500, true) },
+    params = { playerParam("@me"), numberParam("count", txt("ParamCount"), 10, 1, 500, true) },
     available = needs("CreateHorde"),
-    run = function(ctx) cmd("/createhorde " .. int(ctx.values.count) .. " " .. q(ctx.values.player)) end,
+    run = function(ctx)
+        if isClient() then
+            return cmd("/createhorde " .. int(ctx.values.count) .. " " .. q(ctx.values.player))
+        end
+        -- CreateHordeCommand spreads them within 10 squares of the player.
+        local player = loadedPlayer(ctx)
+        if not player then return end
+        local position = { x = math.floor(player:getX()), y = math.floor(player:getY()), z = math.floor(player:getZ()) }
+        spawnHordeLocally(position, { count = ctx.values.count, radius = 10, health = 1 })
+    end,
 })
 
 register({
@@ -842,7 +988,7 @@ register({
     icon = "sym:FaceDead",
     params = { locationParam("@pick") },
     available = needs("CreateHorde"),
-    run = function(ctx) cmd(hordeCommand(ctx.values.location, { count = 1, radius = 0, health = 1 })) end,
+    run = function(ctx) spawnHorde(ctx.values.location, { count = 1, radius = 0, health = 1 }) end,
 })
 
 register({
@@ -855,7 +1001,27 @@ register({
     available = needs("ManipulateZombie"),
     run = function(ctx)
         local l = ctx.values.location
-        cmd(string.format("/removezombies -x %s -y %s -z %s -radius %s", int(l.x), int(l.y), int(l.z), int(ctx.values.radius)))
+        local radius = math.floor(ctx.values.radius or 10)
+        if isClient() then
+            return cmd(string.format("/removezombies -x %s -y %s -z %s -radius %s", int(l.x), int(l.y), int(l.z), int(radius)))
+        end
+        -- Horde Manager's single player Remove Zombies.
+        local cell = getCell()
+        for x = l.x - radius, l.x + radius do
+            for y = l.y - radius, l.y + radius do
+                local square = cell:getGridSquare(x, y, l.z)
+                if square then
+                    local movers = square:getMovingObjects()
+                    for i = movers:size(), 1, -1 do
+                        local zombie = movers:get(i - 1)
+                        if instanceof(zombie, "IsoZombie") then
+                            zombie:removeFromWorld()
+                            zombie:removeFromSquare()
+                        end
+                    end
+                end
+            end
+        end
     end,
 })
 
@@ -867,7 +1033,10 @@ register({
     icon = "sym:Radiation",
     confirm = true,
     available = needs("ManipulateZombie"),
-    run = function(ctx) cmd("/removezombies -remove true") end,
+    run = function(ctx)
+        if isClient() then return cmd("/removezombies -remove true") end
+        DebugContextMenu.OnRemoveAllZombies()
+    end,
 })
 
 register({
@@ -878,7 +1047,26 @@ register({
     icon = "sym:Garbage",
     confirm = true,
     available = needs("AnimalCheats"),
-    run = function(ctx) cmd("/remove corpses") end,
+    run = function(ctx)
+        if isClient() then return cmd("/remove corpses") end
+        -- Horde Manager's single player Remove Bodies, over the loaded area around you.
+        local admin = ctx.admin
+        local cx, cy, z = math.floor(admin:getX()), math.floor(admin:getY()), math.floor(admin:getZ())
+        local cell = getCell()
+        for x = cx - CORPSE_RADIUS, cx + CORPSE_RADIUS do
+            for y = cy - CORPSE_RADIUS, cy + CORPSE_RADIUS do
+                local square = cell:getGridSquare(x, y, z)
+                if square then
+                    local bodies = {}
+                    local objects = square:getStaticMovingObjects()
+                    for i = 0, objects:size() - 1 do
+                        if instanceof(objects:get(i), "IsoDeadBody") then table.insert(bodies, objects:get(i)) end
+                    end
+                    for _, body in ipairs(bodies) do square:removeCorpse(body, false) end
+                end
+            end
+        end
+    end,
 })
 
 register({
@@ -950,6 +1138,18 @@ register({
 
 -- 8. Weather and climate ----------------------------------------------------------------------------------
 
+-- ClimateManager's precipitation, the float /startrain drives (index 3).
+local FLOAT_PRECIPITATION = 3
+
+--- What /startrain and /stoprain do on the server, for single player.
+local function setRainLocally(on, intensity)
+    local precipitation = getClimateManager():getClimateFloat(FLOAT_PRECIPITATION)
+    if on then
+        precipitation:setAdminValue(math.max(0, math.min(1, intensity / 100)))
+    end
+    precipitation:setEnableAdmin(on)
+end
+
 register({
     id = "weather.rain",
     category = "weather",
@@ -962,6 +1162,7 @@ register({
         isOn = function(ctx) return getClimateManager():isRaining() == true end,
         set = function(ctx, on)
             if on == nil then on = not getClimateManager():isRaining() end
+            if not isClient() then return setRainLocally(on, ctx.values.intensity or 50) end
             if on then
                 cmd("/startrain " .. int(ctx.values.intensity or 50))
             else
@@ -979,7 +1180,10 @@ register({
     icon = "sym:Lightning",
     params = { numberParam("hours", txt("ParamHours"), 24, 1, 240, true) },
     available = needs("StartStopRain"),
-    run = function(ctx) cmd("/startstorm " .. int(ctx.values.hours or 24)) end,
+    run = function(ctx)
+        if isClient() then return cmd("/startstorm " .. int(ctx.values.hours or 24)) end
+        getClimateManager():triggerCustomWeatherStage(WeatherPeriod.STAGE_STORM, ctx.values.hours or 24)
+    end,
 })
 
 register({
@@ -989,7 +1193,10 @@ register({
     tooltip = txt("StopWeatherTooltip"),
     icon = "sym:Sun",
     available = needs("StartStopRain"),
-    run = function(ctx) cmd("/stopweather") end,
+    run = function(ctx)
+        if isClient() then return cmd("/stopweather") end
+        getClimateManager():stopWeatherAndThunder()
+    end,
 })
 
 local WEATHER_KINDS = {
@@ -1026,6 +1233,19 @@ register({
     run = function(ctx)
         local clim = getClimateManager()
         local v = ctx.values
+        -- The Weather tab's two paths: transmit on a client, trigger directly in single player.
+        if not isClient() then
+            if v.kind == "tropical" then
+                clim:triggerCustomWeatherStage(WeatherPeriod.STAGE_TROPICAL_STORM, v.hours)
+            elseif v.kind == "blizzard" then
+                clim:triggerCustomWeatherStage(WeatherPeriod.STAGE_BLIZZARD, v.hours)
+            elseif v.kind == "generate" then
+                clim:triggerCustomWeather(v.strength, v.front ~= "cold")
+            else
+                clim:triggerCustomWeatherStage(WeatherPeriod.STAGE_STORM, v.hours)
+            end
+            return
+        end
         if v.kind == "tropical" then
             clim:transmitTriggerTropical(v.hours)
         elseif v.kind == "blizzard" then
@@ -1172,15 +1392,25 @@ register({
     openUI = function(ctx) openAdminWindow("CLIMATE") end,
 })
 
+--- LightningCommand / ThunderCommand / event.thunder, for single player: outside a
+-- server ThunderStorm.triggerThunderEvent queues the event locally.
+local function thunderAt(player, strike, light, rumble)
+    getClimateManager():getThunderStorm():triggerThunderEvent(math.floor(player:getX()), math.floor(player:getY()), strike, light, rumble)
+end
+
 register({
     id = "weather.lightning",
     category = "weather",
     title = txt("LightningOnPlayer"),
     tooltip = txt("LightningOnPlayerTooltip"),
     icon = "sym:Lightning",
-    params = { playerParam() },
+    params = { playerParam("@me") },
     available = needs("MakeEventsAlarmGunshot"),
-    run = function(ctx) cmd("/lightning " .. q(ctx.values.player)) end,
+    run = function(ctx)
+        if isClient() then return cmd("/lightning " .. q(ctx.values.player)) end
+        local player = loadedPlayer(ctx)
+        if player then thunderAt(player, false, true, true) end
+    end,
 })
 
 register({
@@ -1189,9 +1419,13 @@ register({
     title = txt("ThunderOnPlayer"),
     tooltip = txt("ThunderOnPlayerTooltip"),
     icon = "sym:Asterisk",
-    params = { playerParam() },
+    params = { playerParam("@me") },
     available = needs("StartStopRain"),
-    run = function(ctx) cmd("/thunder " .. q(ctx.values.player)) end,
+    run = function(ctx)
+        if isClient() then return cmd("/thunder " .. q(ctx.values.player)) end
+        local player = loadedPlayer(ctx)
+        if player then thunderAt(player, false, false, true) end
+    end,
 })
 
 register({
@@ -1201,7 +1435,14 @@ register({
     tooltip = txt("ThunderEveryoneTooltip"),
     icon = "sym:Lightning",
     available = toolsGate,
-    run = function(ctx) sendClientCommand(ctx.admin, "event", "thunder", { isAll = true }) end,
+    run = function(ctx)
+        if isClient() then return sendClientCommand(ctx.admin, "event", "thunder", { isAll = true }) end
+        -- The server handler walks getOnlinePlayers(), which is empty in single player.
+        for i = 0, getNumActivePlayers() - 1 do
+            local player = getSpecificPlayer(i)
+            if player then thunderAt(player, true, true, true) end
+        end
+    end,
 })
 
 register({
@@ -1209,7 +1450,8 @@ register({
     category = "weather",
     title = txt("TriggerThunderWindow"),
     icon = "sym:Asterisk",
-    available = toolsGate,
+    -- Its player list is getOnlinePlayers(), empty in single player.
+    available = mpOnly(toolsGate),
     run = function(ctx) AdminContextMenu.onTriggerThunderUI(ctx.admin) end,
 })
 
@@ -1231,7 +1473,10 @@ register({
     tooltip = txt("GunshotTooltip"),
     icon = "item:Base.Pistol",
     available = needs("MakeEventsAlarmGunshot"),
-    run = function(ctx) cmd("/gunshot") end,
+    run = function(ctx)
+        if isClient() then return cmd("/gunshot") end
+        getAmbientStreamManager():doGunEvent()
+    end,
 })
 
 register({
@@ -1244,16 +1489,23 @@ register({
     run = function(ctx)
         local square = ctx.admin:getCurrentSquare()
         if not square or not square:getRoom() then return Hotbar.say(ctx.admin, txt("NotInBuilding"), true) end
-        cmd("/alarm")
+        if isClient() then return cmd("/alarm") end
+        -- What AlarmCommand does on the server.
+        square:getBuilding():getDef():setAlarmed(true)
+        getAmbientStreamManager():doAlarm(square:getRoom():getRoomDef())
     end,
 })
 
+--- Our broadcast stop on a server with Chopper Controls on; otherwise the debug
+-- panel's own calls, which send /chopper on a client and act directly in single player.
 local function chopper(action)
     local Chopper = ZomboidFixesB42.Chopper
-    if Chopper and Chopper.isEnabled() then
+    if isClient() and Chopper and Chopper.isEnabled() then
         Chopper.send(getPlayer(), action)
+    elseif action == "start" then
+        testHelicopter()
     else
-        cmd("/chopper " .. action)
+        endHelicopter()
     end
 end
 
@@ -1279,6 +1531,14 @@ register({
 
 -- 10. Stories -------------------------------------------------------------------------------------------------
 
+local function findStory(list, name)
+    for i = 0, list:size() - 1 do
+        local story = list:get(i)
+        if story:getName() == name then return story end
+    end
+    return nil
+end
+
 local function storyChoices(list)
     local choices = {}
     for i = 0, list:size() - 1 do
@@ -1303,7 +1563,9 @@ register({
     available = needs("CreateStory"),
     run = function(ctx)
         local square = squareAt(ctx, ctx.values.location)
-        if square then sendDebugStory(square, 0, ctx.values.story) end
+        local story = square and findStory(getWorld():getRandomizedVehicleStoryList(), ctx.values.story)
+        -- The Debug menu's own call: sendDebugStory on a client, the story itself in single player.
+        if story then DebugContextMenu.doRandomizedVehicleStory(square, story) end
     end,
 })
 
@@ -1326,7 +1588,8 @@ register({
         if square:hasFenceInVicinity() then
             return Hotbar.say(ctx.admin, getText("IGUI_DebugContext_RandomizedZoneStoryFenceVicinity"), true)
         end
-        sendDebugStory(square, 1, ctx.values.story)
+        local story = findStory(getWorld():getRandomizedZoneList(), ctx.values.story)
+        if story then DebugContextMenu.doRandomizedZoneStory(square, story) end
     end,
 })
 
@@ -1379,12 +1642,14 @@ register({
     },
     available = needs("AnimalCheats"),
     run = function(ctx)
-        local animalType, breed = splitAnimal(ctx.values.animal)
-        if not animalType then return end
-        local l = ctx.values.location
-        sendClientCommand(ctx.admin, "animal", "add", {
-            type = animalType, breed = breed, x = l.x, y = l.y, z = l.z, skeleton = ctx.values.skeleton == true,
-        })
+        local animalType, breedName = splitAnimal(ctx.values.animal)
+        local def = animalType and AnimalDefinitions.getDef(animalType)
+        local breed = def and def:getBreedByName(breedName)
+        local square = breed and squareAt(ctx, ctx.values.location)
+        -- The Debug menu's Add Animal: animal.add on a client, addAnimal in single player.
+        if square then
+            DebugContextMenu.AddAnimal(animalType, breed, square, ctx.values.skeleton == true, ctx.admin)
+        end
     end,
 })
 
@@ -1395,7 +1660,7 @@ register({
     tooltip = txt("AddEnclosureTooltip"),
     icon = "sym:Columns",
     available = needs("UseDebugContextMenu"),
-    run = function(ctx) sendClientCommand(ctx.admin, "debugScenario", "addEnclosure", {}) end,
+    run = function(ctx) DebugContextMenu.onAddEnclosure(ctx.admin) end,
 })
 
 register({
@@ -1406,7 +1671,10 @@ register({
     icon = "sym:Pawprint",
     confirm = true,
     available = needs("AnimalCheats"),
-    run = function(ctx) cmd("/remove animals") end,
+    run = function(ctx)
+        if isClient() then return cmd("/remove animals") end
+        DebugContextMenu.OnRemoveAllAnimals()
+    end,
 })
 
 -- 12. Server ----------------------------------------------------------------------------------------------------
@@ -1418,7 +1686,7 @@ register({
     tooltip = txt("ServerMessageTooltip"),
     icon = "item:Base.Bullhorn",
     params = { textParam("text", txt("ParamMessage")) },
-    available = needs("DisplayServerMessage"),
+    available = mpOnly(needs("DisplayServerMessage")),
     run = function(ctx) cmd("/servermsg " .. q(ctx.values.text)) end,
 })
 
@@ -1428,7 +1696,7 @@ register({
     title = txt("SaveWorld"),
     tooltip = txt("SaveWorldTooltip"),
     icon = "item:Base.Disc_Retail",
-    available = needs("SaveWorld"),
+    available = mpOnly(needs("SaveWorld")),
     run = function(ctx) cmd("/save") end,
 })
 
@@ -1476,7 +1744,7 @@ register({
         { key = "option", type = "choice", title = txt("ParamServerOption"), options = serverOptionChoices, search = true },
         textParam("value", txt("ParamValue"), true, txt("ValueHint")),
     },
-    available = needs("ChangeAndReloadServerOptions"),
+    available = mpOnly(needs("ChangeAndReloadServerOptions")),
     toggle = {
         applies = function(ctx) return isBooleanOption(ctx.values.option) end,
         isOn = function(ctx) return serverOption(ctx.values.option):getValue() == true end,
@@ -1500,7 +1768,7 @@ register({
     title = getText("IGUI_PlayerStats_ReloadOptions"),
     tooltip = txt("ReloadOptionsTooltip"),
     icon = "sym:ArrowEast",
-    available = needs("ChangeAndReloadServerOptions"),
+    available = mpOnly(needs("ChangeAndReloadServerOptions")),
     run = function(ctx) cmd("/reloadoptions") end,
 })
 
@@ -1510,7 +1778,7 @@ register({
     title = txt("CheckMods"),
     tooltip = txt("CheckModsTooltip"),
     icon = "sym:Question",
-    available = needs("ManipulateMods"),
+    available = mpOnly(needs("ManipulateMods")),
     run = function(ctx) cmd("/checkModsNeedUpdate") end,
 })
 
@@ -1521,6 +1789,9 @@ register({
     category = "windows",
     title = getText("IGUI_AdminPanel_AdminPanel"),
     icon = "tex:media/ui/Admin_Icon.png",
+    -- Every button of the panel is decided by the role, so single player gets an
+    -- empty panel that closes itself.
+    available = mpOnly(),
     run = function(ctx)
         if ISAdminPanelUI.instance then
             ISAdminPanelUI.instance:close()
@@ -1538,6 +1809,7 @@ register({
     title = getText("IGUI_AdminPanel_AdminPower"),
     icon = "sym:Star",
     available = function(admin)
+        if not isClient() then return true end
         local role = admin:getRole()
         if role and role:hasAdminPower() then return true end
         return false, txt("NeedsAdminPower")
@@ -1545,23 +1817,24 @@ register({
     run = function(ctx) ISAdminPowerUI.OnOpenPanel() end,
 })
 
+-- The windows about the server, its users and zones only exist in multiplayer.
 local WINDOWS = {
     { "CHECKSTATS", "IGUI_AdminPanel_CheckYourStats", "item:Base.Clipboard", needs("CanSeePlayersStats") },
     { "ITEMLIST", "IGUI_AdminPanel_ItemList", "item:Base.Toolbox", needs("AddItem") },
-    { "SEEOPTIONS", "IGUI_AdminPanel_SeeServerOptions", "sym:Gears", needs("SeePublicServerOptions") },
-    { "NONPVPZONE", "IGUI_AdminPanel_NonPvpZone", "sym:CrossedSwords", needs("CanSetupNonPVPZone") },
-    { "SEEFACTIONS", "IGUI_AdminPanel_SeeFaction", "sym:Club", needs("FactionCheat") },
-    { "SEEROLES", "IGUI_AdminPanel_SeeRoles", "sym:Armor", needs("RolesRead") },
-    { "SEEUSERS", "IGUI_AdminPanel_SeeUsers", "sym:FaceHappy", needs("SeeNetworkUsers") },
-    { "SEESAFEHOUSES", "IGUI_AdminPanel_SeeSafehouses", "sym:House", needs("CanSetupSafehouses") },
-    { "SAFEZONE", "IGUI_AdminPanel_Safezone", "sym:Lock", needs("CanSetupSafehouses") },
-    { "SEETICKETS", "IGUI_AdminPanel_SeeTickets", "sym:Exclamation", needs("AnswerTickets") },
-    { "MINISCOREBOARD", "IGUI_AdminPanel_MiniScoreboard", "sym:Columns", needs("SeePlayersConnected") },
-    { "SANDBOX", "IGUI_AdminPanel_SandboxOptions", "sym:Gears", needs("SandboxOptions") },
+    { "SEEOPTIONS", "IGUI_AdminPanel_SeeServerOptions", "sym:Gears", mpOnly(needs("SeePublicServerOptions")) },
+    { "NONPVPZONE", "IGUI_AdminPanel_NonPvpZone", "sym:CrossedSwords", mpOnly(needs("CanSetupNonPVPZone")) },
+    { "SEEFACTIONS", "IGUI_AdminPanel_SeeFaction", "sym:Club", mpOnly(needs("FactionCheat")) },
+    { "SEEROLES", "IGUI_AdminPanel_SeeRoles", "sym:Armor", mpOnly(needs("RolesRead")) },
+    { "SEEUSERS", "IGUI_AdminPanel_SeeUsers", "sym:FaceHappy", mpOnly(needs("SeeNetworkUsers")) },
+    { "SEESAFEHOUSES", "IGUI_AdminPanel_SeeSafehouses", "sym:House", mpOnly(needs("CanSetupSafehouses")) },
+    { "SAFEZONE", "IGUI_AdminPanel_Safezone", "sym:Lock", mpOnly(needs("CanSetupSafehouses")) },
+    { "SEETICKETS", "IGUI_AdminPanel_SeeTickets", "sym:Exclamation", mpOnly(needs("AnswerTickets")) },
+    { "MINISCOREBOARD", "IGUI_AdminPanel_MiniScoreboard", "sym:Columns", mpOnly(needs("SeePlayersConnected")) },
+    { "SANDBOX", "IGUI_AdminPanel_SandboxOptions", "sym:Gears", mpOnly(needs("SandboxOptions")) },
     { "CLIMATE", "IGUI_Adm_Weather_ClimateControl", "sym:Sun", needs("ClimateManager") },
-    { "STATISTICS", "IGUI_AdminPanel_ShowStatistics", "sym:Diamond", needs("GetStatistic") },
-    { "PVPLOGTOOL", "IGUI_AdminPanel_PVPLogTool", "sym:Gun", needs("PVPLogTool") },
-    { "ZONE_EDITOR", "IGUI_AdminPanel_ZoneEditor", "item:Base.Map", needsAny("CanSetupSafehouses", "CanSetupNonPVPZone") },
+    { "STATISTICS", "IGUI_AdminPanel_ShowStatistics", "sym:Diamond", mpOnly(needs("GetStatistic")) },
+    { "PVPLOGTOOL", "IGUI_AdminPanel_PVPLogTool", "sym:Gun", mpOnly(needs("PVPLogTool")) },
+    { "ZONE_EDITOR", "IGUI_AdminPanel_ZoneEditor", "item:Base.Map", mpOnly(needsAny("CanSetupSafehouses", "CanSetupNonPVPZone")) },
 }
 
 for _, window in ipairs(WINDOWS) do
@@ -1710,5 +1983,6 @@ register({
         textParam("command", txt("ParamCommand"), false, txt("CommandHint")),
         playerParam("@ask", true),
     },
+    available = mpOnly(),
     run = runCustom,
 })
