@@ -25,6 +25,7 @@ description=[*]Admins who join are fully healed and in god mode for a set time, 
 description=[*]Admins and moderators can change any online player's hunger, mood, health, nutrition, weight and other body stats, like the debug menu's Body panel, from a Body button in the Player Stats window, the admin panel or the scoreboard. The changes are made on the server, so they stick and the player sees them.
 description=[*]Admins and moderators can send and stop the chopper from the right-click Tools menu, and the debug menu's chopper buttons work on servers. Stopping it reaches every player, including anyone who still hears a chopper that already left, which vanilla's stop cannot fix (beta).
 description=[*]Admins and moderators get an admin hotbar, opened from a new sidebar button under Admin: a floating bar of one-click shortcuts to every admin tool (admin powers, admin panel windows, the Tools and Debug menus, weather and climate, meta events, player actions). Each shortcut keeps its own settings, such as a target player, a location, an item or a saved climate preset, toggles show whether they are on, and any image in the game can be its icon. Single player gets it with the -debug launch option (beta).
+description=[*]Picking a square in the debug Horde Manager or Tile Picker no longer walks your character over to it.
 description=[/list]
 description=
 description=Licensed under the GNU GPL v3.

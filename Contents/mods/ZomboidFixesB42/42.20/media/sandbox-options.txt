@@ -181,3 +181,11 @@ option ZomboidFixesB42.AdminHotbar
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_AdminHotbar,
 }
+
+option ZomboidFixesB42.NoWalkOnSquarePick
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_NoWalkOnSquarePick,
+}
