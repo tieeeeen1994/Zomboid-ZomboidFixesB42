@@ -17,8 +17,8 @@
       Teleport            the coordinates                -> Teleport to location
       Scoreboard          a player                       -> any player action
       Tools menu          the clicked square             -> teleport, noise, horde,
-      (Debug menu in                                        fire, explosion there
-      single player)
+      (Debug menu in                                        fire, explosion, forage
+      single player)                                        icons there
 
     The Body window's button lives in ZomboidFixesB42_BodyStats.lua.
 
@@ -308,6 +308,8 @@ local SPOT_ACTIONS = {
     { id = "zombies.add", key = "SaveSpotZombie" },
     { id = "noise.fire", key = "SaveSpotFire" },
     { id = "noise.explosion", key = "SaveSpotExplosion" },
+    { id = "foraging.bulkIcons", key = "SaveSpotForageBulk" },
+    { id = "foraging.moveIcons", key = "SaveSpotForageMove" },
 }
 
 local function onFillWorldObjectContextMenu(playerNum, context, worldobjects, test)

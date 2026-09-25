@@ -14,10 +14,12 @@
 
     and that is what this does, with a vote in front of it. Every living player
     picks one of the single player speeds; the game only runs faster when all of
-    them have picked it, and then at the slowest speed anyone picked. If anyone
-    goes back to normal speed, every vote is cleared and everyone has to pick
-    again -- one player stopping stops it for good, not just until the others
-    notice.
+    them have picked it, and then at the slowest speed anyone picked. A player
+    going back to normal speed (by hand, by moving or by finishing an action) takes
+    back only their own vote: the game drops to normal at once, since it needs
+    every vote, and the others keep theirs, so it runs fast again as soon as that
+    player votes again. Only the server's own stop -- a zombie close to anyone, or
+    vanilla dropping the speed -- clears every vote.
 
     Deliberately not GameServer.fastForward, the flag vanilla raises when every
     player is asleep. That path is built for nobody watching: clients delete every
@@ -25,9 +27,26 @@
     anti-cheat is switched off (PacketValidator.update).
 
     Single player keeps its own speed controls, so none of this runs there.
+
+    Timed actions do not follow the multiplier by themselves. In B42 multiplayer the
+    server runs them (zombie.core.NetTimedAction, ActionManager): when one starts,
+    Action.setTimeData fixes endTime = start + getDuration() in real server
+    milliseconds, and ActionManager.update completes it once GameTime.getServerTimeMills()
+    passes endTime. NetTimedAction.getDuration is the Lua action's getDuration()
+    (maxTime) passed through its adjustMaxTime (server only), times 20 ms, with no
+    GameTime multiplier anywhere, so reading or crafting took the same real time at
+    40x. The server's Lua rawget falls back to the metatable, so the one
+    ISBaseTimedAction.adjustMaxTime serves every action (no action overrides it).
+    It is wrapped here to divide by the running speed, and each started action is
+    remembered, so when the speed changes mid-action (the usual order: start the
+    action, then fast forward) its end is moved with Action.setDuration, keeping the
+    work already done. The server's Done packet ends the action on the client
+    (ActionManager.setStateFromPacket), whatever its own progress bar shows.
 --]]
 
 if not isServer() then return end
+
+require "TimedActions/ISBaseTimedAction"
 
 ZomboidFixesB42 = ZomboidFixesB42 or {}
 
@@ -101,9 +120,69 @@ local function broadcast(state)
     sendServerCommand(ZomboidFixesB42.MODULE, ZomboidFixesB42.CMD_FAST_FORWARD_STATE, state)
 end
 
+-- Timed actions ----------------------------------------------------------------
+
+-- NetTimedAction.getDuration: a Lua duration unit is 20 ms of real time.
+local MS_PER_UNIT = 20
+-- Lua action table -> { startMs, lastMs, doneMs, totalMs, speed }: doneMs is how much
+-- of the action's normal-speed length (totalMs) is done, counted at the speed it ran.
+local running = {}
+
+--- Move every running action's end to match a new speed.
+local function retimeActions(speed)
+    local now = getTimestampMs()
+    local over = {}
+    for action, run in pairs(running) do
+        run.doneMs = run.doneMs + (now - run.lastMs) * run.speed
+        run.lastMs = now
+        run.speed = speed
+        local net = action.netAction
+        if run.doneMs >= run.totalMs or not net then
+            table.insert(over, action)
+        else
+            local lengthMs = math.floor((now - run.startMs) + (run.totalMs - run.doneMs) / speed)
+            -- An action that has already ended may refuse; it is forgotten either way.
+            if not pcall(function() net:setDuration(lengthMs) end) then
+                table.insert(over, action)
+            end
+        end
+    end
+    for _, action in ipairs(over) do running[action] = nil end
+end
+
+--- Forget actions that must have ended by now, finished or cancelled.
+local function pruneActions()
+    local now = getTimestampMs()
+    local over = {}
+    for action, run in pairs(running) do
+        local done = run.doneMs + (now - run.lastMs) * run.speed
+        if done >= run.totalMs + 5000 then table.insert(over, action) end
+    end
+    for _, action in ipairs(over) do running[action] = nil end
+end
+
+local originalAdjustMaxTime = ISBaseTimedAction.adjustMaxTime
+
+--- On the server this is only reached from NetTimedAction.getDuration, when an
+-- action starts (the client's create() runs its own copy).
+function ISBaseTimedAction:adjustMaxTime(maxTime)
+    local adjusted = originalAdjustMaxTime(self, maxTime)
+    -- -1 (or less) is an action without an end.
+    if not isEnabled() or type(adjusted) ~= "number" or adjusted <= 0 or not self.netAction then
+        return adjusted
+    end
+    local now = getTimestampMs()
+    running[self] = { startMs = now, lastMs = now, doneMs = 0, totalMs = adjusted * MS_PER_UNIT, speed = applied }
+    if applied > 1 then return adjusted / applied end
+    return adjusted
+end
+
 local function apply(speed)
     getGameTime():setMultiplier(speed)
-    applied = speed
+    if speed ~= applied then
+        applied = speed
+        retimeActions(speed)
+    end
 end
 
 --- Clear every vote and bring the game back to normal speed at once.
@@ -124,8 +203,16 @@ local function anyZombieNear()
     return false
 end
 
+local lastPrune = 0
+
 local function onTick()
     if not isEnabled() then return end
+
+    local now = getTimestampMs()
+    if now - lastPrune > 5000 then
+        lastPrune = now
+        pruneActions()
+    end
 
     if not started then
         -- GameTime saves its multiplier into the world, so a server stopped while
@@ -154,15 +241,17 @@ end
 
 local function onVote(player, args)
     if player:isDead() then return end
+
     local speed = tonumber(args.speed)
     if not ZomboidFixesB42.isFastForwardSpeed(speed) then return end
 
     if speed == 1 then
-        stopAll()
-        return
+        -- Only this player's vote goes; everyone else's stay. The game still
+        -- drops to normal speed, since it needs every player's vote.
+        votes[player:getOnlineID()] = nil
+    else
+        votes[player:getOnlineID()] = speed
     end
-
-    votes[player:getOnlineID()] = speed
     onTick()
 end
 

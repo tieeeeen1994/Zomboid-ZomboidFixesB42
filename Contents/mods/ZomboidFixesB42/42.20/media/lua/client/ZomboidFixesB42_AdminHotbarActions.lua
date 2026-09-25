@@ -21,6 +21,8 @@
         The server checks each command's capability itself.
       - Climate Control: the ClimateManager admin values and transmit calls its
         Climate and Weather tabs use.
+      - Foraging: the Debug menu's Foraging submenu (ISSearchManager) and the
+        overlays of the debug menu's Search Mode panel.
 
     Four vanilla client commands have no permission check on the server
     (object.addFireOnSquare / addSmokeOnSquare / addExplosionOnSquare, event.thunder,
@@ -29,7 +31,13 @@
     Actions that only act on one object under the cursor (door, window, fence,
     generator, a selected zombie, a corpse, one animal, a vehicle's colours) stay in
     the right-click menus. Quitting, reloading Lua, world generation, log levels and
-    role changes are left to the Custom command action.
+    role changes are left to the Custom command action, and so are /setTimeSpeed
+    (GameTime.setMultiplier, needs ConnectWithDebug), whitelist, Steam ID and
+    safehouse invite/kick commands. Debug menu entries that only change this
+    client's copy of the world in multiplayer are left out: Set Alarm
+    (BuildingDef.setAlarmed), Randomized Building stories, Spawn Survivor Horde,
+    vehicle Jump / Landmine, plus developer windows and reports (loot, running,
+    attached items, animation lists, interpolation, missing items, CSV exports).
 
     Single player (debug mode only, see the core file) has no server for the chat
     commands, so each action also has the single player branch vanilla's own window
@@ -52,6 +60,7 @@ require "ISUI/AdminPanel/ISAdminPanelUI"
 require "ISUI/PlayerStats/ISPlayerStatsUI"
 require "DebugUIs/AdminContextMenu"
 require "DebugUIs/DebugContextMenu"
+require "Foraging/ISSearchManager"
 
 local Hotbar = ZomboidFixesB42.AdminHotbar
 local txt = Hotbar.txt
@@ -194,6 +203,7 @@ Hotbar.addCategory("animals", txt("CatAnimals"))
 Hotbar.addCategory("server", txt("CatServer"))
 Hotbar.addCategory("windows", txt("CatWindows"))
 Hotbar.addCategory("debug", txt("CatDebugTools"))
+Hotbar.addCategory("foraging", getText("IGUI_perks_Foraging"))
 Hotbar.addCategory("custom", txt("CatCustom"))
 
 -- 1. Powers ------------------------------------------------------------------------------------------
@@ -406,6 +416,7 @@ register({
 register({
     id = "players.stats",
     category = "players",
+    opensWindow = true,
     title = txt("CheckStats"),
     tooltip = txt("CheckStatsTooltip"),
     icon = "item:Base.Clipboard",
@@ -433,6 +444,7 @@ end
 register({
     id = "players.inventory",
     category = "players",
+    opensWindow = true,
     title = txt("ManageInventory"),
     tooltip = txt("ManageInventoryTooltip"),
     icon = "item:Base.Bag_ALICEpack",
@@ -533,6 +545,31 @@ register({
     end,
 })
 
+register({
+    id = "players.unban",
+    category = "players",
+    title = txt("Unban"),
+    tooltip = txt("UnbanTooltip"),
+    icon = "sym:Key",
+    -- A banned player is not online, so the name is typed instead of picked.
+    params = { textParam("username", txt("ParamUsername")) },
+    available = mpOnly(needs("BanUnbanUser")),
+    run = function(ctx) cmd("/unbanuser " .. q(ctx.values.username)) end,
+})
+
+register({
+    id = "players.clearMapSymbols",
+    category = "players",
+    title = txt("ClearMapSymbols"),
+    tooltip = txt("ClearMapSymbolsTooltip"),
+    icon = "item:Base.Map",
+    confirm = true,
+    params = { playerParam() },
+    available = mpOnly(needs("EditMapSymbols")),
+    -- WorldMapServer.removeAllSymbolsForUser: every symbol that player put on the shared map.
+    run = function(ctx) cmd("/removemapsymbolsforuser " .. q(ctx.values.player)) end,
+})
+
 local function bodyStatsEnabled()
     local vars = SandboxVars and SandboxVars.ZomboidFixesB42
     return vars ~= nil and vars.BodyStatsEditor == true
@@ -541,6 +578,7 @@ end
 register({
     id = "players.body",
     category = "players",
+    opensWindow = true,
     title = txt("BodyStats"),
     tooltip = txt("BodyStatsTooltip"),
     icon = "sym:MedCross",
@@ -591,6 +629,7 @@ register({
 register({
     id = "teleport.ui",
     category = "teleport",
+    opensWindow = true,
     title = getText("IGUI_GameStats_Teleport"),
     tooltip = txt("TeleportUiTooltip"),
     icon = "item:Base.Map",
@@ -656,6 +695,35 @@ register({
 })
 
 register({
+    id = "items.remove",
+    category = "items",
+    title = txt("RemoveItem"),
+    tooltip = txt("RemoveItemTooltip"),
+    icon = function(settings) return settings.item and ("item:" .. settings.item) or "item:Base.Garbagebag" end,
+    params = {
+        { key = "item", type = "choice", title = txt("ParamItem"), options = items, search = true, textOf = itemName },
+        numberParam("count", txt("ParamCount"), 0, 0, 1000, true, txt("RemoveItemCountHint")),
+    },
+    available = needs("EditItem"),
+    run = function(ctx)
+        local count = math.floor(ctx.values.count or 0)
+        -- /removeitem only ever empties the executor's own inventory; 0 means all of them.
+        if isClient() then
+            return cmd("/removeitem " .. q(ctx.values.item) .. " " .. int(count))
+        end
+        -- What RemoveItemCommand does, on the local inventory.
+        local inventory = ctx.admin:getInventory()
+        if count == 0 then
+            inventory:RemoveAll(ctx.values.item)
+        else
+            for _ = 1, count do
+                inventory:RemoveOneOf(ctx.values.item, true)
+            end
+        end
+    end,
+})
+
+register({
     id = "items.buildingKey",
     category = "items",
     title = txt("BuildingKey"),
@@ -697,6 +765,7 @@ register({
 register({
     id = "items.list",
     category = "items",
+    opensWindow = true,
     title = getText("IGUI_AdminPanel_ItemList"),
     icon = "item:Base.Toolbox",
     available = needs("AddItem"),
@@ -802,6 +871,24 @@ vehicleCommand("vehicles.alarm", "VehicleAlarm", "sym:Police", "setAlarmed", fun
     return { alarmed = not vehicle:isAlarmed() }
 end)
 
+--- The Tools menu's Vehicle submenu windows, for the vehicle under the cursor there.
+local function vehicleWindow(id, key, icon, open)
+    register({
+        id = id,
+        category = "vehicles",
+        opensWindow = true,
+        title = txt(key),
+        tooltip = txt(key .. "Tooltip"),
+        icon = icon,
+        params = { vehicleParam() },
+        available = toolsGate,
+        run = function(ctx) open(ctx.admin, ctx.values.vehicle) end,
+    })
+end
+
+vehicleWindow("vehicles.colorUI", "VehicleColorUI", "sym:SteeringWheel", AdminContextMenu.onDebugColor)
+vehicleWindow("vehicles.bloodUI", "VehicleBloodUI", "sym:FaceDead", AdminContextMenu.onDebugBlood)
+
 register({
     id = "vehicles.remove",
     category = "vehicles",
@@ -830,6 +917,7 @@ register({
 register({
     id = "vehicles.ui",
     category = "vehicles",
+    opensWindow = true,
     title = getText("IGUI_DebugContext_SpawnVehicle"),
     icon = "sym:Tire",
     available = needs("ManipulateVehicle"),
@@ -1072,6 +1160,7 @@ register({
 register({
     id = "zombies.manager",
     category = "zombies",
+    opensWindow = true,
     title = getText("IGUI_DebugContext_HordeManager"),
     icon = "sym:Target",
     available = needs("CreateHorde"),
@@ -1129,6 +1218,7 @@ fireCommand("noise.explosion", "Explosion", "sym:Bomb", "addExplosionOnSquare", 
 register({
     id = "noise.brushTool",
     category = "noise",
+    opensWindow = true,
     title = txt("BrushTool"),
     tooltip = txt("BrushToolTooltip"),
     icon = "item:Base.Paintbrush",
@@ -1448,6 +1538,7 @@ register({
 register({
     id = "weather.thunderUI",
     category = "weather",
+    opensWindow = true,
     title = txt("TriggerThunderWindow"),
     icon = "sym:Asterisk",
     -- Its player list is getOnlinePlayers(), empty in single player.
@@ -1458,6 +1549,7 @@ register({
 register({
     id = "weather.climate",
     category = "weather",
+    opensWindow = true,
     title = getText("IGUI_Adm_Weather_ClimateControl"),
     icon = "sym:Sun",
     available = needs("ClimateManager"),
@@ -1700,6 +1792,25 @@ register({
     run = function(ctx) cmd("/save") end,
 })
 
+register({
+    id = "server.releaseSafehouse",
+    category = "server",
+    title = txt("ReleaseSafehouse"),
+    tooltip = txt("ReleaseSafehouseTooltip"),
+    icon = "sym:House",
+    confirm = true,
+    params = { locationParam("@me") },
+    available = mpOnly(needs("CanSetupSafehouses")),
+    run = function(ctx)
+        local square = squareAt(ctx, ctx.values.location)
+        if not square then return end
+        local safehouse = SafeHouse.getSafeHouse(square)
+        if not safehouse then return Hotbar.say(ctx.admin, txt("NoSafehouseHere"), true) end
+        -- The command finds the safehouse by its title (SafeHouse.getSafeHouse(title)).
+        cmd("/releasesafehouse " .. q(safehouse:getTitle()))
+    end,
+})
+
 local function serverOptionChoices()
     local choices = {}
     local names = ServerOptions.getInstance():getPublicOptions()
@@ -1905,6 +2016,7 @@ register({
 register({
     id = "debug.spawnPoints",
     category = "debug",
+    opensWindow = true,
     title = getText("IGUI_DebugContext_SpawnPoints"),
     icon = "sym:Target",
     available = needs("UseDebugContextMenu"),
@@ -1914,6 +2026,7 @@ register({
 register({
     id = "debug.tilePicker",
     category = "debug",
+    opensWindow = true,
     title = getText("IGUI_DebugContext_TilePicker"),
     icon = "sym:Skyscraper",
     available = needs("UseDebugContextMenu"),
@@ -1923,13 +2036,174 @@ register({
 register({
     id = "debug.filming",
     category = "debug",
+    opensWindow = true,
     title = getText("IGUI_DebugContext_FilmingTools"),
     icon = "sym:VHS",
     available = needs("UseDebugContextMenu"),
     run = function(ctx) DebugContextMenu.onFilmingToolsUI(ctx.admin) end,
 })
 
--- 15. Custom command -----------------------------------------------------------------------------------------------------
+-- 15. Foraging -----------------------------------------------------------------------------------------------------------
+
+--[[
+    The Debug menu's Foraging submenu (ISSearchManager.createDebugContextMenu, shown to
+    any role with UseDebugContextMenu) and the foraging overlays of the debug menu's
+    Search Mode panel (ISSearchMode, -debug only). Forage icons belong to a local
+    player's ISSearchManager: getAndActivateZoneAtXY loads the forage zone under a
+    square into it, and createSpecificIcon / createAllIconsOnSquare /
+    refreshZoneIcons / moveAllZoneIconsToSquare only touch the local managers, so like
+    the menu these act on this client's icons and send nothing to the server. The
+    overlays are client side flags on ISSearchManager; the manager only draws them while
+    showDebug is on and drops its debug markers outside search mode.
+--]]
+
+local function forageManager(ctx)
+    return ISSearchManager.getManager(ctx.admin)
+end
+
+--- The forage zone under a square, loaded into the admin's manager; nil (and said) if
+-- the square is in no forage zone.
+local function forageZone(ctx, square)
+    local zoneData = forageManager(ctx):getAndActivateZoneAtXY(square:getX(), square:getY())
+    if not zoneData then Hotbar.say(ctx.admin, txt("NoForageZone"), true) end
+    return zoneData
+end
+
+local forageItemChoices = nil
+local function forageItems()
+    if forageItemChoices then return forageItemChoices end
+    local choices = {}
+    -- Keyed by full type; filled when the forage system starts.
+    for itemType in pairs(forageSystem.itemDefs) do
+        table.insert(choices, {
+            text = itemName(itemType) .. "  (" .. itemType .. ")",
+            data = itemType,
+            scriptItem = getScriptManager():getItem(itemType),
+        })
+    end
+    table.sort(choices, function(a, b) return string.lower(a.text) < string.lower(b.text) end)
+    if #choices > 0 then forageItemChoices = choices end
+    return choices
+end
+
+local function forageCategories()
+    local names = {}
+    for catName in pairs(forageSystem.catDefs) do table.insert(names, catName) end
+    table.sort(names)
+    local choices = { { text = txt("ForageEveryIcon"), data = "@all" } }
+    for _, catName in ipairs(names) do
+        -- The search window's own category names.
+        local text = getTextOrNull("IGUI_SearchMode_Categories_" .. catName) or catName
+        table.insert(choices, { text = text, data = catName })
+    end
+    return choices
+end
+
+register({
+    id = "foraging.addIcon",
+    category = "foraging",
+    title = txt("ForageAddIcon"),
+    tooltip = txt("ForageAddIconTooltip"),
+    icon = function(settings) return settings.item and ("item:" .. settings.item) or "sym:Flower" end,
+    params = {
+        { key = "item", type = "choice", title = txt("ParamItem"), options = forageItems, search = true, textOf = itemName },
+        numberParam("count", txt("ParamCount"), 1, 1, 50, true),
+        locationParam("@pick"),
+    },
+    available = needs("UseDebugContextMenu"),
+    run = function(ctx)
+        local square = squareAt(ctx, ctx.values.location)
+        local zoneData = square and forageZone(ctx, square)
+        if not zoneData or not forageSystem.itemDefs[ctx.values.item] then return end
+        forageManager(ctx):createSpecificIcon(square, ctx.values.item, zoneData, nil, nil, math.floor(ctx.values.count or 1))
+    end,
+})
+
+register({
+    id = "foraging.bulkIcons",
+    category = "foraging",
+    title = txt("ForageBulkIcons"),
+    tooltip = txt("ForageBulkIconsTooltip"),
+    icon = "sym:Leaf",
+    params = {
+        { key = "category", type = "choice", title = txt("ParamForageCategory"), options = forageCategories, default = "@all", noAsk = true },
+        locationParam("@pick"),
+    },
+    available = needs("UseDebugContextMenu"),
+    run = function(ctx)
+        local square = squareAt(ctx, ctx.values.location)
+        if not square or not forageZone(ctx, square) then return end
+        local category = ctx.values.category
+        if category == "@all" then category = nil end
+        forageManager(ctx):createAllIconsOnSquare(square, category)
+    end,
+})
+
+register({
+    id = "foraging.refreshZone",
+    category = "foraging",
+    title = txt("ForageRefreshZone"),
+    tooltip = txt("ForageRefreshZoneTooltip"),
+    icon = "sym:Tree",
+    params = { locationParam("@me") },
+    available = needs("UseDebugContextMenu"),
+    run = function(ctx)
+        local square = squareAt(ctx, ctx.values.location)
+        if not square or not forageZone(ctx, square) then return end
+        forageManager(ctx):refreshZoneIcons(square)
+    end,
+})
+
+register({
+    id = "foraging.moveIcons",
+    category = "foraging",
+    title = txt("ForageMoveIcons"),
+    tooltip = txt("ForageMoveIconsTooltip"),
+    icon = "sym:Target",
+    params = { locationParam("@pick") },
+    available = needs("UseDebugContextMenu"),
+    run = function(ctx)
+        local square = squareAt(ctx, ctx.values.location)
+        if not square or not forageZone(ctx, square) then return end
+        forageManager(ctx):moveAllZoneIconsToSquare(square)
+    end,
+})
+
+register({
+    id = "foraging.debugInfo",
+    category = "foraging",
+    title = txt("ForageDebugInfo"),
+    tooltip = txt("ForageDebugInfoTooltip"),
+    icon = "sym:Eye",
+    available = needs("UseDebugContextMenu"),
+    toggle = {
+        isOn = function(ctx) return ISSearchManager.showDebug == true end,
+        set = function(ctx, on)
+            if on == nil then on = not ISSearchManager.showDebug end
+            ISSearchManager.showDebug = on
+        end,
+    },
+})
+
+register({
+    id = "foraging.debugLocations",
+    category = "foraging",
+    title = txt("ForageDebugLocations"),
+    tooltip = txt("ForageDebugLocationsTooltip"),
+    icon = "sym:ArrowNorthEast",
+    available = needs("UseDebugContextMenu"),
+    toggle = {
+        isOn = function(ctx) return ISSearchManager.showDebug == true and ISSearchManager.showDebugLocations == true end,
+        set = function(ctx, on)
+            if on == nil then on = not (ISSearchManager.showDebug and ISSearchManager.showDebugLocations) end
+            ISSearchManager.showDebugLocations = on
+            -- The arrows are drawn by the debug info pass.
+            if on then ISSearchManager.showDebug = true end
+        end,
+    },
+})
+
+-- 16. Custom command -----------------------------------------------------------------------------------------------------
 
 --- Fill {me}, {player}, {x}, {y}, {z}; ask for a player or a square only when the
 -- text uses them.

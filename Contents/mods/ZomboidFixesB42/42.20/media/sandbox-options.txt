@@ -122,6 +122,24 @@ option ZomboidFixesB42.MultiplayerFastForward
     translation = ZomboidFixesB42_MultiplayerFastForward,
 }
 
+option ZomboidFixesB42.AutoFastForwardActions
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_AutoFastForwardActions,
+}
+
+option ZomboidFixesB42.AutoFastForwardSpeed
+{
+    type = enum,
+    numValues = 3,
+    default = 2,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_AutoFastForwardSpeed,
+    valueTranslation = ZomboidFixesB42_AutoFastForwardSpeed_Values,
+}
+
 option ZomboidFixesB42.GoMTooltipLineLength
 {
     type = integer,
