@@ -363,7 +363,11 @@ are gated. Candidates for a hardening fix.
   coordinates, so `rowAt(x, y)` works directly.
 - `PZAPI.ModOptions:create(id, name)` / `addKeyBind(id, name, key, tooltip)` / `getOption(id):getValue()`. Saved values are
   only read back by `PZAPI.ModOptions:load()`, which vanilla calls when it builds the options screen — call it at
-  `OnGameStart` to have saved key binds in game.
+  `OnGameStart` to have saved key binds in game. A mod key bind **drops Shift/Ctrl/Alt**: the options screen records
+  and shows them (`MainOptions.keyPressHandler` sets `keyCode, shift, ctrl, alt` on `option.element`), but
+  `getValue()` is the bare key and ModOptions.ini saves only it; the screen copies `option.shift/ctrl` (not `alt`)
+  back into its entry. Vanilla's own rule is `Core.invalidBindingShiftCtrl` (raw keys 42/54 Shift, 29/157 Ctrl,
+  56/184 Alt). The admin hotbar keeps the modifiers in its own file by wrapping `PZAPI.ModOptions.save`.
 - Textures: `tryGetTexture(name)` = `getSharedTexture` (loose files and pack entries) then `media/textures/`, nil if
   missing. Map symbols (`MapSymbolDefinitions.getInstance():getSymbolCount()/getSymbolByIndex(i)`, `getId()`,
   `getTexturePath()`, 91 in 42.20) are white, so they tint. Item icons: script item `getIcon()` (or
