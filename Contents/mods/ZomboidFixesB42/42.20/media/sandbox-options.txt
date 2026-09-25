@@ -1,5 +1,53 @@
 VERSION = 1,
 
+option ZomboidFixesB42.FastTransfers
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_FastTransfers,
+}
+
+option ZomboidFixesB42.AnimalGenderChange
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_AnimalGenderChange,
+}
+
+option ZomboidFixesB42.ForagingDebugFixes
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_ForagingDebugFixes,
+}
+
+option ZomboidFixesB42.ItemEditorSync
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_ItemEditorSync,
+}
+
+option ZomboidFixesB42.FixDebugAddFluid
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_FixDebugAddFluid,
+}
+
+option ZomboidFixesB42.AdminTagEveryCheat
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_AdminTagEveryCheat,
+}
+
 option ZomboidFixesB42.HideAdminTag
 {
     type = boolean,
@@ -8,10 +56,26 @@ option ZomboidFixesB42.HideAdminTag
     translation = ZomboidFixesB42_HideAdminTag,
 }
 
+option ZomboidFixesB42.FixShinArmorRunSpeed
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_FixShinArmorRunSpeed,
+}
+
+option ZomboidFixesB42.NoFastMoveFallDamage
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_NoFastMoveFallDamage,
+}
+
 option ZomboidFixesB42.DeleteNegativeWeightItems
 {
     type = boolean,
-    default = false,
+    default = true,
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_DeleteNegativeWeightItems,
 }
@@ -19,7 +83,7 @@ option ZomboidFixesB42.DeleteNegativeWeightItems
 option ZomboidFixesB42.SyncBrokenClothing
 {
     type = boolean,
-    default = false,
+    default = true,
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_SyncBrokenClothing,
 }
@@ -27,7 +91,7 @@ option ZomboidFixesB42.SyncBrokenClothing
 option ZomboidFixesB42.RescueHutchAnimals
 {
     type = boolean,
-    default = false,
+    default = true,
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_RescueHutchAnimals,
 }
@@ -37,49 +101,41 @@ option ZomboidFixesB42.HutchDirtSpeed
     type = double,
     min = 0.0,
     max = 1.0,
-    default = 1.0,
+    default = 0.25,
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_HutchDirtSpeed,
+}
+
+option ZomboidFixesB42.NoStairAutoVault
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_NoStairAutoVault,
+}
+
+option ZomboidFixesB42.MultiplayerFastForward
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_MultiplayerFastForward,
 }
 
 option ZomboidFixesB42.GoMTooltipLineLength
 {
     type = integer,
     min = 0,
-    max = 200,
-    default = 0,
+    max = 1000,
+    default = 200,
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_GoMTooltipLineLength,
-}
-
-option ZomboidFixesB42.NoStairAutoVault
-{
-    type = boolean,
-    default = false,
-    page = ZomboidFixesB42,
-    translation = ZomboidFixesB42_NoStairAutoVault,
-}
-
-option ZomboidFixesB42.NoFastMoveFallDamage
-{
-    type = boolean,
-    default = false,
-    page = ZomboidFixesB42,
-    translation = ZomboidFixesB42_NoFastMoveFallDamage,
-}
-
-option ZomboidFixesB42.MultiplayerFastForward
-{
-    type = boolean,
-    default = false,
-    page = ZomboidFixesB42,
-    translation = ZomboidFixesB42_MultiplayerFastForward,
 }
 
 option ZomboidFixesB42.NISFShiftRange
 {
     type = boolean,
-    default = false,
+    default = true,
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_NISFShiftRange,
 }
@@ -87,7 +143,7 @@ option ZomboidFixesB42.NISFShiftRange
 option ZomboidFixesB42.TurboGameMultiplayer
 {
     type = boolean,
-    default = false,
+    default = true,
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_TurboGameMultiplayer,
 }
@@ -102,10 +158,18 @@ option ZomboidFixesB42.AdminSpawnProtection
     translation = ZomboidFixesB42_AdminSpawnProtection,
 }
 
+option ZomboidFixesB42.BodyStatsEditor
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_BodyStatsEditor,
+}
+
 option ZomboidFixesB42.ChopperControls
 {
     type = boolean,
-    default = false,
+    default = true,
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_ChopperControls,
 }

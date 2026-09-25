@@ -19,7 +19,8 @@
 
     Only roles with CanModifyBodyStats (admin and moderator by default) may use
     this, and never on a player whose role ranks above their own. Every change is
-    written to the admin log, like the server's own admin commands.
+    written to the admin log, like the server's own admin commands. Nothing is read
+    or changed while the BodyStatsEditor sandbox option is off.
 
     Vanilla's own weight command, Commands.player.setWeight in
     server/ClientCommands.lua, sets any player's weight by online ID with no access
@@ -38,6 +39,11 @@ local MAX_FIELDS_PER_COMMAND = 64
 
 -- Per admin username: { session = s, seqs = { ["target|key"] = seq }, replies = n }
 local admins = {}
+
+local function isEnabled()
+    local vars = SandboxVars and SandboxVars.ZomboidFixesB42
+    return vars ~= nil and vars.BodyStatsEditor == true
+end
 
 local function stateFor(admin, session)
     local name = admin:getUsername()
@@ -64,7 +70,7 @@ local function findOnlinePlayer(username)
     return nil
 end
 
---- Answer the admin. status is "ok", "offline", "dead" or "denied"; values and
+--- Answer the admin. status is "ok", "offline", "dead", "denied" or "disabled"; values and
 -- acks only come with "ok".
 local function reply(admin, username, status, target, acks)
     local state = stateFor(admin, nil)
@@ -167,6 +173,11 @@ local function onClientCommand(module, command, player, args)
     if command ~= ZomboidFixesB42.CMD_BODY_STATS_REQUEST and command ~= ZomboidFixesB42.CMD_BODY_STATS_SET then return end
 
     if not player or type(args) ~= "table" then return end
+
+    if not isEnabled() then
+        if type(args.target) == "string" then reply(player, args.target, "disabled") end
+        return
+    end
 
     local role = player:getRole()
     if not role or not role:hasCapability(Capability.CanModifyBodyStats) then

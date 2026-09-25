@@ -193,8 +193,13 @@ local handlers = {
     [ZomboidFixesB42.CMD_FORAGE_PICKUP] = onForagePickup,
 }
 
+local function isEnabled()
+    local vars = SandboxVars and SandboxVars.ZomboidFixesB42
+    return vars ~= nil and vars.ForagingDebugFixes == true
+end
+
 local function onClientCommand(module, command, player, args)
-    if module ~= ZomboidFixesB42.MODULE then return end
+    if module ~= ZomboidFixesB42.MODULE or not isEnabled() then return end
 
     local handler = handlers[command]
     if handler then

@@ -1,24 +1,24 @@
-Zomboid Fixes B42.20 is a set of fixes for Project Zomboid Build 42.20, mostly for multiplayer. Install it on both the server and clients. Fixes marked optional are off by default and can be turned on in sandbox options.
+Zomboid Fixes B42.20 is a set of fixes for Project Zomboid Build 42.20, mostly for multiplayer. Install it on both the server and clients. Every fix is on by default and can be turned off in the sandbox options; the few that are off by default say so. Fixes marked beta are new and not fully tested yet.
 
 - Fast Timed Actions makes item transfers quick in multiplayer, like in single player.
 - Changing an animal's gender in the animal info window also changes its model and type, and no longer reverts for other players.
 - The foraging debug menu can add, move and refresh icons, and added icons can be picked up.
 - Item editor changes save for items in crates, vehicles, on the floor and in other players' inventories.
 - Debug Add Fluid fills rain collectors and other world containers instead of emptying them.
-- The admin tag shows for every admin panel cheat. It can also be hidden completely (optional).
+- The admin tag shows for every admin panel cheat. It can also be hidden completely (off by default).
 - Metal Shin Armor and Articulated Metal Shin Armor no longer have their run speeds swapped.
-- No fall damage on stairs while Fast Move is on (optional, beta).
-- Items with negative weight are deleted (optional).
-- Clothing destroyed while worn stays destroyed after relogging (optional).
-- Chickens the game deletes after laying in a full hutch are put back (optional).
-- Hutches and nest boxes can be set to get dirty more slowly (optional).
-- Running into a stair railing no longer vaults you over it (optional).
-- Speed controls are back in multiplayer. The game fast forwards once every player votes for it (optional, beta).
-- Guns of Marz attachment tooltips wrap instead of stretching across the screen (optional).
-- With Nick's Inventory Selection Fix, shift-click selects the whole range instead of acting like ctrl-click (optional).
-- Turbo Game cartridges and batteries go in and come out on multiplayer servers, including in consoles spawned from the item list, the battery charge, best scores and mood effects are kept, best scores belong to the console they were set on, the character no longer walks around while a game is open, and the game closes when a zombie is near or it is too dark (optional, beta).
-- Admins who join are fully healed and in god mode for a set time, so an admin revived on the server does not die again on load (optional).
+- No fall damage on stairs while Fast Move is on (beta).
+- Items with negative weight are deleted.
+- Clothing destroyed while worn stays destroyed after relogging.
+- Chickens the game deletes after laying in a full hutch are put back.
+- Hutches and nest boxes get dirty at a quarter of the normal speed. The speed can be changed, or set back to vanilla.
+- Running into a stair railing no longer vaults you over it.
+- Speed controls are back in multiplayer. The game fast forwards once every player votes for it (beta).
+- Guns of Marz attachment tooltips wrap instead of stretching across the screen, at 200 characters a line by default.
+- With Nick's Inventory Selection Fix, shift-click selects the whole range instead of acting like ctrl-click.
+- Turbo Game cartridges and batteries go in and come out on multiplayer servers, including in consoles spawned from the item list, the battery charge, best scores and mood effects are kept, best scores belong to the console they were set on, the character no longer walks around while a game is open, and the game closes when a zombie is near or it is too dark (beta).
+- Admins who join are fully healed and in god mode for a set time, so an admin revived on the server does not die again on load (off by default, set a number of seconds to turn it on).
 - Admins and moderators can change any online player's hunger, mood, health, nutrition, weight and other body stats, like the debug menu's Body panel, from a Body button in the Player Stats window, the admin panel or the scoreboard. The changes are made on the server, so they stick and the player sees them.
-- Admins and moderators can send and stop the chopper from the right-click Tools menu, and the debug menu's chopper buttons work on servers. Stopping it reaches every player, including anyone who still hears a chopper that already left, which vanilla's stop cannot fix (optional, beta).
+- Admins and moderators can send and stop the chopper from the right-click Tools menu, and the debug menu's chopper buttons work on servers. Stopping it reaches every player, including anyone who still hears a chopper that already left, which vanilla's stop cannot fix (beta).
 
 Steam Workshop ID 3800148259, mod ID ZomboidFixesB42. Licensed under the GNU GPL v3, see [LICENSE](LICENSE).

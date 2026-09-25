@@ -10,7 +10,14 @@ if isClient() then return end
 
 ZomboidFixesB42 = ZomboidFixesB42 or {}
 
+local function isEnabled()
+    local vars = SandboxVars and SandboxVars.ZomboidFixesB42
+    return vars ~= nil and vars.FixDebugAddFluid == true
+end
+
 local function onAddFluidDebug(player, args)
+    if not isEnabled() then return end
+
     local role = player and player:getRole()
     if not role or not role:hasCapability(Capability.UseDebugContextMenu) then
         print("ZomboidFixesB42.addFluidDebug The player's access level is not sufficient to perform this action")

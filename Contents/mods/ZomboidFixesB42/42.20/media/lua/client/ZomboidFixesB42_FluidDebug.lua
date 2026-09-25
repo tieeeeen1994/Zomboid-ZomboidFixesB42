@@ -42,12 +42,18 @@ require "ISUI/ISWorldObjectContextMenu"
 
 ZomboidFixesB42 = ZomboidFixesB42 or {}
 
+local function isEnabled()
+    local vars = SandboxVars and SandboxVars.ZomboidFixesB42
+    return vars ~= nil and vars.FixDebugAddFluid == true
+end
+
 local vanillaAddFluidDebug = ISWorldObjectContextMenu.addFluidDebug
 
 function ISWorldObjectContextMenu.addFluidDebug(playerObj, fluidContainer, fluid)
     local isoObject = fluidContainer and fluidContainer:getGameEntity()
 
     if not isClient()
+            or not isEnabled()
             or not fluid
             or not instanceof(isoObject, "IsoObject")
             or instanceof(isoObject, "IsoFeedingTrough") then

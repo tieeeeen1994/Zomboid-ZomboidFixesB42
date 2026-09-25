@@ -43,6 +43,11 @@ local TYPE_STRING = 2
 local TYPE_COLOR = 3
 local TYPE_BOOLEAN = 4
 
+local function isEnabled()
+    local vars = SandboxVars and SandboxVars.ZomboidFixesB42
+    return vars ~= nil and vars.ItemEditorSync == true
+end
+
 local vanillaOnOptionMouseDown = ISItemEditorUI.onOptionMouseDown
 
 --- Where the server should look for this item.
@@ -160,7 +165,7 @@ local function collectChanges(panel, target)
 end
 
 function ISItemEditorUI:onOptionMouseDown(button, x, y)
-    if button.internal ~= "SAVE" or not isClient() then
+    if button.internal ~= "SAVE" or not isClient() or not isEnabled() then
         return vanillaOnOptionMouseDown(self, button, x, y)
     end
 

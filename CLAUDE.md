@@ -33,8 +33,16 @@ mkdir classes src && (cd classes && unzip -q "$JAR" 'zombie/*')
   handler and ignores other commands.
 - Server handlers always check the sender's capability (`player:getRole():hasCapability(Capability.X)`), clamp and
   validate every argument, and log admin actions with `print("[ZomboidFixesB42] ...")`.
-- Optional fixes are sandbox options (`page = ZomboidFixesB42`) with a name and a long `_tooltip` in `Translate/EN/Sandbox.json`,
-  read as `SandboxVars.ZomboidFixesB42.<Option>`. Beta ones are titled `[BETA] ...`. UI strings go in `Translate/EN/IG_UI.json`
+- **Every** feature has its own sandbox option (`page = ZomboidFixesB42`) with a name and a long `_tooltip` in
+  `Translate/EN/Sandbox.json`, read at run time as `SandboxVars.ZomboidFixesB42.<Option>` through a file-local `isEnabled()`.
+  Client overrides fall back to vanilla when off; server handlers ignore (or refuse with a reply, if the client waits)
+  commands when off. Every option defaults to **on** (opt out, not opt in); numeric ones default to a working value,
+  not their "off" value. The few that default off (HideAdminTag, AdminSpawnProtection = 0) are marked
+  "(off by default)" on their line in README/workshop/mod.info; non-obvious numeric defaults are stated there too. Beta ones are titled `[BETA] ...`. README/workshop/mod.info mark only `(beta)`, never "optional".
+- Sandbox vars do not exist yet when a mod file loads. `IsoWorld.init` calls `SandboxOptions.load` (server/SP; a client
+  already has the server's) before `GlobalModData.init`, which fires `OnInitGlobalModData` — so load-time work that depends
+  on an option (e.g. item script `DoParam`) goes there. There is no Lua event for sandbox options changing mid-game;
+  re-check on a timer (`EveryTenMinutes`) if a load-time change must follow the option. UI strings go in `Translate/EN/IG_UI.json`
   as `IGUI_ZomboidFixesB42_*`.
 - Every feature is listed in README.md, workshop.txt (`description=[*]...`) and mod.info (`description=- ...`); keep all three in step.
 
