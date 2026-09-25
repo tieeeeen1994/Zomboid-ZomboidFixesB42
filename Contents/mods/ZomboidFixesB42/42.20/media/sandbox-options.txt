@@ -173,3 +173,11 @@ option ZomboidFixesB42.ChopperControls
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_ChopperControls,
 }
+
+option ZomboidFixesB42.AdminHotbar
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_AdminHotbar,
+}
