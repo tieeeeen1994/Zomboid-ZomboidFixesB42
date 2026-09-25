@@ -130,14 +130,14 @@ option ZomboidFixesB42.AutoFastForwardActions
     translation = ZomboidFixesB42_AutoFastForwardActions,
 }
 
-option ZomboidFixesB42.AutoFastForwardSpeed
+option ZomboidFixesB42.AutoFastForwardDelay
 {
-    type = enum,
-    numValues = 3,
-    default = 2,
+    type = integer,
+    min = 0,
+    max = 600,
+    default = 5,
     page = ZomboidFixesB42,
-    translation = ZomboidFixesB42_AutoFastForwardSpeed,
-    valueTranslation = ZomboidFixesB42_AutoFastForwardSpeed_Values,
+    translation = ZomboidFixesB42_AutoFastForwardDelay,
 }
 
 option ZomboidFixesB42.GoMTooltipLineLength

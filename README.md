@@ -13,7 +13,7 @@ Zomboid Fixes B42.20 is a set of fixes for Project Zomboid Build 42.20, mostly f
 - Chickens the game deletes after laying in a full hutch are put back.
 - Hutches and nest boxes get dirty at a quarter of the normal speed. The speed can be changed, or set back to vanilla.
 - Running into a stair railing no longer vaults you over it.
-- Speed controls are back in multiplayer. The game fast forwards once every player votes for it, and starting a timed action can vote for you automatically (Fast Forward x2 by default) (beta).
+- Speed controls are back in multiplayer. The game fast forwards once every player votes for it, and right-clicking a fast forward button makes your timed actions vote for that speed automatically once you have been busy for a few seconds (5 by default) (beta).
 - Guns of Marz attachment tooltips wrap instead of stretching across the screen, at 200 characters a line by default.
 - With Nick's Inventory Selection Fix, shift-click selects the whole range instead of acting like ctrl-click.
 - Turbo Game cartridges and batteries go in and come out on multiplayer servers, including in consoles spawned from the item list, the battery charge, best scores and mood effects are kept, best scores belong to the console they were set on, the character no longer walks around while a game is open, and the game closes when a zombie is near or it is too dark (beta).

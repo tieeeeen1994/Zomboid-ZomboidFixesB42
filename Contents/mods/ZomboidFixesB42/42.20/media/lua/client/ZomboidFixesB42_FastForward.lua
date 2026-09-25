@@ -23,15 +23,18 @@
       - A zombie close to anyone stops it; the server checks that, and this one
         clears everyone's vote.
 
-    Auto fast forward (its own sandbox option, with the speed it votes for): starting
-    a timed action votes for that speed on the player's behalf, and the action ending
-    takes the vote back. So the game runs fast while every player is busy with an
-    action (or has voted by hand), drops to normal while anyone is idle, and speeds up
-    again as soon as they start the next one, without anyone touching the buttons.
-    Walking or driving also takes the vote back (the anti-cheat speed limit), and the
-    player votes again once standing still at the action. Pressing Normal Speed holds
-    that player's auto vote off until their next action, and so does the server
-    clearing the votes for a zombie, so a stop is still a stop.
+    Auto fast forward, each player's own choice (allowed by its sandbox option):
+    right-clicking a fast forward button turns it yellow instead of the usual red,
+    and right-clicking it again turns auto off. While a button is yellow, being busy
+    with timed actions for AutoFastForwardDelay seconds (a sandbox option) votes for
+    its speed on the player's behalf -- so a quick action is over before it could be
+    sped up -- and the actions ending takes the vote back. So the game runs fast while every player is busy with an
+    action (or has voted by hand), drops to normal while anyone is idle, and speeds
+    up again as soon as they start the next one. Walking or driving also takes the
+    vote back (the anti-cheat speed limit), and the player votes again once standing
+    still at the action. Pressing Normal Speed holds the auto vote off until the
+    player's next action, and so does the server clearing the votes for a zombie, so
+    a stop is still a stop. The choice is kept on this computer (AUTO_FILE).
 --]]
 
 if not isClient() then return end
@@ -72,12 +75,37 @@ local function isAutoEnabled()
     return vars ~= nil and vars.MultiplayerFastForward == true and vars.AutoFastForwardActions == true
 end
 
---- The speed an auto vote picks: the AutoFastForwardSpeed enum (1..3) is Fast
--- Forward x1/x2/x3, the speeds after normal in FAST_FORWARD_SPEEDS.
+-- The speed this player picked for auto fast forward (a right-clicked button), or
+-- nil when it is off. Kept per computer in Zomboid/Lua.
+local AUTO_FILE = "ZomboidFixesB42_FastForward.ini"
+local autoChoice = nil
+
+local function loadAutoChoice()
+    autoChoice = nil
+    local reader = getFileReader(AUTO_FILE, false)
+    if not reader then return end
+    while true do
+        local line = reader:readLine()
+        if not line then break end
+        local speed = tonumber(string.match(line, "^auto=(%d+)"))
+        if speed and speed > 1 and ZomboidFixesB42.isFastForwardSpeed(speed) then
+            autoChoice = speed
+        end
+    end
+    reader:close()
+end
+
+local function saveAutoChoice()
+    local writer = getFileWriter(AUTO_FILE, true, false)
+    if not writer then return end
+    writer:write("auto=" .. string.format("%d", autoChoice or 0) .. "\r\n")
+    writer:close()
+end
+
+--- The speed auto fast forward votes for, or nil when it is off.
 local function autoSpeed()
-    local vars = SandboxVars and SandboxVars.ZomboidFixesB42
-    local index = math.floor(tonumber(vars and vars.AutoFastForwardSpeed) or 2)
-    return ZomboidFixesB42.FAST_FORWARD_SPEEDS[index + 1] or ZomboidFixesB42.FAST_FORWARD_SPEEDS[3]
+    if not isAutoEnabled() then return nil end
+    return autoChoice
 end
 
 -- A broadcast sent before the server had our auto vote can still arrive after it;
@@ -87,8 +115,22 @@ local AUTO_GRACE_MS = 1500
 -- between actions does not flood the server.
 local AUTO_REVOTE_MS = 1000
 
--- Local player index -> { voted, votedAt, heldFor }: voted = this player's vote is an
--- auto vote; heldFor = the action during which auto voting is held off after a stop.
+-- A break in being busy (idle, or walking to the next action) longer than this
+-- starts the AutoFastForwardDelay count again; a queue of actions back to back
+-- counts as one long stretch.
+local AUTO_BREAK_MS = 1000
+
+--- How long a player must have been busy before auto votes (AutoFastForwardDelay,
+-- seconds), so quick actions are over before they are ever sped up.
+local function autoDelayMs()
+    local vars = SandboxVars and SandboxVars.ZomboidFixesB42
+    local seconds = tonumber(vars and vars.AutoFastForwardDelay) or 5
+    return math.max(0, seconds) * 1000
+end
+
+-- Local player index -> { voted, votedAt, heldFor, busySince, idleSince }: voted =
+-- this player's vote is an auto vote; heldFor = the action during which auto voting
+-- is held off after a stop; busySince / idleSince time the current busy stretch.
 local auto = {}
 
 local function autoOf(index)
@@ -155,6 +197,32 @@ local function vote(speed)
             a.heldFor = currentAction(player)
         end
         sendVote(player, speed)
+    end
+end
+
+--- Right-clicking a fast forward button: auto at that speed, or off when it is the
+-- speed already picked. A vote auto fast forward already made follows at once.
+local function toggleAuto(speed)
+    if autoChoice == speed then
+        autoChoice = nil
+    else
+        autoChoice = speed
+    end
+    saveAutoChoice()
+    for _, player in ipairs(localPlayers()) do
+        local a = autoOf(player:getPlayerNum())
+        -- Turning auto on is a clear wish to go faster, even during an action
+        -- Normal Speed stopped.
+        a.heldFor = nil
+        if a.voted then
+            if autoChoice then
+                a.votedAt = getTimestampMs()
+                sendVote(player, autoChoice)
+            else
+                a.voted = false
+                sendVote(player, 1)
+            end
+        end
     end
 end
 
@@ -250,7 +318,13 @@ function SpeedBar:statusText(hovered, myVote)
         if hovered.speed == 1 then
             return getText("IGUI_ZomboidFixesB42_FastForward_NormalHint")
         end
-        return readyText(hovered.speed)
+        if not isAutoEnabled() then
+            return readyText(hovered.speed)
+        end
+        if hovered.speed == autoChoice then
+            return getText("IGUI_ZomboidFixesB42_FastForward_AutoOn", int(hovered.speed))
+        end
+        return readyText(hovered.speed) .. getText("IGUI_ZomboidFixesB42_FastForward_AutoHint")
     end
     if state.speed > 1 then
         return getText("IGUI_ZomboidFixesB42_FastForward_Running", int(state.speed))
@@ -269,15 +343,21 @@ function SpeedBar:render()
     local myVote = voteOf(getSpecificPlayer(0))
     local hovered = self:isMouseOver() and self:buttonAt(self:getMouseX(), self:getMouseY()) or nil
 
+    local auto = autoSpeed()
+
     -- Drawn as SpeedControls.SCButton draws them: a black backing, the _On icon
-    -- for the chosen or hovered button, and the chosen one nudged down a pixel.
+    -- (red) for the chosen or hovered button, and the chosen one nudged down a pixel.
+    -- The auto speed is yellow instead: the grey _Off icon tinted.
     for _, button in ipairs(self.buttons) do
         local chosen = button.speed == myVote
         local nudge = chosen and 1 or 0
         local dy = BORDER + nudge
 
         self:drawRect(button.x, nudge, button.w, button.h, 0.75, 0, 0, 0)
-        if chosen or button == hovered then
+        if button.speed == auto then
+            local lift = button == hovered and 1 or 0.9
+            self:drawTexture(button.off, button.x + BORDER, dy, 1, lift, lift * 0.85, 0.1)
+        elseif chosen or button == hovered then
             self:drawTexture(button.on, button.x + BORDER, dy, 1, 1, 1, 1)
         else
             self:drawTexture(button.off, button.x + BORDER, dy, 0.85, 1, 1, 1)
@@ -306,6 +386,20 @@ function SpeedBar:onMouseDown(x, y)
 end
 
 function SpeedBar:onMouseUp(x, y)
+    return true
+end
+
+--- Right-click a fast forward button: auto fast forward at that speed, on or off.
+function SpeedBar:onRightMouseDown(x, y)
+    local button = self:buttonAt(x, y)
+    if button and button.speed > 1 and isAutoEnabled() then
+        toggleAuto(button.speed)
+        getSoundManager():playUISound("UIActivateButton")
+    end
+    return true
+end
+
+function SpeedBar:onRightMouseUp(x, y)
     return true
 end
 
@@ -352,7 +446,9 @@ end
 --- Auto fast forward: vote for each local player busy with an action, take the vote
 -- back when the action is over or the player moves.
 local function updateAutoVotes()
-    local enabled = isAutoEnabled()
+    local speed = autoSpeed()
+    local enabled = speed ~= nil
+    local delayMs = autoDelayMs()
     local now = getTimestampMs()
     for i = 0, getNumActivePlayers() - 1 do
         local player = getSpecificPlayer(i)
@@ -360,10 +456,18 @@ local function updateAutoVotes()
         if not player or player:isDead() then
             a.voted = false
             a.heldFor = nil
+            a.busySince, a.idleSince = nil, nil
         else
             local current = currentAction(player)
             if a.heldFor ~= nil and a.heldFor ~= current then a.heldFor = nil end
             local busy = enabled and current ~= nil and not isMoving(player)
+            if busy then
+                a.busySince = a.busySince or now
+                a.idleSince = nil
+            elseif a.busySince then
+                a.idleSince = a.idleSince or now
+                if now - a.idleSince > AUTO_BREAK_MS then a.busySince, a.idleSince = nil, nil end
+            end
             local myVote = voteOf(player)
             if a.voted then
                 if not busy then
@@ -375,10 +479,11 @@ local function updateAutoVotes()
                     a.voted = false
                     a.heldFor = current
                 end
-            elseif busy and a.heldFor == nil and myVote <= 1 and now - a.votedAt > AUTO_REVOTE_MS then
+            elseif busy and a.heldFor == nil and myVote <= 1 and now - a.votedAt > AUTO_REVOTE_MS
+                    and now - a.busySince >= delayMs then
                 a.voted = true
                 a.votedAt = now
-                sendVote(player, autoSpeed())
+                sendVote(player, speed)
             end
         end
     end
@@ -409,6 +514,7 @@ end
 local function onGameStart()
     if not isEnabled() then return end
 
+    loadAutoChoice()
     speedBar = SpeedBar:new()
     speedBar:initialise()
     speedBar:addToUIManager()

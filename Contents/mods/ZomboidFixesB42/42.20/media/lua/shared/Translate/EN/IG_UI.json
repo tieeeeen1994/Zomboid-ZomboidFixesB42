@@ -2,6 +2,8 @@
     "IGUI_ZomboidFixesB42_FastForward_NormalHint": "Normal speed - stops fast forward for everyone",
     "IGUI_ZomboidFixesB42_FastForward_Ready": "%1x speed: %2 of %3 players ready",
     "IGUI_ZomboidFixesB42_FastForward_Running": "Fast forward %1x",
+    "IGUI_ZomboidFixesB42_FastForward_AutoOn": "Auto %1x: your timed actions fast forward at this speed. Right-click to turn it off",
+    "IGUI_ZomboidFixesB42_FastForward_AutoHint": " - right-click: auto",
     "IGUI_ZomboidFixesB42_TurboGame_ZombieNear": "Zombies are too close.",
     "IGUI_ZomboidFixesB42_BodyStats_Title": "Body of %1",
     "IGUI_ZomboidFixesB42_BodyStats_Button": "Body",
