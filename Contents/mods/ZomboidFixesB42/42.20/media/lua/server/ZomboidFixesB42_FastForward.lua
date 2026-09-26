@@ -166,6 +166,10 @@ local originalAdjustMaxTime = ISBaseTimedAction.adjustMaxTime
 --- On the server this is only reached from NetTimedAction.getDuration, when an
 -- action starts (the client's create() runs its own copy).
 function ISBaseTimedAction:adjustMaxTime(maxTime)
+    -- NetTimedAction.start runs setTimeData (getDuration -> this) and then the
+    -- action's serverStart, so this is the action any emulateAnimEvent that follows
+    -- belongs to (ZomboidFixesB42_FastForwardAnimEvents.lua).
+    ZomboidFixesB42.fastForwardLastAdjusted = self
     local adjusted = originalAdjustMaxTime(self, maxTime)
     -- -1 (or less) is an action without an end.
     if not isEnabled() or type(adjusted) ~= "number" or adjusted <= 0 or not self.netAction then

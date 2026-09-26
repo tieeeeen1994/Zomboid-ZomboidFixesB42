@@ -260,6 +260,8 @@ local function onServerCommand(module, command, args)
         total = tonumber(args.total) or 0,
         votes = {},
     }
+    -- Read by ZomboidFixesB42_Transfer.lua, which times transfers at this speed.
+    ZomboidFixesB42.fastForwardSpeed = state.speed
     if type(args.votes) == "table" then
         for id, speed in pairs(args.votes) do
             state.votes[tostring(id)] = tonumber(speed) or 1

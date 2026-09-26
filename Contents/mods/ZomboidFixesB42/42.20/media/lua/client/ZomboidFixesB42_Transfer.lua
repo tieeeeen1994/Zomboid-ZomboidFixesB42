@@ -89,11 +89,13 @@ local function forgetBatch(self)
     end
     self.zfixPending = nil
     self.zfixSentMs = nil
+    self.zfixDeadlineMs = nil
     self.zfixAcked = false
 end
 
---- Ask the server to move one batch of items, and start waiting for it.
-local function sendBatch(self, queuedItem)
+--- Ask the server to move one batch of items, and start waiting for it. command is
+-- CMD_TRANSFER (move now, the cheat) unless given (CMD_TRANSFER_TIMED, fast forward).
+local function sendBatch(self, queuedItem, command)
     local items = (queuedItem and queuedItem.items) or { self.item }
 
     local ids = {}
@@ -120,7 +122,7 @@ local function sendBatch(self, queuedItem)
         return
     end
 
-    sendClientCommand(self.character, ZomboidFixesB42.MODULE, ZomboidFixesB42.CMD_TRANSFER, {
+    sendClientCommand(self.character, ZomboidFixesB42.MODULE, command or ZomboidFixesB42.CMD_TRANSFER, {
         token = self.zfixToken,
         src = self.zfixSrc,
         dst = self.zfixDst,
@@ -197,7 +199,68 @@ local function batchMoved(self)
 end
 
 local function waitedTooLong(self)
-    return self.zfixSentMs ~= nil and (getTimestampMs() - self.zfixSentMs) > LOST_PACKET_TIMEOUT_MS
+    if self.zfixSentMs == nil then return false end
+    local deadline = self.zfixDeadlineMs or (self.zfixSentMs + LOST_PACKET_TIMEOUT_MS)
+    return getTimestampMs() > deadline
+end
+
+--[[
+    Fast forward. A transfer's length is fixed by the server's item transaction in
+    real milliseconds (see server/ZomboidFixesB42_FastForwardTransfer.lua), so while
+    fast forward runs each new batch goes to the server as a timed move instead:
+    vanilla's start() and perform() open a batch by calling the global
+    createItemTransaction, and while batchFor is set that call sends the batch and
+    returns 0, the id vanilla already treats as "no transaction" (removeItemTransaction
+    and the other globals skip it). The server waits vanilla's length at the running
+    speed, moves the items and answers; the action waits for them to arrive exactly as
+    the cheat path does, and shows vanilla's progress bar, which runs at the client's
+    game speed. Each batch decides for itself, so a long loot that fast forward starts
+    in the middle of speeds up from the next batch on. Containers that cannot be
+    addressed over the wire (corpses) keep the vanilla transaction.
+--]]
+local batchFor = nil
+
+local function fastForwardRunning()
+    local vars = SandboxVars and SandboxVars.ZomboidFixesB42
+    return vars ~= nil and vars.MultiplayerFastForward == true and (ZomboidFixesB42.fastForwardSpeed or 1) > 1
+end
+
+local vanillaCreateItemTransaction = createItemTransaction
+
+function createItemTransaction(character, items, src, dst)
+    local action = batchFor
+    if action and fastForwardRunning() then
+        local srcCode = ZomboidFixesB42.encodeContainer(src, character)
+        local dstCode = ZomboidFixesB42.encodeContainer(dst, character)
+        if srcCode and dstCode then
+            local units = 0
+            for _, item in ipairs(items or {}) do
+                units = math.max(units, ZomboidFixesB42.transferUnits(character, item, src, dst))
+            end
+            action.zfixTimed = true
+            action.zfixSrc, action.zfixDst = srcCode, dstCode
+            action.zfixUnits = math.max(1, units)
+            sendBatch(action, { items = items }, ZomboidFixesB42.CMD_TRANSFER_TIMED)
+            -- At worst the whole batch runs at normal speed.
+            action.zfixDeadlineMs = getTimestampMs() + units * 20 + LOST_PACKET_TIMEOUT_MS
+            return 0
+        end
+    end
+    return vanillaCreateItemTransaction(character, items, src, dst)
+end
+
+--- Run a vanilla function that may open a batch, letting fast forward take the batch.
+local function openingBatch(self, fn)
+    self.zfixTimed = false
+    batchFor = self
+    local ok, err = pcall(fn, self)
+    batchFor = nil
+    if not ok then error(err) end
+    if self.zfixTimed then
+        -- Vanilla leaves -1 here for the server's transaction to fill in.
+        self.maxTime = self.zfixUnits
+        self.action:setTime(self.maxTime)
+    end
 end
 
 function ISInventoryTransferAction:new(character, item, srcContainer, destContainer, time)
@@ -224,7 +287,7 @@ function ISInventoryTransferAction:new(character, item, srcContainer, destContai
 end
 
 function ISInventoryTransferAction:start()
-    if not self.zfixFast then return vanilla.start(self) end
+    if not self.zfixFast then return openingBatch(self, vanilla.start) end
 
     -- Vanilla handles the sounds, the animation, the microwave, and it calls
     -- checkQueueList() so queueList[1] is already the full first batch. It also
@@ -257,7 +320,7 @@ end
 --- Mirrors the vanilla 42.20 update() with the transaction polling replaced by a
 -- check on whether the server's move has landed yet.
 function ISInventoryTransferAction:update()
-    if not self.zfixFast then return vanilla.update(self) end
+    if not self.zfixFast and not self.zfixTimed then return vanilla.update(self) end
 
     if self.character and (not self.character:hasTrait(CharacterTrait.DESENSITIZED)) and self.srcContainer and self.srcContainer:getType()
             and (self.srcContainer:getType() == "inventoryfemale" or self.srcContainer:getType() == "inventorymale") then
@@ -292,7 +355,12 @@ function ISInventoryTransferAction:update()
 end
 
 function ISInventoryTransferAction:perform()
-    if not self.zfixFast then return vanilla.perform(self) end
+    if not self.zfixFast then
+        -- The finished batch, if it was a timed one, has landed; vanilla then opens
+        -- the next.
+        if self.zfixTimed then forgetBatch(self) end
+        return openingBatch(self, vanilla.perform)
+    end
 
     self.item:setJobDelta(0.0)
 
@@ -352,6 +420,13 @@ end
 --- Release the token registry slot if the action is abandoned rather than finished.
 local vanillaStop = ISInventoryTransferAction.stop
 function ISInventoryTransferAction:stop()
-    if self.zfixFast then forgetBatch(self) end
+    if self.zfixTimed and self.zfixToken and not self.zfixCompleted then
+        -- The server is still counting this batch down; it must not move it later.
+        sendClientCommand(self.character, ZomboidFixesB42.MODULE, ZomboidFixesB42.CMD_TRANSFER_TIMED_CANCEL, {
+            token = self.zfixToken,
+        })
+    end
+    if self.zfixFast or self.zfixTimed then forgetBatch(self) end
+    self.zfixTimed = false
     return vanillaStop(self)
 end
