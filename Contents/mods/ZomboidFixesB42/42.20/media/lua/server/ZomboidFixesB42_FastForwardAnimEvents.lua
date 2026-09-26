@@ -58,6 +58,20 @@
     which asks for the events, runs straight after. Events asked for while the
     action ends (ISFitnessAction's FitnessFinished, from complete and serverStop)
     are left to Java.
+
+    Each event that changes an item tells its owner with syncHandWeaponFields or
+    syncItemFields (a loaded round: the gun's or the magazine's whole ammo count).
+    Their packets, SyncHandWeaponFieldsPacket and SyncItemFieldsPacket, are RakNet
+    RELIABLE (reliability 2), not ordered: at normal speed they leave half a second
+    apart and land in order, but several sent in one tick can land in any order, and
+    the client keeps whichever came last -- a revolver loaded to 6 on the server
+    shows 4. Worse, the client sends its copy back: firing
+    (ISReloadWeaponAction.onShoot) calls syncHandWeaponFields on the client, whose
+    SyncHandWeaponFieldsPacket.processServer writes that stale count over the
+    server's, so the rounds are really gone. So while this file fires events, their
+    syncs are held and each item is synced once afterwards, and once more
+    RESYNC_MS later, after anything still in flight (Java's own copy of an event,
+    in the same tick) has landed.
 --]]
 
 if isClient() then return end
@@ -69,8 +83,66 @@ local MAX_PER_TICK = 60
 -- AnimEventEmulator.getDurationMax: the emulator forgets events after 30 minutes.
 local MAX_AGE_MS = 1800000
 
+-- The last sync of an item goes out again this long after a burst of events.
+local RESYNC_MS = 500
+
 -- Every event kept pace with, shortest period or delay first.
 local events = {}
+
+-- While this file fires events: item -> { send, character }, the syncs held back.
+local held = nil
+-- item -> { send, character, dueMs }: the second sync, and how many are waiting.
+local resyncs = {}
+local resyncCount = 0
+
+--- Hold an item sync while this file fires events; send it straight away otherwise.
+local function holdable(send)
+    if not send then return nil end
+    return function(character, item, ...)
+        if held and item then
+            held[item] = { send = send, character = character }
+            return
+        end
+        return send(character, item, ...)
+    end
+end
+
+local vanillaSyncHandWeaponFields = syncHandWeaponFields
+local vanillaSyncItemFields = syncItemFields
+syncHandWeaponFields = holdable(vanillaSyncHandWeaponFields)
+syncItemFields = holdable(vanillaSyncItemFields)
+
+--- Send one sync, unless the item has since left every container (the packets
+-- address it by container) or its owner has left.
+local function sendSync(item, sync)
+    if not item:getContainer() or not sync.character:isExistInTheWorld() then return end
+    pcall(sync.send, sync.character, item)
+end
+
+--- Send what was held, once per item, and have it sent again RESYNC_MS later.
+local function flushHeld(now)
+    local list = held
+    held = nil
+    if not list then return end
+    for item, sync in pairs(list) do
+        sendSync(item, sync)
+        if not resyncs[item] then resyncCount = resyncCount + 1 end
+        resyncs[item] = { send = sync.send, character = sync.character, dueMs = now + RESYNC_MS }
+    end
+end
+
+local function sendDueResyncs(now)
+    local due = {}
+    for item, sync in pairs(resyncs) do
+        if now >= sync.dueMs then table.insert(due, item) end
+    end
+    for _, item in ipairs(due) do
+        local sync = resyncs[item]
+        resyncs[item] = nil
+        resyncCount = resyncCount - 1
+        sendSync(item, sync)
+    end
+end
 
 local function isEnabled()
     local vars = SandboxVars and SandboxVars.ZomboidFixesB42
@@ -198,10 +270,7 @@ local function fireOnce(e, now, speed)
     return true
 end
 
-local function onTick()
-    if #events == 0 then return end
-    local now = getTimestampMs()
-    local speed = ZomboidFixesB42.fastForwardSpeed or 1
+local function fireAll(now, speed)
     -- A copy, since firing runs the action's Lua, which could ask for more events.
     local list = {}
     for i, e in ipairs(events) do list[i] = e end
@@ -214,9 +283,22 @@ local function onTick()
             fireRepeating(e, now, speed)
         end
     end
+end
+
+local function onTick()
+    if #events == 0 and resyncCount == 0 then return end
+    local now = getTimestampMs()
+    if resyncCount > 0 then sendDueResyncs(now) end
+    if #events == 0 then return end
+    local speed = ZomboidFixesB42.fastForwardSpeed or 1
+    held = {}
+    -- Whatever happens, the held syncs go out and holding stops.
+    local ok, err = pcall(fireAll, now, speed)
+    flushHeld(now)
     for i = #events, 1, -1 do
         if events[i].over then table.remove(events, i) end
     end
+    if not ok then error(err) end
 end
 
 Events.OnTick.Add(onTick)

@@ -210,6 +210,24 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
   (speed - 1) extra `netAction:animEvent` per period, stopping on the table's `complete`/`serverStop` or `getProgress() >= 1`.
   `emulateAnimEventOnce` (magazine eject/insert, racking, petting) is fired early on the game clock and the action's own
   `animEvent` wrapper swallows Java's later copy. Every reloading action has `getDuration() -1`: it ends on its events only.
+- `SyncHandWeaponFieldsPacket` / `SyncItemFieldsPacket` (Lua `syncHandWeaponFields` / `syncItemFields`) are RELIABLE,
+  **not ordered**, and carry the whole state (ammo count), so several in one tick can land out of order and leave the
+  client stale; the client's own `syncHandWeaponFields` (onShoot) then writes that stale count back on the server
+  (`processServer`). The fast forward event burst holds them and syncs each item once after, and again 500 ms later.
+
+### Animals, hutches and animal zones in multiplayer
+
+- Hutch state runs on the server only (`IsoHutch.isOwner()` = `!GameClient.client`). `IsoHutch.update` syncs the whole
+  hutch (doors, dirt, every nest box's eggs) every 3.5 s (`sendUpdate`), so a client's nest box eggs are overwritten
+  within seconds. Animals in a hutch travel in AnimalPacket (`location` 1, `hutchNestBox`, `hutchPosition`).
+- `DesignationZone.update()` (from `IsoWorld.update`, every 2.5 s real time) runs **on clients too**: `checkStreamed`
+  flips `streamed` from the zone's two corner squares and, on coming back, calls `doMeta(hours away)`. On a client
+  `DesignationZoneAnimal.doMeta` replays those hours on its own copy of the loose animals (`updateStatsAway`): hens lay
+  ground eggs, feathers drop, ground food is eaten, all local and never sent. `streamed`/`hourLastSeen` have no setter
+  (read-only via `getClassFieldVal`), so Lua can only repair afterwards. Hutched hens are not in
+  the zone's animal list and are not affected.
+- A client world item keeps the server's item ID (chunk data and AddItemToMap serialise it), and
+  `IsoGridSquare.removeWorldObject` is local only, so a client can drop an item the server does not have by ID.
 
 ## Roles and capabilities
 
