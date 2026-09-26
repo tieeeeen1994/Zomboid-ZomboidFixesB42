@@ -208,6 +208,8 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
 - 37 vanilla actions work on `emulateAnimEvent(netAction, periodMs, event)` (Java `AnimEventEmulator`, real-time period,
   not exposed): milking, shearing, reading, fitness, drinking, fluids, reloading... `*_FastForwardAnimEvents.lua` fires
   (speed - 1) extra `netAction:animEvent` per period, stopping on the table's `complete`/`serverStop` or `getProgress() >= 1`.
+  `emulateAnimEventOnce` (magazine eject/insert, racking, petting) is fired early on the game clock and the action's own
+  `animEvent` wrapper swallows Java's later copy. Every reloading action has `getDuration() -1`: it ends on its events only.
 
 ## Roles and capabilities
 
