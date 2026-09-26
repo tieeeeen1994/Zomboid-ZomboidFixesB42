@@ -25,7 +25,7 @@
     "IGUI_ZomboidFixesB42_Chopper_Denied": "You are not allowed to call the chopper",
     "IGUI_ZomboidFixesB42_Chopper_Disabled": "Chopper controls are off in sandbox options",
     "IGUI_ZomboidFixesB42_BodyStats_Disabled": "The body stats editor is switched off in the sandbox options.",
-    "IGUI_ZomboidFixesB42_AdminHotbar_SidebarTooltip": "Admin Hotbar (beta)",
+    "IGUI_ZomboidFixesB42_AdminHotbar_SidebarTooltip": "Admin Hotbar",
     "IGUI_ZomboidFixesB42_AdminHotbar_AddShortcut": "Add shortcut",
     "IGUI_ZomboidFixesB42_AdminHotbar_AddShortcutTooltip": "Add a shortcut. Right-click the bar or a slot for more.",
     "IGUI_ZomboidFixesB42_AdminHotbar_Edit": "Edit...",
