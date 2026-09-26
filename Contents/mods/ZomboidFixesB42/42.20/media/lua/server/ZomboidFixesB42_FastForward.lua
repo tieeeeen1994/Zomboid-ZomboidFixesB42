@@ -179,6 +179,8 @@ end
 
 local function apply(speed)
     getGameTime():setMultiplier(speed)
+    -- Read by ZomboidFixesB42_FastForwardCooking.lua.
+    ZomboidFixesB42.fastForwardSpeed = speed
     if speed ~= applied then
         applied = speed
         retimeActions(speed)
