@@ -203,7 +203,11 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
 - Items on a server update only every 5 real s (`IsoCell` ProcessItems) with a real-time step
   (`InventoryItem.calculateTimeMultiplier`), so heat and cooking ignore the multiplier; `getCell():getProcessItems()` is
   public, and `*_FastForwardCooking.lua` pays the missing heat and cooking steps. Item transfers are timed by Java
-  `Transaction.getDuration` (real ms, `TransactionManager` not exposed to Lua).
+  `Transaction.getDuration` (real ms, `TransactionManager` not exposed to Lua), so during fast forward each batch is
+  sent as a server-timed move instead (`createItemTransaction` wrapped in `*_Transfer.lua`, `*_FastForwardTransfer.lua`).
+- 37 vanilla actions work on `emulateAnimEvent(netAction, periodMs, event)` (Java `AnimEventEmulator`, real-time period,
+  not exposed): milking, shearing, reading, fitness, drinking, fluids, reloading... `*_FastForwardAnimEvents.lua` fires
+  (speed - 1) extra `netAction:animEvent` per period, stopping on the table's `complete`/`serverStop` or `getProgress() >= 1`.
 
 ## Roles and capabilities
 

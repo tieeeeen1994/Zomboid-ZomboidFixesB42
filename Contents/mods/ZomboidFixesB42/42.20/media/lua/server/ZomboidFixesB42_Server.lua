@@ -135,13 +135,10 @@ local function replyToClient(player, token, failed)
     })
 end
 
-local function onInstantTransfer(player, args)
-    -- Answered rather than dropped: a client that took the fast path on a cheat
-    -- flag the server disagrees about would otherwise hang on every transfer.
-    if not isAllowed(player) then
-        return replyToClient(player, args.token, parseItemIds(args.items))
-    end
-
+--- Validate and move one batch now, then answer the client. Also used by fast
+-- forward's timed transfers (ZomboidFixesB42_FastForwardTransfer.lua) once their
+-- time is up.
+local function moveBatch(player, args)
     local FLOOR = ZomboidFixesB42.FLOOR
     local fromGround = (args.src == FLOOR)
     local toGround = (args.dst == FLOOR)
@@ -187,6 +184,18 @@ local function onInstantTransfer(player, args)
     end
 
     replyToClient(player, args.token, failed)
+end
+
+ZomboidFixesB42.moveTransferBatch = moveBatch
+ZomboidFixesB42.parseTransferItemIds = parseItemIds
+
+local function onInstantTransfer(player, args)
+    -- Answered rather than dropped: a client that took the fast path on a cheat
+    -- flag the server disagrees about would otherwise hang on every transfer.
+    if not isAllowed(player) then
+        return replyToClient(player, args.token, parseItemIds(args.items))
+    end
+    moveBatch(player, args)
 end
 
 local function onClientCommand(module, command, player, args)

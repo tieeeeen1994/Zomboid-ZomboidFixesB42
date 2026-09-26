@@ -207,3 +207,11 @@ option ZomboidFixesB42.NoWalkOnSquarePick
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_NoWalkOnSquarePick,
 }
+
+option ZomboidFixesB42.BooksStayRead
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_BooksStayRead,
+}

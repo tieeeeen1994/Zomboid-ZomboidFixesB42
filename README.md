@@ -13,7 +13,7 @@ Zomboid Fixes B42.20 is a set of fixes for Project Zomboid Build 42.20, mostly f
 - Chickens the game deletes after laying in a full hutch are put back.
 - Hutches and nest boxes get dirty at a quarter of the normal speed. The speed can be changed, or set back to vanilla.
 - Running into a stair railing no longer vaults you over it.
-- Speed controls are back in multiplayer. The game fast forwards once every player votes for it, timed actions and cooking speed up with it, and right-clicking a fast forward button makes your timed actions vote for that speed automatically once you have been busy for a few seconds (5 by default).
+- Speed controls are back in multiplayer. The game fast forwards once every player votes for it, timed actions (milking, shearing and reading included), looting and cooking speed up with it, and right-clicking a fast forward button makes your timed actions vote for that speed automatically once you have been busy for a few seconds (5 by default).
 - Guns of Marz attachment tooltips wrap instead of stretching across the screen, at 200 characters a line by default.
 - With Nick's Inventory Selection Fix, shift-click selects the whole range instead of acting like ctrl-click.
 - Turbo Game cartridges and batteries go in and come out on multiplayer servers, including in consoles spawned from the item list, the battery charge, best scores and mood effects are kept, best scores belong to the console they were set on, the character no longer walks around while a game is open, and the game closes when a zombie is near or it is too dark.
@@ -23,5 +23,6 @@ Zomboid Fixes B42.20 is a set of fixes for Project Zomboid Build 42.20, mostly f
 - Admins and moderators get an admin hotbar, opened from a new sidebar button under Admin: a floating bar of one-click shortcuts to every admin tool (admin powers, admin panel windows, the Tools and Debug menus, weather and climate, meta events, foraging, player actions). Each shortcut keeps its own settings, such as a target player, a location, an item or a saved climate preset, toggles show whether they are on, a second click closes the window a shortcut opened, one shortcut can run several actions in a row, each after a delay you choose or all at once (for example pick a square, then spawn a horde and make noise there), and any image in the game can be its icon. Single player gets it with the -debug launch option.
 - Picking a square in the debug Horde Manager or Tile Picker no longer walks your character over to it.
 - Saving the options no longer resets or deletes the mod options of mods that are not loaded, and settings an earlier save left glued together are read back instead of reset. Enable Zomboid Fixes in the main menu's Mods list too, since options saved at the main menu are only protected while it is loaded there.
+- Finished skill books stay read after relogging, including books read with the instant timed actions cheat.
 
 Steam Workshop ID 3800148259, mod ID ZomboidFixesB42. Licensed under the GNU GPL v3, see [LICENSE](LICENSE).

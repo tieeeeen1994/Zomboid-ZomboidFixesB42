@@ -109,6 +109,8 @@ ZomboidFixesB42.CMD_TURBO_DATA = "turboSaveData"
 ZomboidFixesB42.CMD_BODY_STATS_REQUEST = "bodyStatsRequest"
 ZomboidFixesB42.CMD_BODY_STATS_SET = "bodyStatsSet"
 ZomboidFixesB42.CMD_CHOPPER = "chopper"
+ZomboidFixesB42.CMD_TRANSFER_TIMED = "timedTransfer"
+ZomboidFixesB42.CMD_TRANSFER_TIMED_CANCEL = "timedTransferCancel"
 
 -- server -> clients
 ZomboidFixesB42.CMD_ANIMAL_GENDER_SYNC = "animalGenderSync"
@@ -200,6 +202,43 @@ end
 -- a tick and shows no progress bar. In multiplayer it still lasts until the
 -- server's move has arrived; see the client file.
 ZomboidFixesB42.TRANSFER_MAX_TIME = 1
+
+--- How long moving one item takes at normal speed, in timed action units (20 ms of
+-- real time on a server). The server's own length, zombie.core.Transaction.getDuration
+-- (Java, not reachable from Lua), per item; a batch takes as long as its slowest
+-- item. It is the same formula as ISInventoryTransferAction:new. Left out: vanilla's
+-- streak of instant moves for world items weighing 0.1 or less.
+function ZomboidFixesB42.transferUnits(player, item, src, dst)
+    if not src or not dst or dst:getType() == "TradeUI" or src:getType() == "TradeUI" then return 0 end
+    local units = 120
+    local capacityDelta = 1
+    local inventory = player:getInventory()
+    if src == inventory then
+        if dst:isInCharacterInventory(player) then
+            local max = dst:getMaxWeight()
+            if max > 0 then capacityDelta = dst:getCapacityWeight() / max end
+        else
+            units = 50
+        end
+    elseif not src:isInCharacterInventory(player) and dst:isInCharacterInventory(player) then
+        units = 50
+    end
+    if capacityDelta < 0.4 then capacityDelta = 0.4 end
+    if item then
+        units = units * math.min(item:getActualWeight(), 3) * capacityDelta
+    end
+    if getCore():getGameMode() == "LastStand" then units = units * 0.3 end
+    if dst:getType() == "floor" then
+        if src == inventory then
+            units = units * 0.1
+        elseif not src:isInCharacterInventory(player) then
+            units = units * 0.2
+        end
+    end
+    if player:hasTrait(CharacterTrait.DEXTROUS) then units = units * 0.5 end
+    if player:hasTrait(CharacterTrait.ALL_THUMBS) or player:isWearingAwkwardGloves() then units = units * 2 end
+    return units
+end
 
 -- How far a player may be from a container and still transfer into or out of it.
 -- This is defence in depth rather than game balance: the command is already gated
