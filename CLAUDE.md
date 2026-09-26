@@ -200,6 +200,10 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
   there (the table is built with `Type.new(args)` and gets `netAction` = the Java action; `create()` is client side).
   PZ's `KahluaTableImpl.rawget` falls back to the metatable, so class methods are found. `netAction:setDuration(ms)`
   moves a running action's end (`endTime = startTime + ms`).
+- Items on a server update only every 5 real s (`IsoCell` ProcessItems) with a real-time step
+  (`InventoryItem.calculateTimeMultiplier`), so heat and cooking ignore the multiplier; `getCell():getProcessItems()` is
+  public, and `*_FastForwardCooking.lua` pays the missing heat and cooking steps. Item transfers are timed by Java
+  `Transaction.getDuration` (real ms, `TransactionManager` not exposed to Lua).
 
 ## Roles and capabilities
 

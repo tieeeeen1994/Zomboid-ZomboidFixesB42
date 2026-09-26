@@ -146,6 +146,16 @@ local function currentAction(player)
     return (queue and queue.queue and queue.queue[1]) or true
 end
 
+--- Fishing never counts for auto fast forward. Waiting for a bite is no timed action
+-- (the rod is the Java FishingState), and vanilla drops the speed to normal itself
+-- when a fish bites (Fish:getFishByLure). The catch is then picked up with
+-- ISPickupFishAction, 267 units (5.3 s) for a fish, long enough to cross the
+-- default delay and speed the game up at the end of every catch.
+local function isFishing(player, current)
+    if type(current) == "table" and current.Type == "ISPickupFishAction" then return true end
+    return FishingState ~= nil and player:getCurrentState() == FishingState.instance()
+end
+
 local function voteOf(player)
     if not player then return 1 end
     return state.votes[tostring(player:getOnlineID())] or 1
@@ -481,7 +491,7 @@ local function updateAutoVotes()
         else
             local current = currentAction(player)
             if a.heldFor ~= nil and a.heldFor ~= current then a.heldFor = nil end
-            local busy = enabled and current ~= nil and not isMoving(player)
+            local busy = enabled and current ~= nil and not isMoving(player) and not isFishing(player, current)
             if busy then
                 a.busySince = a.busySince or now
                 a.idleSince = nil
