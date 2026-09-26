@@ -339,9 +339,14 @@ function SpeedBar:prerender()
     self:reposition()
 end
 
-function SpeedBar:render()
+function SpeedBar:hoverAndVote()
     local myVote = voteOf(getSpecificPlayer(0))
     local hovered = self:isMouseOver() and self:buttonAt(self:getMouseX(), self:getMouseY()) or nil
+    return hovered, myVote
+end
+
+function SpeedBar:render()
+    local hovered, myVote = self:hoverAndVote()
 
     local auto = autoSpeed()
 
@@ -363,17 +368,33 @@ function SpeedBar:render()
             self:drawTexture(button.off, button.x + BORDER, dy, 0.85, 1, 1, 1)
         end
     end
+end
 
-    -- To the left of the buttons, outside the element: nothing clips it, and
-    -- keeping it out of the bounds means it never catches a click.
-    local text = self:statusText(hovered, myVote)
-    if text then
-        local textWidth = getTextManager():MeasureStringX(UIFont.Small, text)
-        local right = -GAP * 2
-        local pad = BORDER * 2
-        self:drawRect(right - textWidth - pad * 2, 0, textWidth + pad * 2, self.buttonHeight, 0.75, 0, 0, 0)
-        self:drawTextRight(text, right - pad, (self.buttonHeight - FONT_HGT_SMALL) / 2, 1, 1, 1, 0.9, UIFont.Small)
-    end
+-- The status text left of the buttons is its own top-level element, always on top
+-- and blind to the mouse. Drawn by the bar, it sat in the bar's layer, so any window
+-- opened or clicked later (the loot inventory in the top right) covered it; the
+-- buttons themselves stay in the normal layer and never cover a window.
+local StatusText = ISUIElement:derive("ZomboidFixesB42_SpeedBarStatus")
+
+function StatusText:new(bar)
+    local o = ISUIElement.new(self, 0, 0, 1, bar.buttonHeight)
+    o.bar = bar
+    return o
+end
+
+function StatusText:render()
+    local bar = self.bar
+    if not bar:isVisible() then return end
+    local text = bar:statusText(bar:hoverAndVote())
+    if not text then return end
+    local textWidth = getTextManager():MeasureStringX(UIFont.Small, text)
+    local pad = BORDER * 2
+    local width = textWidth + pad * 2
+    self:setX(bar:getX() - GAP * 2 - width)
+    self:setY(bar:getY())
+    self:setWidth(width)
+    self:drawRect(0, 0, width, bar.buttonHeight, 0.75, 0, 0, 0)
+    self:drawTextRight(text, width - pad, (bar.buttonHeight - FONT_HGT_SMALL) / 2, 1, 1, 1, 0.9, UIFont.Small)
 end
 
 function SpeedBar:onMouseDown(x, y)
@@ -518,6 +539,11 @@ local function onGameStart()
     speedBar = SpeedBar:new()
     speedBar:initialise()
     speedBar:addToUIManager()
+    local status = StatusText:new(speedBar)
+    status:initialise()
+    status:addToUIManager()
+    status:setAlwaysOnTop(true)
+    status:setWantMouseEvents(false)
 
     local player = getSpecificPlayer(0)
     if player then
