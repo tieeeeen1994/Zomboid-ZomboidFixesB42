@@ -22,8 +22,24 @@
     does not help: deactivate() only sends anything while the server's own chopper
     is still up. This hits the natural chopper event too, whenever it leaves.
 
+    The natural chopper event comes straight back after a stop, too. On the event
+    day (GameTime.helicopterDay1 == nightsSurvived), for as long as the time of day
+    is between helicopterTime1Start and helicopterTime1End (1 to 4 game hours),
+    GameTime.update launches it again (pickRandomTarget) with a 1 in
+    800 / multiplier chance per update whenever it is not up. On a server running at
+    10 updates a second that is about 80 seconds, and a minute later it is overhead
+    again. Vanilla meant to push the start of the window back by half an hour each
+    time, but does it as (int)(start + 0.5F), which never changes an int. The same
+    relaunch also brings the chopper back each time it leaves on its own during the
+    window.
+
     So stopping here does more than /chopper stop:
       - endHelicopter() stops the chopper if it is up, as vanilla does;
+      - if today's event is running, it is ended: the end hour is set to the start
+        hour (GameTime.setHelicopterEndHour, saved with the world), so the window
+        is empty for the rest of the day. With the sandbox's Helicopter set to
+        "Sometimes" or "Often", GameTime schedules the next event day by itself
+        once this day is over;
       - testHelicopter() then endHelicopter() puts it up and takes it down again
         within the same update. That sends a fresh "gone" packet to every client
         even when the server's chopper was already down. No position packet goes
@@ -66,14 +82,31 @@ local function sendGone()
     endHelicopter()
 end
 
+--- Ends today's chopper event if it is running now, so GameTime.update does not
+-- launch the chopper again. Returns true if there was one to end.
+local function endTodaysEvent()
+    local gameTime = getGameTime()
+    if gameTime:getNightsSurvived() ~= gameTime:getHelicopterDay() then return false end
+
+    local startHour = gameTime:getHelicopterStartHour()
+    local hour = gameTime:getTimeOfDay()
+    if hour <= startHour or hour >= gameTime:getHelicopterEndHour() then return false end
+
+    gameTime:setHelicopterEndHour(startHour)
+    return true
+end
+
+--- Returns true if today's chopper event was ended as well.
 local function stop()
     endHelicopter()
+    local endedEvent = endTodaysEvent()
     sendGone()
     local now = getTimestampMs()
     resends = {}
     for _, delay in ipairs(RESEND_AFTER_MS) do
         table.insert(resends, now + delay)
     end
+    return endedEvent
 end
 
 local function start()
@@ -99,7 +132,7 @@ local function onTick()
     if due then sendGone() end
 end
 
---- result is "sent", "stopped", "denied" or "disabled".
+--- result is "sent", "stopped", "stoppedEvent", "denied" or "disabled".
 local function reply(player, result)
     sendServerCommand(player, ZomboidFixesB42.MODULE, ZomboidFixesB42.CMD_CHOPPER_RESULT, { result = result })
 end
@@ -123,9 +156,13 @@ local function onClientCommand(module, command, player, args)
         writeLog("admin", tostring(player:getUsername()) .. " sent the chopper")
         reply(player, "sent")
     elseif args.action == "stop" then
-        stop()
-        writeLog("admin", tostring(player:getUsername()) .. " stopped the chopper")
-        reply(player, "stopped")
+        if stop() then
+            writeLog("admin", tostring(player:getUsername()) .. " stopped the chopper and ended today's chopper event")
+            reply(player, "stoppedEvent")
+        else
+            writeLog("admin", tostring(player:getUsername()) .. " stopped the chopper")
+            reply(player, "stopped")
+        end
     end
 end
 
