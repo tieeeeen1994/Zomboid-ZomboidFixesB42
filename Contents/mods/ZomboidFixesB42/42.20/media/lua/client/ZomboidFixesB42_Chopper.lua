@@ -1,10 +1,16 @@
 --[[
     Zomboid Fixes B42.20 -- client, admin chopper controls
 
-    Puts Send Chopper and Stop Chopper in the right-click admin Tools menu, which
-    admins and moderators have on a server without -debug. The debug menu's Game
-    panel buttons, Add Chopper and Remove Chopper, go the same way. Both ask the
-    server file, which explains what vanilla's /chopper stop gets wrong.
+    Puts Send Chopper and Stop Chopper in the right-click Debug menu, which admins
+    and moderators have on a server without -debug. The debug menu's Game panel
+    buttons, Add Chopper and Remove Chopper, go the same way. Both ask the server
+    file, which explains what vanilla's /chopper stop gets wrong.
+
+    The Debug menu is built by Java (ISWorldObjectContextMenuLogic.createMenuEntries
+    calls DebugContextMenu.doDebugMenu) before ISWorldObjectContextMenu.createMenu
+    fires OnFillWorldObjectContextMenu, so it is already there when this file's
+    handler runs. It only exists for roles with UseDebugContextMenu, and
+    addDebugOption drops it when debug context menu options are hidden.
 
     Needs MakeEventsAlarmGunshot, the same as the /chopper command. Single player is
     left alone: there the debug buttons run the chopper directly and nothing is
@@ -15,8 +21,8 @@ if not isClient() then return end
 
 require "ISUI/ISContextMenu"
 require "ISUI/ISWorldObjectContextMenu"
--- Required so that its Tools menu is built before this file adds to it: handlers
--- for the same event run in the order they were added.
+-- Required so that its Tools menu, the fallback below, is built before this file
+-- adds to it: handlers for the same event run in the order they were added.
 require "DebugUIs/AdminContextMenu"
 require "DebugUIs/DebugMenu/General/ISGameDebugPanel"
 
@@ -52,7 +58,13 @@ local function addOption(menu, player, textKey, tooltipKey, action)
     return option
 end
 
--- Admin Tools menu ---------------------------------------------------------------
+-- Debug menu ---------------------------------------------------------------------
+
+--- The submenu behind one of the context menu's own options, or nil.
+local function subMenuOf(context, name)
+    local option = context:getOptionFromName(name)
+    return option and option.subOption and context:getSubMenu(option.subOption)
+end
 
 local function onFillWorldObjectContextMenu(playerNum, context, worldobjects, test)
     if test and ISWorldObjectContextMenu.Test then return true end
@@ -61,12 +73,12 @@ local function onFillWorldObjectContextMenu(playerNum, context, worldobjects, te
     local player = getSpecificPlayer(playerNum)
     if not canUse(player) then return end
 
-    -- AdminContextMenu.doMenu's Tools submenu. A role that may use /chopper but is
-    -- neither admin nor moderator does not get that menu, so the chopper gets a
-    -- debug entry of its own. addDebugOption drops it again when debug context
-    -- menu options are hidden, as it does Tools.
-    local tools = context:getOptionFromName("Tools")
-    local parent = tools and tools.subOption and context:getSubMenu(tools.subOption)
+    -- DebugContextMenu.doDebugMenu's Debug submenu. A role that may use /chopper
+    -- without UseDebugContextMenu does not get it, so the chopper goes in
+    -- AdminContextMenu.doMenu's Tools submenu instead (admins and moderators), or
+    -- else gets a debug entry of its own. addDebugOption drops that again when
+    -- debug context menu options are hidden, as it does Debug and Tools.
+    local parent = subMenuOf(context, getText("ContextMenu_Debug")) or subMenuOf(context, "Tools")
     local option
     if parent then
         option = parent:addOption(getText("IGUI_ZomboidFixesB42_Chopper"), worldobjects, nil)
@@ -106,9 +118,12 @@ end
 local RESULT_TEXT = {
     sent = "IGUI_ZomboidFixesB42_Chopper_Sent",
     stopped = "IGUI_ZomboidFixesB42_Chopper_Stopped",
+    stoppedEvent = "IGUI_ZomboidFixesB42_Chopper_StoppedEvent",
     denied = "IGUI_ZomboidFixesB42_Chopper_Denied",
     disabled = "IGUI_ZomboidFixesB42_Chopper_Disabled",
 }
+
+local BAD_RESULT = { denied = true, disabled = true }
 
 local function onServerCommand(module, command, args)
     if module ~= ZomboidFixesB42.MODULE or command ~= ZomboidFixesB42.CMD_CHOPPER_RESULT then return end
@@ -118,10 +133,10 @@ local function onServerCommand(module, command, args)
     local player = getPlayer()
     if not key or not player then return end
 
-    if args.result == "sent" or args.result == "stopped" then
-        HaloTextHelper.addText(player, getText(key))
-    else
+    if BAD_RESULT[args.result] then
         HaloTextHelper.addBadText(player, getText(key))
+    else
+        HaloTextHelper.addText(player, getText(key))
     end
 end
 
