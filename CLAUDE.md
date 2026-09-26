@@ -461,8 +461,9 @@ are gated. Candidates for a hardening fix.
   toggles read their state back from the game every 200 ms; `window = true` slots open the vanilla window.
   Actions marked `opensWindow` (plus openUI and the windows category) remember the UIs that appear within 1.5 s
   and a second click closes them. `slot.steps` = extra `{ action, settings, window }` run after the slot's own
-  (`Hotbar.partsOf`): all resolved first (asked player / square / vehicle shared), one confirm, then 300 ms apart;
-  saved as `steps.#n.*` on the slot line.
+  (`Hotbar.partsOf`): all resolved first (asked player / square / vehicle shared), one confirm, then each step after its own `delay` (ms, default 300, 0 = same frame, `Hotbar.stepDelay`);
+  saved as `steps.#n.*` on the slot line. Focus (`Bar:updateFocus`): many vanilla windows never `bringToTop` on a
+  click (ISInventoryPage), so on each press the bar brings itself, or the window it covers that was clicked, to the front.
   Single player: only with `-debug` (`isDebugEnabled()`), every capability assumed, each action has vanilla's single
   player branch, server-only actions greyed out; the sidebar button goes under the lowest button (no Admin button),
   slots saved to `ZomboidFixesB42_AdminHotbar_SinglePlayer.ini`.

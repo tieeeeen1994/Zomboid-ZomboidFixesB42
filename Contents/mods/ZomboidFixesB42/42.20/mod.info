@@ -24,5 +24,6 @@ description=- Admins can change any player's body stats (hunger, mood, health, c
 description=- Admins can send and stop the chopper from the right-click Tools menu, and stopping it reaches every player, even one who still hears a chopper that already left (beta).
 description=- An admin hotbar: one-click shortcuts to every admin tool, each with its own settings and optional extra steps, opened from the sidebar (single player: with -debug).
 description=- Picking a square in the debug Horde Manager or Tile Picker no longer walks your character there.
+description=- Mod options of mods that are not loaded are no longer reset or deleted when you save the options (enable this mod in the main menu too).
 description=Must be installed on both the server and clients. Every fix is on by default and can be turned off in the sandbox options; the few that are off by default say so.
 modversion=1.0

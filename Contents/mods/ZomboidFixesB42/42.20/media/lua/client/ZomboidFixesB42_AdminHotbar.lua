@@ -21,8 +21,8 @@
       - A setting left on "Ask when used" is asked for at click time: a menu of
         online players, a square picked on the map with vanilla's ISSelectCursor
         (the Horde Manager's picker), a searchable list, or a prompt.
-      - A slot can have steps: more actions, each with its own settings, run after
-        its own on the same click (see "Using a slot").
+      - A slot can have steps: more actions, each with its own settings and delay,
+        run after its own on the same click (see "Using a slot").
       - A second click on a slot that opened a window closes it.
 
     Everything goes through vanilla commands and packets (or this mod's own Body
@@ -92,6 +92,10 @@ local STATE_MS = 200
 -- climate admin values while a climate slot exists.
 local SCOREBOARD_MS = 30000
 local CLIMATE_MS = 10000
+-- A step's wait after the part before it, unless the step sets its own (see "Using
+-- a slot"), and the longest wait a step may set.
+local STEP_DELAY_MS = 300
+local STEP_DELAY_MAX_MS = 600000
 
 local SLOT_KEYS = 10
 local SIZES = { 32, 40, 48 }
@@ -262,6 +266,12 @@ function Hotbar.partsOf(slot)
         table.insert(parts, step)
     end
     return parts
+end
+
+--- A step's wait in milliseconds after the part before it; 0 runs it in the same frame.
+function Hotbar.stepDelay(step)
+    local delay = tonumber(step.delay) or STEP_DELAY_MS
+    return math.max(0, math.min(STEP_DELAY_MAX_MS, math.floor(delay)))
 end
 
 --- "Ask before running" when the slot does not say: if any part's action asks.
@@ -472,6 +482,7 @@ function Hotbar.load()
                             action = step.action,
                             settings = type(step.settings) == "table" and step.settings or {},
                             window = step.window == true,
+                            delay = tonumber(step.delay),
                         })
                     end
                 end
@@ -1149,10 +1160,11 @@ Events.OnTick.Add(onWatchTick)
     by every part that asks for one (pick a square, then spawn a horde and make noise
     on it). "My position" is therefore where the admin stood when clicking, even after
     a teleport step. Then "Ask before running" is asked once for the whole slot, and
-    the parts run STEP_GAP_MS apart: chat commands and client commands are separate
-    packets, and the gap keeps them reaching the server in order.
+    each step runs its own delay after the part before it (STEP_DELAY_MS unless set):
+    chat commands and client commands are separate packets, and a gap keeps them
+    reaching the server in order. A delay of 0 runs the step straight after the part
+    before it, in the same frame.
 --]]
-local STEP_GAP_MS = 300
 local scheduled = {}
 
 local function after(ms, fn)
@@ -1202,21 +1214,27 @@ local function partOpensWindow(part)
 end
 
 local function runParts(slot, contexts)
+    local parts = Hotbar.partsOf(slot)
     local watch = false
-    for _, part in ipairs(Hotbar.partsOf(slot)) do
+    for _, part in ipairs(parts) do
         if partOpensWindow(part) then watch = true end
     end
     if watch then startWatch(slot) end
-    local function runAt(index)
-        local ctx = contexts[index]
-        if not ctx then return end
-        if watch then extendWatch(slot) end
-        runResolved(ctx, slot)
+    local index = 0
+    local function runNext()
+        -- Every step with no delay runs in this same call, so in the same frame.
+        repeat
+            index = index + 1
+            local ctx = contexts[index]
+            if not ctx then return end
+            if watch then extendWatch(slot) end
+            runResolved(ctx, slot)
+        until not contexts[index + 1] or Hotbar.stepDelay(parts[index + 1]) > 0
         if contexts[index + 1] then
-            after(STEP_GAP_MS, function() runAt(index + 1) end)
+            after(Hotbar.stepDelay(parts[index + 1]), runNext)
         end
     end
-    runAt(1)
+    runNext()
 end
 
 function Hotbar.activate(slot, admin)
@@ -1588,6 +1606,7 @@ function Bar:new(x, y)
     o.cell = SIZES[2]
     o.lastPlayers = 0
     o.lastClimate = 0
+    o.mouseWasDown = {}
     return o
 end
 
@@ -1754,7 +1773,9 @@ function Bar:tooltipFor(slot, state)
     for index, step in ipairs(steps) do
         local stepAction = Hotbar.getAction(step.action)
         if stepAction then
-            table.insert(lines, string.format("%d", index + 1) .. ". " .. Hotbar.titleOf(stepAction, step))
+            local delay = Hotbar.stepDelay(step)
+            local when = delay > 0 and txt("StepAfter", string.format("%d", delay)) or txt("StepAtOnce")
+            table.insert(lines, string.format("%d", index + 1) .. ". " .. Hotbar.titleOf(stepAction, step) .. " " .. when)
             settingLines(step, stepAction, lines, "    ")
         end
     end
@@ -2001,24 +2022,25 @@ local function stepsChanged(slot)
     Hotbar.refreshBar()
 end
 
---- Add a step to a slot, through the settings dialog when the action has settings.
+--- Add a step to a slot, through the settings dialog (every step has at least its delay).
 function Hotbar.addStep(slot, actionId)
     local action = Hotbar.getAction(actionId)
     if not action then return end
-    local function add(saved)
-        slot.steps = slot.steps or {}
-        table.insert(slot.steps, { action = saved.action, settings = saved.settings or {}, window = saved.window == true })
-        stepsChanged(slot)
-    end
     local step = { action = actionId, settings = {}, window = false }
-    if #action.params == 0 and not action.openUI then return add(step) end
-    Hotbar.openSettings(step, add, true)
+    Hotbar.openSettings(step, function(saved)
+        slot.steps = slot.steps or {}
+        table.insert(slot.steps, {
+            action = saved.action, settings = saved.settings or {}, window = saved.window == true, delay = saved.delay,
+        })
+        stepsChanged(slot)
+    end, true)
 end
 
 function Hotbar.editStep(slot, step)
     Hotbar.openSettings(step, function(saved)
         step.settings = saved.settings or {}
         step.window = saved.window == true
+        step.delay = saved.delay
         stepsChanged(slot)
     end, true)
 end
@@ -2087,6 +2109,69 @@ function Bar:rememberPosition()
     end
 end
 
+--[[
+    Focus. UIManager draws its top-level elements in list order and only moves one to
+    the front when it asks (bringToTop -> UIManager.pushToTop, applied at the next
+    UIManager.update). Many vanilla windows never ask on a click: ISInventoryPage's
+    onMouseDown does not, and ISPanel only does when it is dragged. So whichever was
+    created last stays in front, which is usually the bar, and a window clicked under
+    it stays under it.
+
+    So the bar gives the stack a focus rule of its own. On each left or right press,
+    find what the press landed on, the way UIManager.updateMouseButtons walks the list
+    (top first, visible elements, a collapsed window only as tall as its
+    maxDrawHeight): if it is the bar, the bar comes to the front; if it is another
+    window the bar is drawn over, that window comes to the front. Windows the bar is
+    already under are left where they are, as are always-on-top elements, tooltips,
+    context menus, world icons and anything covering the whole screen (a clear
+    full-screen element would otherwise end up over the bar and take its clicks).
+--]]
+local FOCUS_BUTTONS = { 0, 1 }
+
+local function landsOn(ui, mx, my)
+    if not ui:isVisible() then return false end
+    local x, y = ui:getX(), ui:getY()
+    local height = ui:getHeight()
+    local maxDraw = ui:getMaxDrawHeight()
+    if maxDraw and maxDraw ~= -1 then height = math.min(height, maxDraw) end
+    return mx >= x and my >= y and mx < x + ui:getWidth() and my < y + height
+end
+
+local function takesFocus(ui)
+    if ui:isAlwaysOnTop() then return false end
+    local core = getCore()
+    if ui:getWidth() >= core:getScreenWidth() and ui:getHeight() >= core:getScreenHeight() then return false end
+    local window = ui:getTable()
+    return window == nil or isWindowTable(window)
+end
+
+function Bar:updateFocus()
+    local pressed = false
+    for _, btn in ipairs(FOCUS_BUTTONS) do
+        local down = isMouseButtonDown(btn)
+        if down and not self.mouseWasDown[btn] then pressed = true end
+        self.mouseWasDown[btn] = down
+    end
+    if not pressed then return end
+
+    local mx, my = getMouseX(), getMouseY()
+    local uis = UIManager.getUI()
+    local barAbove = false
+    for i = uis:size() - 1, 0, -1 do
+        local ui = uis:get(i)
+        if ui == self.javaObject then
+            if landsOn(ui, mx, my) then
+                self:bringToTop()
+                return
+            end
+            barAbove = true
+        elseif landsOn(ui, mx, my) and takesFocus(ui) then
+            if barAbove then ui:bringToTop() end
+            return
+        end
+    end
+end
+
 function Bar:update()
     ISPanel.update(self)
     local admin = getPlayer()
@@ -2094,6 +2179,7 @@ function Bar:update()
         self:setVisible(false)
         return
     end
+    self:updateFocus()
 
     local now = getTimestampMs()
     -- Key binds can change in the options screen at any time.
@@ -2286,7 +2372,16 @@ function Settings:createChildren()
     end
 
     if self.isStep then
-        y = y + UI_BORDER_SPACING
+        self:addLabel(txt("StepDelay"), y)
+        self.delayEntry = self:addEntry(cx, y, 100, string.format("%d", Hotbar.stepDelay(self.slot)), true)
+        y = y + BUTTON_HGT + 2
+        for _, line in ipairs(wrapLines(txt("StepDelayHint"), self.width - UI_BORDER_SPACING * 2 - 2, UIFont.Small)) do
+            local label = ISLabel:new(UI_BORDER_SPACING + 1, y, FONT_HGT_SMALL, line, 0.8, 0.8, 0.8, 1, UIFont.Small, true)
+            label:initialise()
+            self:addChild(label)
+            y = y + FONT_HGT_SMALL + 2
+        end
+        y = y + UI_BORDER_SPACING * 2
         return self:addSaveCancel(y)
     end
 
@@ -2532,7 +2627,11 @@ function Settings:onSaveClicked()
         settings = self:collectSettings(),
         window = self.windowTick ~= nil and self.windowTick.selected[1] == true,
     }
-    if not self.isStep then
+    if self.isStep then
+        -- An empty entry keeps the default.
+        local delay = tonumber(self.delayEntry:getText())
+        if delay then slot.delay = Hotbar.stepDelay({ delay = delay }) end
+    else
         slot.icon = self.icon
         slot.tint = self.tint
         local label = string.trim(self.labelEntry:getText() or "")
