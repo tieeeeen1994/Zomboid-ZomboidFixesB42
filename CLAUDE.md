@@ -72,6 +72,9 @@ or methods exist.
   commands when off. Every option defaults to **on** (opt out, not opt in); numeric ones default to a working value,
   not their "off" value. The few that default off (HideAdminTag, AdminSpawnProtection = 0) are marked
   "(off by default)" on their line in README/workshop/mod.info; non-obvious numeric defaults are stated there too. Beta ones are titled `[BETA] ...`. README/workshop/mod.info mark only `(beta)`, never "optional".
+- `type = string` sandbox options work (text box in the sandbox screens, `CustomStringSandboxOption`, no length limit),
+  but their `default` cannot contain a comma: `ScriptParser.readBlock` ends a value at every comma. Lists default to
+  semicolons and the code accepts commas too (the value set in game is a quoted Lua string).
 - Sandbox vars do not exist yet when a mod file loads. `IsoWorld.init` calls `SandboxOptions.load` (server/SP; a client
   already has the server's) before `GlobalModData.init`, which fires `OnInitGlobalModData` — so load-time work that depends
   on an option (e.g. item script `DoParam`) goes there. There is no Lua event for sandbox options changing mid-game;
@@ -190,6 +193,20 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
 
 ### Time speed and timed actions in multiplayer
 
+- **Paramount: fast forward starting mid-action must keep working.** The speed buttons and keys vote the moment they
+  are pressed, so fast forward can start, change speed or stop in the middle of any action, and other players' votes
+  can start it in the middle of yours. Every path that follows the speed has to keep handling an action already under
+  way (running actions retimed with `netAction:setDuration`, anim events and cooking catching up, transfers speeding up
+  from their next batch). Auto fast forward holds its vote back only during `AutoFastForwardFinishFirstActions`
+  (item moves by default, cast when the item on its way arrives); that is never a reason to drop or weaken mid-action
+  support.
+- `ISBaseTimedAction.begin` = `create()` + `character:StartAction`, and Java then calls the table's `waitToStart`
+  (`rawget`, so a field on the instance wins over the class) every update until it returns false, then `start()`. An
+  action not started yet never `hasStalled`, so holding it is safe. Many vanilla `waitToStart`s turn the character to
+  the target (`faceThisObject` / `shouldBeTurning`). `ISTimedActionQueue:onCompleted` begins the next action in the
+  same call, so a queue of actions has no idle tick between them; a walk (`ISWalkToTimedAction`) ends in the
+  character's update with `isPlayerMoving()` still set for that frame. `isItemTransactionDone(0)` is true (id 0 = no
+  transaction), so a transfer batch held back from opening must keep vanilla's `update` from polling it.
 - `GameTime.getMultiplier()` = `multiplier` (what `setMultiplier` sets) × fpsMultiplier (server: 60 / FPS, it runs at
   10) × bias × perObjectMultiplier × 0.8; the server's clock advances by it and reaches clients by `SyncClockPacket`
   every 10 s. Only `IsoPlayer`'s zombie-within-4-tiles check (runs on the server too) and `SpeedControls` reset it.
@@ -205,6 +222,12 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
   public, and `*_FastForwardCooking.lua` pays the missing heat and cooking steps. Item transfers are timed by Java
   `Transaction.getDuration` (real ms, `TransactionManager` not exposed to Lua), so during fast forward each batch is
   sent as a server-timed move instead (`createItemTransaction` wrapped in `*_Transfer.lua`, `*_FastForwardTransfer.lua`).
+- A transfer action is a queue of batches (`checkQueueList`: same full type and weight <= 0.1 up to 20 per batch, else one
+  item), each its own transaction opened in `start`/`perform`, so fast forward applies from the next batch. The batch
+  already running when it starts ends at normal speed; its bar advances by the client's `GameTime.getMultiplier()`
+  (`BaseAction.update`), so it fills early and waits on `setWaitForFinished`. Transaction ids are numbered by each client
+  (`Transaction.lastId`, a byte), and the server handles a cancel (Reject) with `removeIf(id == id)` over every player's
+  transactions, so one player's cancelled transfer can drop another's with the same id.
 - 37 vanilla actions work on `emulateAnimEvent(netAction, periodMs, event)` (Java `AnimEventEmulator`, real-time period,
   not exposed): milking, shearing, reading, fitness, drinking, fluids, reloading... `*_FastForwardAnimEvents.lua` fires
   (speed - 1) extra `netAction:animEvent` per period, stopping on the table's `complete`/`serverStop` or `getProgress() >= 1`.
@@ -419,10 +442,22 @@ are gated. Candidates for a hardening fix.
   `SyncHandWeaponFieldsPacket` carries the parts and modData but neither of those, so the client keeps the previous pair
   until `Magazine.RestoreMagazineType` (game start, OnCreatePlayer, OnEquipPrimary/Secondary), and the cached name can
   stay wrong after that.
+- Item bytes (`InventoryItem.save` / `HandWeapon.save`, used for saves and every network copy) carry `currentAmmoCount`
+  but not `ammoType`, `maxAmmo` or `magazineType`, and `SyncItemFieldsPacket` carries only the count: a rebuilt item has
+  its script values again, and a client/server difference in them never heals. Gunworks uses a magazine's `ammoType` as
+  the round type picked for it (`Ammo.MagazineAmmoProfileSetter`, mirrored by its `magazineAmmoProfile` command) and a
+  gun's `magazineType` as the last magazine inserted. Vanilla's radial "Load Bullets into Spare Magazine"
+  (`CLoadBulletsInMagazine`, local to `ISFirearmRadialMenu.lua`) only looks for magazines of the gun's one
+  `getMagazineType()` and rounds of the magazine's one `getAmmoType()`, so with Gunworks profiles and ammo families it
+  is often missing or loads the magazine's default round.
 - `UIManager.AddUI` / `RemoveElement` only queue; `UIManager.getUI()` (top-level Java elements, `ui:getTable()` →
   the Lua table) changes at the next `UIManager.update`. Base `close()` of ISPanel / ISPanelJoypad /
   ISCollapsableWindow only hides; vanilla reopens windows with `instance:close()` or `closeModal()`. Every forage,
   stash and world item icon is an `ISBaseIcon` (ISPanel) in the UIManager, appearing as the player moves.
+- A top-level `ISToolTip` a window makes should get it as owner (`setOwner`): `ISToolTip:prerender` removes a tooltip
+  whose owner is no longer `isReallyVisible()` (hidden, or for a top-level element gone from `UIManager.getUI()`).
+  `ISRolesList` and `ISAdminPowerUI` do; the admin Server Options window (`ISServerOptions`) does not and has no
+  `onMouseMoveOutside`, so its option tooltip outlived the window and followed the mouse (`*_ServerOptionsTooltip.lua`).
 - Foraging debug (`ISSearchManager.createDebugContextMenu`): `ISSearchManager.getManager(player)`,
   `getAndActivateZoneAtXY(x, y)` (nil outside a forage zone), `createSpecificIcon(square, fullType, zoneData, nil, nil, n)`,
   `createAllIconsOnSquare(square, catName|nil)`, `refreshZoneIcons(square)`, `moveAllZoneIconsToSquare(square)`, all
@@ -504,3 +539,14 @@ are gated. Candidates for a hardening fix.
   Single player: only with `-debug` (`isDebugEnabled()`), every capability assumed, each action has vanilla's single
   player branch, server-only actions greyed out; the sidebar button goes under the lowest button (no Admin button),
   slots saved to `ZomboidFixesB42_AdminHotbar_SinglePlayer.ini`.
+- `*_FastForward*.lua` + `*_Transfer.lua`: multiplayer fast forward. A speed button or key is a vote; the server runs
+  the slowest speed voted once every living player votes (`setMultiplier`), retimes running actions, fires the missing
+  anim events, pays the missing cooking and times transfer batches. Auto fast forward (a right-clicked, yellow button)
+  votes after `AutoFastForwardDelay` seconds busy, at once and mid-action, shaped by two string options of action
+  `Type` names: `AutoFastForwardIgnoredActions` (never busy, never an action finishing; `Fishing` = `FishingState`) and
+  `AutoFastForwardFinishFirstActions` (vote only as one starts, `AUTO_START_MS`, else after it). A listed transfer
+  votes as a batch opens instead (`castAutoVoteForBatch`, asked by the `createItemTransaction` wrapper), and that batch
+  waits (`zfixDeferred`, `maxTime` still -1) until the server's broadcast lists the vote (`autoVoteSettled`, at most
+  `AUTO_HOLD_MS`), then opens at the new speed; while it waits, only movement keys or a moving vehicle count as moving.
+  Corpse transfers (never timed) wait for the whole transfer. Manual votes stay immediate (see the paramount rule in
+  "Time speed and timed actions in multiplayer").

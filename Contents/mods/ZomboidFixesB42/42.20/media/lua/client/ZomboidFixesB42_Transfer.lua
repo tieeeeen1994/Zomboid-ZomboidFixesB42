@@ -217,6 +217,13 @@ end
     game speed. Each batch decides for itself, so a long loot that fast forward starts
     in the middle of speeds up from the next batch on. Containers that cannot be
     addressed over the wire (corpses) keep the vanilla transaction.
+
+    Auto fast forward never votes halfway through a batch, since that batch would only
+    burn game time finishing at normal speed. Instead a batch that could be timed asks
+    ZomboidFixesB42.castAutoVoteForBatch (ZomboidFixesB42_FastForward.lua) as it opens;
+    when the player's auto vote is due it is cast there, and the batch waits
+    (zfixDeferred) until the server has answered (autoVoteSettled), then opens at
+    whatever speed the game is running: timed if everyone voted, vanilla if not.
 --]]
 local batchFor = nil
 
@@ -229,10 +236,18 @@ local vanillaCreateItemTransaction = createItemTransaction
 
 function createItemTransaction(character, items, src, dst)
     local action = batchFor
-    if action and fastForwardRunning() then
+    local castAutoVote = ZomboidFixesB42.castAutoVoteForBatch
+    if action and (fastForwardRunning() or castAutoVote) then
         local srcCode = ZomboidFixesB42.encodeContainer(src, character)
         local dstCode = ZomboidFixesB42.encodeContainer(dst, character)
-        if srcCode and dstCode then
+        if srcCode and dstCode and not fastForwardRunning() and castAutoVote
+                and castAutoVote(character, action) then
+            -- Auto fast forward's vote was due and has just been cast. The batch opens
+            -- once the server has answered (update), at the speed the game runs then.
+            action.zfixDeferred = { items = items, src = src, dst = dst }
+            return 0
+        end
+        if srcCode and dstCode and fastForwardRunning() then
             local units = 0
             for _, item in ipairs(items or {}) do
                 units = math.max(units, ZomboidFixesB42.transferUnits(character, item, src, dst))
@@ -252,12 +267,30 @@ end
 --- Run a vanilla function that may open a batch, letting fast forward take the batch.
 local function openingBatch(self, fn)
     self.zfixTimed = false
+    self.zfixDeferred = nil
     batchFor = self
     local ok, err = pcall(fn, self)
     batchFor = nil
     if not ok then error(err) end
     if self.zfixTimed then
         -- Vanilla leaves -1 here for the server's transaction to fill in.
+        self.maxTime = self.zfixUnits
+        self.action:setTime(self.maxTime)
+    end
+end
+
+--- Open the batch that waited for auto fast forward's vote to be answered. While it
+-- waited, maxTime stayed at vanilla's -1, so the action could not finish.
+local function openDeferred(self)
+    local batch = self.zfixDeferred
+    self.zfixDeferred = nil
+    self.zfixTimed = false
+    batchFor = self
+    local ok, result = pcall(createItemTransaction, self.character, batch.items, batch.src, batch.dst)
+    batchFor = nil
+    if not ok then error(result) end
+    self.transactionId = result
+    if self.zfixTimed then
         self.maxTime = self.zfixUnits
         self.action:setTime(self.maxTime)
     end
@@ -320,7 +353,9 @@ end
 --- Mirrors the vanilla 42.20 update() with the transaction polling replaced by a
 -- check on whether the server's move has landed yet.
 function ISInventoryTransferAction:update()
-    if not self.zfixFast and not self.zfixTimed then return vanilla.update(self) end
+    -- A deferred batch has no transaction yet (id 0), which vanilla's polling would
+    -- read as done.
+    if not self.zfixFast and not self.zfixTimed and not self.zfixDeferred then return vanilla.update(self) end
 
     if self.character and (not self.character:hasTrait(CharacterTrait.DESENSITIZED)) and self.srcContainer and self.srcContainer:getType()
             and (self.srcContainer:getType() == "inventoryfemale" or self.srcContainer:getType() == "inventorymale") then
@@ -347,6 +382,12 @@ function ISInventoryTransferAction:update()
 
     self.item:setJobDelta(self.action:getJobDelta())
     self.character:setMetabolicTarget(Metabolics.LightWork)
+
+    if self.zfixDeferred then
+        local settled = ZomboidFixesB42.autoVoteSettled
+        if not settled or settled(self.character) then openDeferred(self) end
+        return
+    end
 
     if not self.zfixCompleted and (batchMoved(self) or waitedTooLong(self)) then
         self.zfixCompleted = true
@@ -428,5 +469,6 @@ function ISInventoryTransferAction:stop()
     end
     if self.zfixFast or self.zfixTimed then forgetBatch(self) end
     self.zfixTimed = false
+    self.zfixDeferred = nil
     return vanillaStop(self)
 end

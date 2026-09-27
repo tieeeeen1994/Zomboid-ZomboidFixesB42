@@ -25,5 +25,6 @@ Zomboid Fixes B42.20 is a set of fixes for Project Zomboid Build 42.20, mostly f
 - Picking a square in the debug Horde Manager or Tile Picker no longer walks your character over to it.
 - Saving the options no longer resets or deletes the mod options, or the Key Bindings tab keys, of mods that are not loaded, and settings an earlier save left glued together are read back instead of reset. Enable Zomboid Fixes in the main menu's Mods list too, since options saved at the main menu are only protected while it is loaded there.
 - Finished skill books stay read after relogging, including books read with the instant timed actions cheat.
+- The admin Server Options window no longer leaves an option's description stuck on screen, following the mouse around, after the mouse leaves the window or it is closed.
 
 Steam Workshop ID 3800148259, mod ID ZomboidFixesB42. Licensed under the GNU GPL v3, see [LICENSE](LICENSE).

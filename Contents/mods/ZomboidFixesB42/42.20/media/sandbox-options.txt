@@ -140,6 +140,22 @@ option ZomboidFixesB42.AutoFastForwardDelay
     translation = ZomboidFixesB42_AutoFastForwardDelay,
 }
 
+option ZomboidFixesB42.AutoFastForwardIgnoredActions
+{
+    type = string,
+    default = Fishing;ISPickupFishAction;ISTienInspectWeaponAction;ISTienInspectWeaponHoldAction,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_AutoFastForwardIgnoredActions,
+}
+
+option ZomboidFixesB42.AutoFastForwardFinishFirstActions
+{
+    type = string,
+    default = ISInventoryTransferAction;ISGrabItemAction,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_AutoFastForwardFinishFirstActions,
+}
+
 option ZomboidFixesB42.GoMTooltipLineLength
 {
     type = integer,
@@ -222,4 +238,12 @@ option ZomboidFixesB42.BooksStayRead
     default = true,
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_BooksStayRead,
+}
+
+option ZomboidFixesB42.ServerOptionsTooltip
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_ServerOptionsTooltip,
 }

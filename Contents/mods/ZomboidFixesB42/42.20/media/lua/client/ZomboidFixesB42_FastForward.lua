@@ -36,10 +36,31 @@
     player's next action, and so does the server clearing the votes for a zombie, so
     a stop is still a stop. The choice is kept on this computer (AUTO_FILE).
 
-    Some timed actions are not work: inspecting a weapon with Tien's Weapon Inspection
-    holds the character still for as long as its window is open. Those (NOT_WORK)
-    count neither as being busy nor as an action finishing, and neither does fishing
-    for auto fast forward (isFishing).
+    Two sandbox lists of timed action names (actionList) shape auto fast forward:
+
+      * AutoFastForwardIgnoredActions are not work to speed up: by default fishing,
+        picking up the catch, and Tien's Weapon Inspection, whose hold keeps the
+        character posed while its window is open. They count neither as being busy
+        nor as an action finishing (isIgnored).
+      * AutoFastForwardFinishFirstActions are actions fast forward cannot speed up
+        halfway, so a delay that runs out during one waits for it to finish, and the
+        vote is cast as the next action starts (mayVoteDuring). Moving items is the
+        case in point: each batch of a transfer is a server transaction whose end is
+        fixed in real time when it opens, so fast forward starting in the middle of
+        one only burns game time while it finishes at normal speed. A transfer goes by
+        batch (an item, or up to twenty small ones) rather than by action, so a long
+        loot of one container still speeds up from its next item:
+        ZomboidFixesB42_Transfer.lua asks castAutoVoteForBatch as it opens a batch it
+        can time, the vote is cast then, and the batch waits until the server's
+        broadcast lists it (autoVoteSettled; at most AUTO_HOLD_MS), so it opens at the
+        new speed if everyone voted. A corpse's container, which fast forward can never
+        time, only votes after the whole transfer, and grabbing from the ground
+        (ISGrabItemAction, also listed by default) likewise.
+
+    Every other action votes the moment the delay runs out, in the middle of it or
+    not, as its time is retimed on the server. Manual votes are never held back: a
+    button or key votes at once, mid-action or not, so everything that follows the
+    speed must keep handling an action already under way (see CLAUDE.md).
 --]]
 
 if not isClient() then return end
@@ -133,9 +154,64 @@ local function autoDelayMs()
     return math.max(0, seconds) * 1000
 end
 
--- Local player index -> { voted, votedAt, heldFor, busySince, idleSince }: voted =
--- this player's vote is an auto vote; heldFor = the action during which auto voting
--- is held off after a stop; busySince / idleSince time the current busy stretch.
+-- Longest a transfer batch waits for the server to answer the vote cast as it opened;
+-- only a lost packet should ever reach it.
+local AUTO_HOLD_MS = 1000
+
+-- How long after an action in AutoFastForwardFinishFirstActions reaches the head of the
+-- queue it still counts as starting, so a character still settling from the walk to it
+-- does not miss the vote that waited for it.
+local AUTO_START_MS = 1000
+
+--[[
+    The two action lists are sandbox options of timed action names: the Type an action's
+    Lua class is derived with, as in ISInventoryTransferAction, compared without regard to
+    case. Names can be separated by commas, semicolons or spaces. The defaults use
+    semicolons because sandbox-options.txt cannot hold a comma: ScriptParser.readBlock
+    ends a value at every comma. "Fishing" in the ignored list stands for the rod's Java
+    FishingState, which is no timed action.
+--]]
+local lists = {}
+
+-- The defaults in sandbox-options.txt (keep them in step), for a server whose copy of this
+-- mod does not have the options yet. An option set to nothing is an empty list.
+local LIST_DEFAULTS = {
+    AutoFastForwardIgnoredActions = "Fishing;ISPickupFishAction;ISTienInspectWeaponAction;ISTienInspectWeaponHoldAction",
+    AutoFastForwardFinishFirstActions = "ISInventoryTransferAction;ISGrabItemAction",
+}
+
+--- An action list option as a set of lowercase names, parsed again only when it changes.
+local function actionList(option)
+    local vars = SandboxVars and SandboxVars.ZomboidFixesB42
+    local raw = vars and vars[option]
+    if type(raw) ~= "string" then raw = LIST_DEFAULTS[option] or "" end
+    local cached = lists[option]
+    if cached and cached.raw == raw then return cached.set end
+    local set = {}
+    for name in string.gmatch(raw, "[^,;%s]+") do
+        set[string.lower(name)] = true
+    end
+    lists[option] = { raw = raw, set = set }
+    return set
+end
+
+local function listed(option, action)
+    return type(action) == "table" and type(action.Type) == "string"
+        and actionList(option)[string.lower(action.Type)] == true
+end
+
+--- Must this action finish before auto fast forward votes (AutoFastForwardFinishFirstActions)?
+-- A transfer the instant cheat makes instant never has to.
+local function finishesFirst(action)
+    return listed("AutoFastForwardFinishFirstActions", action) and not action.zfixFast
+end
+
+-- Local player index -> { voted, votedAt, heldFor, busySince, idleSince, current,
+-- currentSince, hold }: voted = this player's vote is an auto vote; heldFor = the action
+-- during which auto voting is held off after a stop; busySince / idleSince time the
+-- current busy stretch; current / currentSince = the action at the head of the queue and
+-- when it got there; hold = the transfer whose next batch waits for the server to have
+-- the vote cast as it opened, { action, since, confirmed }.
 local auto = {}
 
 local function autoOf(index)
@@ -143,35 +219,28 @@ local function autoOf(index)
     return auto[index]
 end
 
--- Timed actions that are not work to speed up, by Type. Tien's Weapon Inspection looks a
--- weapon over (ISTienInspectWeaponAction) and then keeps the character posed while its
--- window is open (ISTienInspectWeaponHoldAction, up to its Max Hold Seconds): reading a
--- window, which would otherwise vote for fast forward after AutoFastForwardDelay and,
--- when closed, count as an action finishing.
-local NOT_WORK = {
-    ISTienInspectWeaponAction = true,
-    ISTienInspectWeaponHoldAction = true,
-}
+--- Is the player doing something AutoFastForwardIgnoredActions leaves out? By default:
+-- fishing (vanilla drops the speed to normal itself when a fish bites,
+-- Fish:getFishByLure), picking up the catch (ISPickupFishAction, 267 units, long enough
+-- to cross the default delay at the end of every catch), and Tien's Weapon Inspection,
+-- whose hold keeps the character posed while its window is open: reading a window,
+-- which would otherwise vote after the delay and, when closed, count as an action
+-- finishing.
+local function isIgnored(player, current)
+    if listed("AutoFastForwardIgnoredActions", current) then return true end
+    return actionList("AutoFastForwardIgnoredActions")["fishing"] == true
+        and FishingState ~= nil and player:getCurrentState() == FishingState.instance()
+end
 
 --- What the player is busy with: the timed action at the head of their queue, or
 -- true for a busy state without one (ISTimedActionQueue.isPlayerDoingAction), or nil
--- when idle or only doing something in NOT_WORK.
+-- when idle or only doing something AutoFastForwardIgnoredActions lists.
 local function currentAction(player)
     if not ISTimedActionQueue.isPlayerDoingAction(player) then return nil end
     local queue = ISTimedActionQueue.queues and ISTimedActionQueue.queues[player]
     local current = (queue and queue.queue and queue.queue[1]) or true
-    if type(current) == "table" and NOT_WORK[current.Type] then return nil end
+    if isIgnored(player, current) then return nil end
     return current
-end
-
---- Fishing never counts for auto fast forward. Waiting for a bite is no timed action
--- (the rod is the Java FishingState), and vanilla drops the speed to normal itself
--- when a fish bites (Fish:getFishByLure). The catch is then picked up with
--- ISPickupFishAction, 267 units (5.3 s) for a fish, long enough to cross the
--- default delay and speed the game up at the end of every catch.
-local function isFishing(player, current)
-    if type(current) == "table" and current.Type == "ISPickupFishAction" then return true end
-    return FishingState ~= nil and player:getCurrentState() == FishingState.instance()
 end
 
 local function voteOf(player)
@@ -283,6 +352,15 @@ local function onServerCommand(module, command, args)
     if type(args.votes) == "table" then
         for id, speed in pairs(args.votes) do
             state.votes[tostring(id)] = tonumber(speed) or 1
+        end
+    end
+
+    -- A transfer batch held for the vote cast as it opened may open once the server
+    -- lists that vote: the speed below is then the speed it opens at.
+    for _, player in ipairs(localPlayers()) do
+        local a = auto[player:getPlayerNum()]
+        if a and a.hold and voteOf(player) > 1 then
+            a.hold.confirmed = true
         end
     end
 
@@ -496,6 +574,16 @@ end
 
 --- Auto fast forward: vote for each local player busy with an action, take the vote
 -- back when the action is over or the player moves.
+--- May the auto vote be cast during this action? At any moment, unless it is in
+-- AutoFastForwardFinishFirstActions: a transfer then votes as its next batch opens
+-- (castAutoVoteForBatch), and anything else only as it starts, so a delay that runs
+-- out in the middle of it waits for the next action.
+local function mayVoteDuring(a, current, now)
+    if not finishesFirst(current) then return true end
+    if current.Type == "ISInventoryTransferAction" then return false end
+    return a.currentSince ~= nil and now - a.currentSince <= AUTO_START_MS
+end
+
 local function updateAutoVotes()
     local speed = autoSpeed()
     local enabled = speed ~= nil
@@ -508,10 +596,26 @@ local function updateAutoVotes()
             a.voted = false
             a.heldFor = nil
             a.busySince, a.idleSince = nil, nil
+            a.hold = nil
+            a.current, a.currentSince = nil, nil
         else
             local current = currentAction(player)
+            if current ~= a.current then
+                a.current, a.currentSince = current, now
+            end
             if a.heldFor ~= nil and a.heldFor ~= current then a.heldFor = nil end
-            local busy = enabled and current ~= nil and not isMoving(player) and not isFishing(player, current)
+            -- A held transfer that is no longer at the head of the queue was cancelled
+            -- before its batch could open.
+            if a.hold and a.hold.action ~= current then a.hold = nil end
+            local moving = isMoving(player)
+            -- A walk to a container that ends begins the transfer in the same frame,
+            -- with isPlayerMoving still set from before it arrived (the path is
+            -- already cancelled). While a batch waits for its vote, only a key pressed
+            -- to move, or a moving vehicle, counts as moving.
+            if moving and a.hold and not player:getVehicle() and not player:pressedMovement(false) then
+                moving = false
+            end
+            local busy = enabled and current ~= nil and not moving
             if busy then
                 a.busySince = a.busySince or now
                 a.idleSince = nil
@@ -531,13 +635,52 @@ local function updateAutoVotes()
                     a.heldFor = current
                 end
             elseif busy and a.heldFor == nil and myVote <= 1 and now - a.votedAt > AUTO_REVOTE_MS
-                    and now - a.busySince >= delayMs then
+                    and now - a.busySince >= delayMs
+                    and mayVoteDuring(a, current, now) then
                 a.voted = true
                 a.votedAt = now
                 sendVote(player, speed)
             end
         end
     end
+end
+
+--- Asked by ZomboidFixesB42_Transfer.lua as a transfer opens a batch fast forward could
+-- time. If transfers finish first (AutoFastForwardFinishFirstActions) and this player's
+-- auto vote is due, it is cast now and true comes back: the batch then waits to open
+-- until autoVoteSettled.
+function ZomboidFixesB42.castAutoVoteForBatch(player, action)
+    if not finishesFirst(action) then return false end
+    local speed = autoSpeed()
+    if not speed or not player or not player:isLocalPlayer() or player:isDead() then return false end
+    local a = autoOf(player:getPlayerNum())
+    -- heldFor is this very transfer when Normal Speed was pressed during it.
+    if a.heldFor ~= nil or a.voted or voteOf(player) > 1 then return false end
+    -- Moving items between your own bags can be done walking, which takes a vote back.
+    if player:getVehicle() or player:pressedMovement(false) then return false end
+    local now = getTimestampMs()
+    -- No busy stretch yet means this batch starts one, which only a delay of 0 votes for.
+    if now - (a.busySince or now) < autoDelayMs() then return false end
+
+    a.voted = true
+    a.votedAt = now
+    sendVote(player, speed)
+    a.hold = { action = action, since = now, confirmed = false }
+    return true
+end
+
+--- May the batch that castAutoVoteForBatch held open now? Once the server lists the
+-- vote, once the vote is taken back (walking, Normal Speed, auto turned off), or at the
+-- latest after AUTO_HOLD_MS.
+function ZomboidFixesB42.autoVoteSettled(player)
+    local a = autoOf(player:getPlayerNum())
+    local hold = a.hold
+    if not hold then return true end
+    if hold.confirmed or not a.voted or getTimestampMs() - hold.since > AUTO_HOLD_MS then
+        a.hold = nil
+        return true
+    end
+    return false
 end
 
 local function onTick()
