@@ -213,7 +213,20 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
 - `SyncHandWeaponFieldsPacket` / `SyncItemFieldsPacket` (Lua `syncHandWeaponFields` / `syncItemFields`) are RELIABLE,
   **not ordered**, and carry the whole state (ammo count), so several in one tick can land out of order and leave the
   client stale; the client's own `syncHandWeaponFields` (onShoot) then writes that stale count back on the server
-  (`processServer`). The fast forward event burst holds them and syncs each item once after, and again 500 ms later.
+  (`processServer`). Both are handlingType 3 and processServer takes the client's **whole** copy (count; SyncItemFields
+  also wipes and replaces modData), and the client sends it from `ISAttachItemHotbar` / `ISDetachItemHotbar` `perform()`
+  (clipping a magazine to a vest slot, holstering), `ISRackFirearm:start` (ejectSpentRounds), onShoot, `CombatManager`
+  when a shot costs condition (`item:syncItemFields()`), and Gunworks' `ReloadAnim.resetWeaponModel` in the client's
+  insert/eject `perform()`/`stop()` (decided from the client's own `isContainsClip()`), so a stale client destroys rounds
+  on the server. Moving an item never sends it (`ItemTransactionPacket` carries IDs only). The Gunworks gang framework (SWMG, required by Guns of Marz) follows every
+  loaded/unloaded round with `sendServerCommand(player, "SWMG", "syncAmmoList", {itemId, ammoList})` = the item's whole
+  per-round list (150 entries for a drum), a flood at fast forward. So at fast forward every sync and such command a
+  tracked action's event asks for (Java-fired copies too, `hookCurrent`) is held per action and sent once when the
+  action reaches its end (progress 1, before the server completes it and sends Done), at complete/serverStop, when fast forward ends, or every
+  second; then resynced 0.5 s and 2 s after the item's last send while nothing else changed it. The client never
+  computes these counts itself: vanilla and Gunworks change them only in `if not isClient()` branches. Gunworks'
+  `ISLoadBulletsInMagazine:isLoadFinished` uses `ammoCountStart`, set only in the client-side `start()`, so with an
+  `ammoLimit` (its Ammo Loader window) the server stops once the mag *holds* that many rounds.
 
 ### Animals, hutches and animal zones in multiplayer
 
