@@ -414,7 +414,11 @@ are gated. Candidates for a hardening fix.
   (`LuaManager.validateReflectionAccess`). `item:DoTooltipEmbedded(tooltip, layout, 0)` fills a layout without drawing
   it; the caller renders it at the y worked out again by hand (`*_GoMTooltips.lua`). A gun's ammo row (`HandWeapon.DoTooltip`)
   is shown only while `getMaxAmmo() > 0` and is labelled with `getMagazineType()`'s display name, cached per item in a private
-  `bulletName`; Guns of Marz magazines are `Clip` weapon parts it never syncs into MagazineType/MaxAmmo after OnCreate.
+  `bulletName`. Gunworks' insert (its `ISInsertMagazine:loadAmmo`, on the server) sets the gun's MagazineType/MaxAmmo and saves
+  `modData.MagazineType`, and its `complete` attaches the magazine as a `Clip` (or `Magazine`) weapon part;
+  `SyncHandWeaponFieldsPacket` carries the parts and modData but neither of those, so the client keeps the previous pair
+  until `Magazine.RestoreMagazineType` (game start, OnCreatePlayer, OnEquipPrimary/Secondary), and the cached name can
+  stay wrong after that.
 - `UIManager.AddUI` / `RemoveElement` only queue; `UIManager.getUI()` (top-level Java elements, `ui:getTable()` →
   the Lua table) changes at the next `UIManager.update`. Base `close()` of ISPanel / ISPanelJoypad /
   ISCollapsableWindow only hides; vanilla reopens windows with `instance:close()` or `closeModal()`. Every forage,

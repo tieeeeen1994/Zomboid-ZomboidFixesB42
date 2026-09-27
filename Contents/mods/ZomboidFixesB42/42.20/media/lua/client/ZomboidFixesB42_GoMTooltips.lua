@@ -67,11 +67,24 @@
             item.setValue(count + " / " + this.getMaxAmmo(), ...);
 
     so it names the gun's MagazineType and counts against the gun's MaxAmmo, and the
-    name is cached in a private field for the life of the item. Guns of Marz makes the
-    magazine an attachment (part type "Clip") and sets the gun's MagazineType and
-    MaxAmmo from it only once, in its OnCreate. Put a 150 round drum in an M16 and
-    the line reads "STANAG 30Rds 5.56x45mm Magazine: 150+1 / 30". The label cannot be
-    fixed in place, for the reasons above, and bulletName has no setter. But the whole
+    name is cached in a private field the first time the line is drawn, for the life
+    of that item on that machine.
+
+    Guns of Marz guns take several magazines. The Gunworks gang framework's insert
+    (its ISInsertMagazine:loadAmmo, run on the server) sets the gun's MagazineType
+    and MaxAmmo to the magazine going in and saves the type as modData.MagazineType,
+    and its ISInsertMagazine:complete attaches a fresh instance of that magazine as
+    a weapon part (Magazine.manageMagazineAttachment; part type "Clip", or "Magazine"
+    in some packs) for the model. SyncHandWeaponFieldsPacket, which tells the owner
+    about the gun, carries the weapon parts and the modData but not MagazineType or
+    MaxAmmo, so the owner's copy keeps the previous magazine's pair until Gunworks'
+    Magazine.RestoreMagazineType puts it back from the modData -- on game start, on
+    character creation and when the gun is equipped. Even then the line keeps its
+    cached name. Put a 150 round drum in an M16 and the line reads "STANAG 30Rds
+    5.56x45mm Magazine: 150+1 / 30"; after a re-equip it counts "/ 150", still under
+    the STANAG's name. The attached part is what names the magazine really in the
+    gun. The label cannot be fixed in place, for the reasons above, and bulletName
+    has no setter. But the whole
     line depends on getMaxAmmo() > 0, and setMaxAmmo is public. So while the layout
     is filled the gun's MaxAmmo is 0 and the game leaves the line out; it is restored
     straight after the fill, before anything else runs, and again after the pcall if
@@ -82,10 +95,9 @@
     into. The one other line that reads MaxAmmo, "Spent rounds: n / max", shows only
     for a gun whose spent casings stay in it and would read "/ 0" meanwhile.
 
-    Only a gun whose attached magazine differs from its MagazineType or MaxAmmo is
-    redrawn: while they still agree the game's line is right and stays where it is.
-    GoM only ever sets MagazineType at creation, before any tooltip, so the cached
-    name agrees with it.
+    Every gun with a magazine in and a magazine part attached is redrawn this way:
+    whether the cached name is right cannot be read, and the MagazineType and MaxAmmo
+    it could be checked against may be the stale ones.
 
     Only weapon parts and such guns go through any of this. Everything else is handed
     to whichever render was already installed, which leaves Guns of Marz's tooltip
@@ -118,8 +130,8 @@ local MIN_TOOLTIP_WIDTH = 150
 -- in as an override has to be given them by the caller.
 local MIN_COLUMN_WIDTH = 80
 
--- The part type Guns of Marz magazines attach as.
-local MAGAZINE_PART = "Clip"
+-- The part types Gunworks attaches a gun's magazine as, in the order it looks for them.
+local MAGAZINE_PARTS = { "Clip", "Magazine" }
 
 --- The greatest number of characters a tooltip line may have. 0 means leave the
 -- tooltips alone, which is also what an absent option gives, so the fix ships
@@ -261,19 +273,19 @@ end
 -- ---------------------------------------------------------------------------
 -- The magazine line
 
---- The magazine attached to a gun whose own ammo line would name the wrong one, or
--- nil. See the header: while the gun's MagazineType and MaxAmmo still match the
--- attachment, the game's line is right and is left alone.
-local function mismatchedMagazine(item)
+--- The magazine part Gunworks keeps attached to a loaded gun, or nil. See the
+-- header: it names the magazine really in the gun, where the gun's own
+-- MagazineType, MaxAmmo and cached line may not.
+local function attachedMagazine(item)
     if not magazineLineEnabled() or not instanceof(item, "HandWeapon") then return nil end
     if item:getMaxAmmo() <= 0 or not item:isContainsClip() then return nil end
 
-    local magazine = item:getWeaponPart(MAGAZINE_PART)
-    if not magazine or magazine:getMaxAmmo() <= 0 then return nil end
-
-    if magazine:getFullType() == item:getMagazineType() and magazine:getMaxAmmo() == item:getMaxAmmo() then
-        return nil
+    local magazine = nil
+    for _, partType in ipairs(MAGAZINE_PARTS) do
+        magazine = item:getWeaponPart(partType)
+        if magazine then break end
     end
+    if not magazine or magazine:getMaxAmmo() <= 0 then return nil end
     return magazine
 end
 
@@ -443,7 +455,7 @@ local function renderTooltip(self, item, gomLines, limit, magazine)
 end
 
 --- Replace ISToolTipInv:render with one that wraps weapon part tooltips, corrects
--- the magazine line of guns whose magazine was swapped, and hands everything else
+-- the magazine line of guns with a Gunworks magazine in, and hands everything else
 -- to whatever was there before. Installed from OnGameStart rather than at load, so
 -- it goes on top of the overrides other mods put in place while their files were
 -- read.
@@ -469,7 +481,7 @@ local function install(module)
         if instanceof(item, "WeaponPart") then
             if limit > 0 then fix = "wrap" end
         else
-            magazine = mismatchedMagazine(item)
+            magazine = attachedMagazine(item)
             if magazine then
                 fix = "magazine"
                 -- Guns are not wrapped: Guns of Marz draws their block as it is.
