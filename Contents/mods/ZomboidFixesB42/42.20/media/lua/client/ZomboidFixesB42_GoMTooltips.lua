@@ -23,7 +23,9 @@
     with no getters at all. So a label the game has written can be added to but never
     read back. It is the same wall that makes Guns of Marz write "tooltip.padLeft or
     5", where the 5 always wins, and makes StarlitLibrary recompute a layout's y
-    offset by hand rather than read Layout.offsetY.
+    offset by hand rather than read Layout.offsetY. (getClassFieldVal would read
+    them, but LuaManager.validateReflectionAccess throws "Not in debug" unless the
+    game was started with -debug.)
 
     What is reachable is the data behind the label. mountOnDisplayName is filled by
     setMountOn, a public method, from each weapon script's getDisplayName, and
@@ -55,11 +57,42 @@
     to the caller. Its padding and starting y are worked out again here, because
     both live in instance fields Lua cannot see.
 
-    Only weapon parts go through any of this. Everything else is handed to whichever
-    render was already installed, which leaves Guns of Marz's tooltip drawing, and
-    the equipment slot hook it installs from inside it, working as they do now.
-    Weapon parts would lose the "Information" block it appends, since its render no
-    longer runs for them, so the same block is rebuilt here from the same table.
+    The magazine line. A gun's ammo line is written by HandWeapon.DoTooltip as
+
+        if (this.getMaxAmmo() > 0) {
+            ...
+            if (this.bulletName == null)
+                this.bulletName = InventoryItemFactory.CreateItem(this.getMagazineType()).getDisplayName();
+            item.setLabel(this.bulletName + ":", ...);
+            item.setValue(count + " / " + this.getMaxAmmo(), ...);
+
+    so it names the gun's MagazineType and counts against the gun's MaxAmmo, and the
+    name is cached in a private field for the life of the item. Guns of Marz makes the
+    magazine an attachment (part type "Clip") and sets the gun's MagazineType and
+    MaxAmmo from it only once, in its OnCreate. Put a 150 round drum in an M16 and
+    the line reads "STANAG 30Rds 5.56x45mm Magazine: 150+1 / 30". The label cannot be
+    fixed in place, for the reasons above, and bulletName has no setter. But the whole
+    line depends on getMaxAmmo() > 0, and setMaxAmmo is public. So while the layout
+    is filled the gun's MaxAmmo is 0 and the game leaves the line out; it is restored
+    straight after the fill, before anything else runs, and again after the pcall if
+    the fill threw. A corrected line -- the attached magazine's name, the rounds in
+    the gun and the magazine's own capacity -- is then added to the same layout, so
+    it lines up with the rows above it. It can only go at the end of the game's rows
+    (after "Mod: Guns of Marz"), because a layout can be added to but not inserted
+    into. The one other line that reads MaxAmmo, "Spent rounds: n / max", shows only
+    for a gun whose spent casings stay in it and would read "/ 0" meanwhile.
+
+    Only a gun whose attached magazine differs from its MagazineType or MaxAmmo is
+    redrawn: while they still agree the game's line is right and stays where it is.
+    GoM only ever sets MagazineType at creation, before any tooltip, so the cached
+    name agrees with it.
+
+    Only weapon parts and such guns go through any of this. Everything else is handed
+    to whichever render was already installed, which leaves Guns of Marz's tooltip
+    drawing, and the equipment slot hook it installs from inside it, working as they
+    do now. The items drawn here would lose the "Information" block it appends, since
+    its render no longer runs for them, so the same block is rebuilt here from the
+    same table.
 
     Runs on each client, because tooltips are drawn there. Does nothing unless Guns
     of Marz is loaded: the require below fails harmlessly without it.
@@ -81,6 +114,13 @@ local INFO_HEADING = "Information"
 -- only makes it taller. Matches InventoryItem.DoTooltipEmbedded.
 local MIN_TOOLTIP_WIDTH = 150
 
+-- The column minimums DoTooltipEmbedded gives a layout it makes itself; one handed
+-- in as an override has to be given them by the caller.
+local MIN_COLUMN_WIDTH = 80
+
+-- The part type Guns of Marz magazines attach as.
+local MAGAZINE_PART = "Clip"
+
 --- The greatest number of characters a tooltip line may have. 0 means leave the
 -- tooltips alone, which is also what an absent option gives, so the fix ships
 -- inert: the render hook is installed but hands every tooltip straight on.
@@ -89,6 +129,11 @@ local function lineLength()
     local limit = vars and vars.GoMTooltipLineLength
     if type(limit) ~= "number" or limit < 1 then return 0 end
     return math.floor(limit)
+end
+
+local function magazineLineEnabled()
+    local vars = SandboxVars and SandboxVars.ZomboidFixesB42
+    return vars ~= nil and vars.GoMMagazineTooltip == true
 end
 
 --- Break text on spaces. Words are never split: one longer than the limit gets a
@@ -214,6 +259,36 @@ local function restoreNames(changed)
 end
 
 -- ---------------------------------------------------------------------------
+-- The magazine line
+
+--- The magazine attached to a gun whose own ammo line would name the wrong one, or
+-- nil. See the header: while the gun's MagazineType and MaxAmmo still match the
+-- attachment, the game's line is right and is left alone.
+local function mismatchedMagazine(item)
+    if not magazineLineEnabled() or not instanceof(item, "HandWeapon") then return nil end
+    if item:getMaxAmmo() <= 0 or not item:isContainsClip() then return nil end
+
+    local magazine = item:getWeaponPart(MAGAZINE_PART)
+    if not magazine or magazine:getMaxAmmo() <= 0 then return nil end
+
+    if magazine:getFullType() == item:getMagazineType() and magazine:getMaxAmmo() == item:getMaxAmmo() then
+        return nil
+    end
+    return magazine
+end
+
+--- The line HandWeapon.DoTooltip would have written, counted against the magazine
+-- actually in the gun. Same colours and the same "+1" for a chambered round.
+local function addMagazineLine(layout, weapon, magazine)
+    local count = string.format("%d", weapon:getCurrentAmmoCount())
+    if weapon:isRoundChambered() then count = count .. "+1" end
+
+    local row = layout:addItem()
+    row:setLabel(magazine:getDisplayName() .. ":", 1.0, 1.0, 0.8, 1.0)
+    row:setValue(count .. " / " .. string.format("%d", magazine:getMaxAmmo()), 1.0, 1.0, 1.0, 1.0)
+end
+
+-- ---------------------------------------------------------------------------
 -- Drawing
 
 --- ObjectTooltip.checkFont sets every pad from the width of one digit, and
@@ -239,15 +314,20 @@ local function layoutTop(tooltip, item, padTop)
     return y
 end
 
---- Fill the tooltip's layout the way the game would but with the mount list's
--- names broken onto lines, add the Guns of Marz block, then render. The two halves
--- of DoTooltipEmbedded that the layout override skips -- the render and the
--- minimum width -- are repeated here.
-local function drawWrapped(tooltip, item, gomLines, limit)
-    local types = mountTypes(item)
+--- Fill the tooltip's layout the way the game would, with a weapon part's mount
+-- list broken onto lines when limit is above 0 and a gun's magazine line corrected
+-- when magazine is given, add the Guns of Marz block (wrapped only when limit is
+-- above 0), then render. The two halves of DoTooltipEmbedded that the layout
+-- override skips -- the render and the minimum width -- are repeated here.
+local function drawTooltip(tooltip, item, gomLines, limit, magazine)
+    local types = nil
+    if limit > 0 and instanceof(item, "WeaponPart") then
+        types = mountTypes(item)
+    end
     local padSide, padEnd = padding(tooltip)
 
     local changed = nil
+    local maxAmmo = nil
     local ok, err = pcall(function()
         if types then
             changed = breakNames(types, limit)
@@ -255,12 +335,28 @@ local function drawWrapped(tooltip, item, gomLines, limit)
         end
 
         local layout = tooltip:beginLayout()
+        layout:setMinLabelWidth(MIN_COLUMN_WIDTH)
+        layout:setMinValueWidth(MIN_COLUMN_WIDTH)
+
+        if magazine then
+            maxAmmo = item:getMaxAmmo()
+            item:setMaxAmmo(0)
+        end
         item:DoTooltipEmbedded(tooltip, layout, 0)
+        if magazine then
+            item:setMaxAmmo(maxAmmo)
+            maxAmmo = nil
+            addMagazineLine(layout, item, magazine)
+        end
 
         if gomLines then
             layout:addItem():setLabel(INFO_HEADING, 1, 0.02, 0.02, 1)
             for _, line in ipairs(gomLines) do
-                addWrapped(layout, line, limit, "", CONTINUATION, 1.0, 1.0, 1.0, 1.0)
+                if limit > 0 then
+                    addWrapped(layout, line, limit, "", CONTINUATION, 1.0, 1.0, 1.0, 1.0)
+                else
+                    layout:addItem():setLabel(line, 1.0, 1.0, 1.0, 1.0)
+                end
             end
         end
 
@@ -275,6 +371,7 @@ local function drawWrapped(tooltip, item, gomLines, limit)
 
     -- Always, including when the draw threw, and always from a list of our own so
     -- that setMountOn cannot clear the one it is reading.
+    if maxAmmo then item:setMaxAmmo(maxAmmo) end
     if changed then restoreNames(changed) end
     if types then item:setMountOn(javaList(types)) end
 
@@ -283,9 +380,9 @@ end
 
 --- Position the tooltip and draw it twice, once to measure and once for real. This
 -- is ISToolTipInv:render with its two item:DoTooltip calls replaced; the placement
--- either side of them is vanilla's and is kept the same, so a wrapped tooltip sits
--- where an unwrapped one would.
-local function renderWrapped(self, item, gomLines, limit)
+-- either side of them is vanilla's and is kept the same, so a redrawn tooltip sits
+-- where the game's would.
+local function renderTooltip(self, item, gomLines, limit, magazine)
     local tooltip = self.tooltip
 
     local mx = getMouseX() + 24
@@ -304,7 +401,7 @@ local function renderWrapped(self, item, gomLines, limit)
 
     tooltip:setWidth(50)
     tooltip:setMeasureOnly(true)
-    drawWrapped(tooltip, item, gomLines, limit)
+    drawTooltip(tooltip, item, gomLines, limit, magazine)
     tooltip:setMeasureOnly(false)
 
     local core = getCore()
@@ -342,29 +439,44 @@ local function renderWrapped(self, item, gomLines, limit)
 
     self:drawRect(0, 0, self.width, self.height, self.backgroundColor.a, self.backgroundColor.r, self.backgroundColor.g, self.backgroundColor.b)
     self:drawRectBorder(0, 0, self.width, self.height, self.borderColor.a, self.borderColor.r, self.borderColor.g, self.borderColor.b)
-    drawWrapped(tooltip, item, gomLines, limit)
+    drawTooltip(tooltip, item, gomLines, limit, magazine)
 end
 
---- Replace ISToolTipInv:render with one that wraps weapon part tooltips and hands
--- everything else to whatever was there before. Installed from OnGameStart rather
--- than at load, so it goes on top of the overrides other mods put in place while
--- their files were read.
+--- Replace ISToolTipInv:render with one that wraps weapon part tooltips, corrects
+-- the magazine line of guns whose magazine was swapped, and hands everything else
+-- to whatever was there before. Installed from OnGameStart rather than at load, so
+-- it goes on top of the overrides other mods put in place while their files were
+-- read.
 local function install(module)
     local previousRender = ISToolTipInv.render
 
     -- Everything this reaches across the Java bridge is reached by name and cannot
-    -- be checked for up front, so the first call is made under pcall. A failure
-    -- there gives up for the rest of the session rather than throwing once a frame
-    -- for as long as the mouse rests on an item.
-    local checked = false
-    local broken = false
+    -- be checked for up front, so the first call of each fix is made under pcall. A
+    -- failure there gives up on that fix for the rest of the session rather than
+    -- throwing once a frame for as long as the mouse rests on an item.
+    local checked = {}
+    local broken = {}
 
     function ISToolTipInv:render()
-        -- Read every draw rather than once at install, so an admin changing the
-        -- option mid-game takes effect both ways, and 0 always means hands off.
-        local limit = lineLength()
+        -- Options are read every draw rather than once at install, so an admin
+        -- changing one mid-game takes effect both ways.
         local item = self.item
-        if broken or limit == 0 or not item or not instanceof(item, "WeaponPart") then
+        if not item then return previousRender(self) end
+
+        local limit = lineLength()
+        local fix = nil
+        local magazine = nil
+        if instanceof(item, "WeaponPart") then
+            if limit > 0 then fix = "wrap" end
+        else
+            magazine = mismatchedMagazine(item)
+            if magazine then
+                fix = "magazine"
+                -- Guns are not wrapped: Guns of Marz draws their block as it is.
+                limit = 0
+            end
+        end
+        if not fix or broken[fix] then
             return previousRender(self)
         end
 
@@ -374,16 +486,16 @@ local function install(module)
         local gomLines = entry and toLines(entry) or nil
         if gomLines and #gomLines == 0 then gomLines = nil end
 
-        if checked then
-            return renderWrapped(self, item, gomLines, limit)
+        if checked[fix] then
+            return renderTooltip(self, item, gomLines, limit, magazine)
         end
 
-        local ok, err = pcall(renderWrapped, self, item, gomLines, limit)
+        local ok, err = pcall(renderTooltip, self, item, gomLines, limit, magazine)
         if ok then
-            checked = true
+            checked[fix] = true
         else
-            broken = true
-            print("ZomboidFixesB42: Guns of Marz tooltip wrapping turned off, " .. tostring(err))
+            broken[fix] = true
+            print("ZomboidFixesB42: Guns of Marz tooltip fix '" .. fix .. "' turned off, " .. tostring(err))
             return previousRender(self)
         end
     end

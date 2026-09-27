@@ -224,7 +224,7 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
   flips `streamed` from the zone's two corner squares and, on coming back, calls `doMeta(hours away)`. On a client
   `DesignationZoneAnimal.doMeta` replays those hours on its own copy of the loose animals (`updateStatsAway`): hens lay
   ground eggs, feathers drop, ground food is eaten, all local and never sent. `streamed`/`hourLastSeen` have no setter
-  (read-only via `getClassFieldVal`), so Lua can only repair afterwards. Hutched hens are not in
+  (`getClassFieldVal` reads them only with `-debug`), so Lua can only repair afterwards. Hutched hens are not in
   the zone's animal list and are not affected.
 - A client world item keeps the server's item ID (chunk data and AddItemToMap serialise it), and
   `IsoGridSquare.removeWorldObject` is local only, so a client can drop an item the server does not have by ID.
@@ -410,6 +410,12 @@ are gated. Candidates for a hardening fix.
   Traits/professions: `CharacterTraitDefinition.getTraits()` / `CharacterProfessionDefinition.getProfessions()` →
   `getTexture()`. Tiles: `getWorld():getAllTilesName()` → `"<set>_<n>"`, n < 256. Lua cannot list folders.
 - `getText(key, arg)` formats a Lua number as a Java Double ("1.0"); pass `string.format("%d", n)`.
+- Item tooltips (`ObjectTooltip.Layout` / `LayoutItem`) keep every row's text in public fields: Lua can add rows, never
+  read or remove them. `getNumClassFields` / `getClassField` / `getClassFieldVal` throw "Not in debug" without `-debug`
+  (`LuaManager.validateReflectionAccess`). `item:DoTooltipEmbedded(tooltip, layout, 0)` fills a layout without drawing
+  it; the caller renders it at the y worked out again by hand (`*_GoMTooltips.lua`). A gun's ammo row (`HandWeapon.DoTooltip`)
+  is shown only while `getMaxAmmo() > 0` and is labelled with `getMagazineType()`'s display name, cached per item in a private
+  `bulletName`; Guns of Marz magazines are `Clip` weapon parts it never syncs into MagazineType/MaxAmmo after OnCreate.
 - `UIManager.AddUI` / `RemoveElement` only queue; `UIManager.getUI()` (top-level Java elements, `ui:getTable()` →
   the Lua table) changes at the next `UIManager.update`. Base `close()` of ISPanel / ISPanelJoypad /
   ISCollapsableWindow only hides; vanilla reopens windows with `instance:close()` or `closeModal()`. Every forage,
