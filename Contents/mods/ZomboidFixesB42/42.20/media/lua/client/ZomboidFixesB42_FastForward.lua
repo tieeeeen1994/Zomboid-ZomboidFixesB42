@@ -35,6 +35,11 @@
     still at the action. Pressing Normal Speed holds the auto vote off until the
     player's next action, and so does the server clearing the votes for a zombie, so
     a stop is still a stop. The choice is kept on this computer (AUTO_FILE).
+
+    Some timed actions are not work: inspecting a weapon with Tien's Weapon Inspection
+    holds the character still for as long as its window is open. Those (NOT_WORK)
+    count neither as being busy nor as an action finishing, and neither does fishing
+    for auto fast forward (isFishing).
 --]]
 
 if not isClient() then return end
@@ -138,12 +143,25 @@ local function autoOf(index)
     return auto[index]
 end
 
+-- Timed actions that are not work to speed up, by Type. Tien's Weapon Inspection looks a
+-- weapon over (ISTienInspectWeaponAction) and then keeps the character posed while its
+-- window is open (ISTienInspectWeaponHoldAction, up to its Max Hold Seconds): reading a
+-- window, which would otherwise vote for fast forward after AutoFastForwardDelay and,
+-- when closed, count as an action finishing.
+local NOT_WORK = {
+    ISTienInspectWeaponAction = true,
+    ISTienInspectWeaponHoldAction = true,
+}
+
 --- What the player is busy with: the timed action at the head of their queue, or
--- true for a busy state without one (ISTimedActionQueue.isPlayerDoingAction), or nil.
+-- true for a busy state without one (ISTimedActionQueue.isPlayerDoingAction), or nil
+-- when idle or only doing something in NOT_WORK.
 local function currentAction(player)
     if not ISTimedActionQueue.isPlayerDoingAction(player) then return nil end
     local queue = ISTimedActionQueue.queues and ISTimedActionQueue.queues[player]
-    return (queue and queue.queue and queue.queue[1]) or true
+    local current = (queue and queue.queue and queue.queue[1]) or true
+    if type(current) == "table" and NOT_WORK[current.Type] then return nil end
+    return current
 end
 
 --- Fishing never counts for auto fast forward. Waiting for a bite is no timed action
@@ -467,7 +485,7 @@ local wasDoingAction = {}
 local function checkActionsFinished()
     for i = 0, getNumActivePlayers() - 1 do
         local player = getSpecificPlayer(i)
-        local doing = player ~= nil and not player:isDead() and ISTimedActionQueue.isPlayerDoingAction(player)
+        local doing = player ~= nil and not player:isDead() and currentAction(player) ~= nil
         -- An auto vote is taken back by updateAutoVotes instead.
         if wasDoingAction[i] and not doing and voteOf(player) > 1 and not autoOf(i).voted then
             sendVote(player, 1)
