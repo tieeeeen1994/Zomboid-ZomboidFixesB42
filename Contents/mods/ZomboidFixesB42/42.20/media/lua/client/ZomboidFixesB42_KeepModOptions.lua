@@ -43,7 +43,31 @@
     still saves the vanilla way, but the glued lines that leaves behind are split
     apart again the next time this mod loads.
 
-    No sandbox option: the file belongs to each player's own computer and is mostly
+    Key bindings lose the same way. A mod can add its own keys to the Key Bindings
+    tab by appending to the global keyBinding table (shared/keyBinding.lua), and they
+    are saved with vanilla's in Zomboid/Lua/keysB42.ini as "Name=key:30;shift:true".
+    That file is rewritten from scratch (getFileWriter(..., true, false)) from the
+    keys known right now, in three places:
+
+        MainOptions.saveKeys (OptionScreens/MainOptions.lua:3706), run by Apply/Save,
+            writes every entry of MainOptions.keyText;
+        MainOptions:create (:417) after a key file version upgrade, the same but
+            without the PZAPI.ModOptions keybinds;
+        pzopt's copy of that create step (pzopt_optimizations_options.lua:3016).
+
+    loadKeys (:3472) only reads back lines whose name is in keyBinding, and the
+    writers only know those. So pressing Apply at the main menu, where a server's mods
+    are not loaded yet, or in a game with a different mod list, deletes the keys of
+    every mod that is not loaded, and they come back unbound.
+
+    All three call the global getFileWriter by name when they run, so it is wrapped
+    for keysB42.ini only: before the file is truncated its lines are read, the
+    writer handed back passes every write through and notes the names written, and
+    on close the old lines whose names were not written are appended. The loader
+    finds a key by name wherever it sits in the file, and once the mod is loaded
+    again its key is written in its own section and the kept copy is dropped.
+
+    No sandbox option: the files belong to each player's own computer and are mostly
     saved at the main menu, where no sandbox is loaded, so it is always on.
 --]]
 
@@ -177,4 +201,83 @@ local function install()
     end
 end
 
+-- ---------------------------------------------------------------------------
+-- Key bindings
+
+local KEYS_FILE = "keysB42.ini"
+
+-- The binding a "Name=key:..." line is for, or nil for the VERSION line, section
+-- headers ("[Player Control]") and anything else the loader would not read as one.
+local function keyName(line)
+    if string.sub(line, 1, 1) == "[" then return nil end
+    local name = string.match(line, "^([^=]+)=")
+    if name == nil or name == "VERSION" then return nil end
+    return name
+end
+
+-- The binding lines of the key file as it is now, before a writer truncates it.
+local function readKeyLines()
+    local lines = {}
+    local file = getFileReader(KEYS_FILE, false)
+    if file == nil then return lines end
+    while true do
+        local line = file:readLine()
+        if line == nil then break end
+        if keyName(line) then table.insert(lines, line) end
+    end
+    file:close()
+    return lines
+end
+
+-- Stands in for the Java writer: every write goes straight through, and close
+-- first appends the old lines of bindings nobody wrote this time.
+local function keepingWriter(writer, oldLines)
+    local written = {}
+    local proxy = {}
+
+    local function note(text)
+        for line in string.gmatch(text, "[^\r\n]+") do
+            local name = keyName(line)
+            if name then written[name] = true end
+        end
+    end
+
+    function proxy:write(text)
+        note(text)
+        return writer:write(text)
+    end
+
+    function proxy:writeln(text)
+        note(text)
+        return writer:writeln(text)
+    end
+
+    function proxy:close()
+        for _, line in ipairs(oldLines) do
+            local name = keyName(line)
+            if not written[name] then
+                written[name] = true
+                writer:write(line .. "\r\n")
+            end
+        end
+        return writer:close()
+    end
+
+    return proxy
+end
+
+local function installKeys()
+    local realGetFileWriter = getFileWriter
+    getFileWriter = function(name, createIfNull, append)
+        if name ~= KEYS_FILE or append then
+            return realGetFileWriter(name, createIfNull, append)
+        end
+        local oldLines = readKeyLines()
+        local writer = realGetFileWriter(name, createIfNull, append)
+        if writer == nil or #oldLines == 0 then return writer end
+        return keepingWriter(writer, oldLines)
+    end
+end
+
 install()
+installKeys()

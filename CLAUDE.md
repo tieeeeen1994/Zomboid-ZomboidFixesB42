@@ -403,6 +403,9 @@ are gated. Candidates for a hardening fix.
   column is sized by the widest internal name, so keep names short. `MainOptions.keys` holds each bind's
   `key/shift/ctrl/alt`; `MainOptions.saveKeys` writes from the screen's `MainOptions.keyText` and clears Core's keys
   (follow it with `loadKeys`). The admin hotbar's keys are there ("ZF Admin Hotbar ...").
+  keysB42.ini is rewritten from scratch with only the binds known right now (`saveKeys` on Apply, `create` after a
+  key version upgrade, pzopt's copy of it), so vanilla drops the keys of mods that are not loaded; `*_KeepModOptions.lua`
+  wraps the global `getFileWriter` for that file and appends the old lines nobody wrote.
 - Textures: `tryGetTexture(name)` = `getSharedTexture` (loose files and pack entries) then `media/textures/`, nil if
   missing. Map symbols (`MapSymbolDefinitions.getInstance():getSymbolCount()/getSymbolByIndex(i)`, `getId()`,
   `getTexturePath()`, 91 in 42.20) are white, so they tint. Item icons: script item `getIcon()` (or
