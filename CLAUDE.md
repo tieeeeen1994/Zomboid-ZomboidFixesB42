@@ -321,8 +321,20 @@ Where every admin tool lives, and how it runs, so a feature touching "all admin 
 - `ISSelectCursor:new(character, ui, nil)` + `getCell():setDrag(cursor, playerNum)` picks a square; it calls
   `ui:onSquareSelected(square)` (method call on `ui`, the third argument is ignored) and is only valid while `ui.cursor ~= nil`.
   It is an `ISBuildingObject`, so `tryBuild` first **walks the player to the square** (`walkTo`) unless
-  `cursor.skipWalk2 = true` or the build cheat is on; set `skipWalk2` for a pure picker. Vanilla's Horde Manager
+  `cursor.skipWalk2 = true` or the build cheat is on; set `skipWalk2` for a pure picker. Its `create` removes the cursor
+  before reporting the square (replace `create` on the instance to keep picking); Java calls the cursor's `deactivate`
+  whenever `setDrag` removes or replaces it (Esc = `ToggleEscapeMenu`). **Nothing ends a pick cursor on right-click**: the
+  right-click opens the world context menu (`ISObjectClickHandler.doRClick` on `OnObjectRightMouseButtonUp`), whose
+  `createMenu` clears the cursor, so the menu opens too. `OnRightMouseDown` (not fired over UI) then `OnRightMouseUp` and
+  `OnObjectRightMouseButtonUp` fire from one `UIManager.updateMouseButtons` call; the hotbar's pickers end on the
+  down and wrap `doRClick` to eat that release's menu. Vanilla's Horde Manager
   (`ISSpawnHordeUI:onSelectNewSquare`) and Tile Picker do not, so picking a square there makes the character walk to it.
+- Brush Tool painting: `ISBrushToolTileCursor:new(sprite, northSprite, character)` + `setDrag` (what "Choose tile" does)
+  never removes itself, so each click places again. In MP its `tryBuild` sends `sendAddObjectToMap(square, sprite)` =
+  `AddObjectToMapPacket`, `requiredCapability = AddItem` (not the Brush Tool power); the server runs
+  `CellLoader.DoTileObjectCreation` and relays it, clients get `OnTileObjectAdded`. `BrushToolChooseTileUI.OnKeyPressed`
+  swaps any drag with `isTileCursor` for the next tile on '[' / ']' (keys 26/27). The hotbar's "Paint a tile" holds
+  one (`Hotbar.holdCursor`: right-click / Esc / second click end it, no context menu).
 - Online players for a picker: `scoreboardUpdate()` → `Events.OnScoreboardUpdate(usernames, displayNames, steamIDs)`
   (everyone online); `getOnlinePlayers()` on a client only holds the players it has loaded.
 - Climate Control (`ISAdmPanelClimate`): `getClimateManager():getClimateFloat(i)` (0..12: desaturation, global light,
@@ -533,7 +545,7 @@ are gated. Candidates for a hardening fix.
   toggles read their state back from the game every 200 ms; `window = true` slots open the vanilla window.
   Actions marked `opensWindow` (plus openUI and the windows category) remember the UIs that appear within 1.5 s
   and a second click closes them. `slot.steps` = extra `{ action, settings, window }` run after the slot's own
-  (`Hotbar.partsOf`): all resolved first (asked player / square / vehicle shared), one confirm, then each step after its own `delay` (ms, default 300, 0 = same frame, `Hotbar.stepDelay`); a toggle step's `follow` (nil = flip its own state, `same`/`opposite`) takes the state part 1 asked for at click time (`runParts` passes it on), falling back to its own flip when part 1 is no toggle or its state is unknown;
+  (`Hotbar.partsOf`): all resolved first (asked player / square / vehicle shared), one confirm, then each step after its own `delay` (ms, default 300, 0 = same frame, `Hotbar.stepDelay`); a toggle step's `follow` (nil = flip its own state, `same`/`opposite`) takes the state part 1 asked for at click time (`runParts` passes it on), falling back to its own flip when part 1 is no toggle or its state is unknown; a click that finds a follower out of step with part 1's current state only syncs the followers to it (`outOfSyncLead`, not within `slot.syncHoldUntilMs` of the previous click);
   saved as `steps.#n.*` on the slot line. Focus (`Bar:updateFocus`): many vanilla windows never `bringToTop` on a
   click (ISInventoryPage), so on each press the bar brings itself, or the window it covers that was clicked, to the front.
   Single player: only with `-debug` (`isDebugEnabled()`), every capability assumed, each action has vanilla's single

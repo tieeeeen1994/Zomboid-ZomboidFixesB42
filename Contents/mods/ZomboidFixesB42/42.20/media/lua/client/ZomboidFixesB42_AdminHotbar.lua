@@ -20,11 +20,16 @@
         instead, which is what a fresh slot does until it is configured.
       - A setting left on "Ask when used" is asked for at click time: a menu of
         online players, a square picked on the map with vanilla's ISSelectCursor
-        (the Horde Manager's picker), a searchable list, or a prompt.
+        (the Horde Manager's picker), a searchable list, or a prompt. A square or
+        vehicle can also be set to "keep picking": the picker stays on the map and
+        every click runs the slot again there, until right-click or Esc. A
+        right-click that ends a picker does not also open the context menu.
       - A slot can have steps: more actions, each with its own settings and delay,
         run after its own on the same click (see "Using a slot"). A toggle step
         flips from its own state, or follows the first step's new state (or its
-        opposite), so one click turns a set of cheats on or off together.
+        opposite), so one click turns a set of cheats on or off together. When
+        a following step is out of step with the first, the click only syncs
+        them to the first step's current state.
       - A second click on a slot that opened a window closes it.
 
     Everything goes through vanilla commands and packets (or this mod's own Body
@@ -598,22 +603,122 @@ function Hotbar.pickPlayer(admin, onPick)
     end
 end
 
---- Pick a square on the map, the way the Horde Manager does. onPick(square).
+--[[
+    Square pickers. The cursor on the map is the cell's "drag" (IsoCell.setDrag, the
+    name the game uses for any build or pick cursor, nothing to do with dragging the
+    mouse). Vanilla's ISSelectCursor:create removes it before it reports the square,
+    so a picker picks once; a picker that keeps picking replaces create and leaves the
+    cursor up, and every further click picks again. Java calls the cursor's deactivate
+    whenever it is removed or replaced (IsoCell.setDrag), which is where a picker ends:
+    Esc (MainScreen.lua ToggleEscapeMenu removes the cursor), another cursor, death.
+
+    Nothing in vanilla ends a pick cursor on right-click. It only seemed to because
+    the right-click opens the world context menu (ISObjectClickHandler.doRClick ->
+    ISContextManager.createWorldMenu -> ISWorldObjectContextMenu.createMenu), which
+    removes the cursor on its way, so the menu opened as well. The bar's pickers end
+    on the right button going down (OnRightMouseDown, only fired when no UI element
+    took the click) and swallow the context menu that the same click would open on
+    release (OnRightMouseUp, then OnObjectRightMouseButtonUp -> doRClick, in the same
+    Java call, UIManager.updateMouseButtons).
+--]]
+
+--- The bar's picker currently on the map, if any.
+local activePicker = nil
+-- A right-click that ended a picker: "down" until the button is released, "up" for the
+-- rest of that frame, so the context menu the release opens is not shown.
+local eatRightClick = nil
+
+--- Put a cursor on the map as the bar's own: right-click or Esc ends it (without the
+-- context menu), and so does a second click on held.slot. held (optional) is the
+-- table to track it in; onEnd() runs when the cursor goes, however it goes.
+function Hotbar.holdCursor(admin, cursor, held, onEnd)
+    held = held or {}
+    held.cursor = cursor
+    held.playerNum = admin:getPlayerNum()
+    local previous = cursor.deactivate
+    function cursor.deactivate(self)
+        held.cursor = nil
+        if activePicker == held then activePicker = nil end
+        if previous then previous(self) end
+        if onEnd then onEnd() end
+    end
+    getCell():setDrag(cursor, held.playerNum)
+    activePicker = held
+    return held
+end
+
+--- Pick a square on the map, the way the Horde Manager does. onPick(square) for the
+-- square clicked. With keep, the picker stays up after each click and every further
+-- click picks again, until right-click, Esc or another cursor ends it. onEnd() runs
+-- when the picker goes, however it goes. Returns the picker.
 -- ISSelectCursor calls ui:onSquareSelected(square) and only counts as valid while
 -- ui.cursor is set.
-function Hotbar.pickSquare(admin, onPick)
-    local picker = {}
+function Hotbar.pickSquare(admin, onPick, keep, onEnd)
+    local picker = { keep = keep == true }
     function picker.onSquareSelected(self, square)
-        self.cursor = nil
+        if not self.keep then self.cursor = nil end
         if square then onPick(square) end
     end
-    picker.cursor = ISSelectCursor:new(admin, picker, nil)
+    local cursor = ISSelectCursor:new(admin, picker, nil)
     -- ISSelectCursor is a building cursor: ISBuildingObject:tryBuild walks the player to
     -- the square before "building" unless skipWalk2 is set (or the build cheat is on).
-    picker.cursor.skipWalk2 = true
-    getCell():setDrag(picker.cursor, admin:getPlayerNum())
-    Hotbar.say(admin, txt("PickSquareHint"))
+    cursor.skipWalk2 = true
+    function cursor.create(self, x, y, z)
+        if not picker.keep then getCell():setDrag(nil, self.player) end
+        picker:onSquareSelected(getCell():getGridSquare(x, y, z))
+    end
+    Hotbar.holdCursor(admin, cursor, picker, onEnd)
+    Hotbar.say(admin, txt(picker.keep and "PickSquaresHint" or "PickSquareHint"))
+    return picker
 end
+
+--- Is this slot's cursor on the map right now?
+function Hotbar.isHoldingFor(slot)
+    return activePicker ~= nil and activePicker.slot == slot and activePicker.cursor ~= nil
+end
+
+--- End the bar's picker, if one is up.
+function Hotbar.endPicking()
+    local picker = activePicker
+    if picker and picker.cursor and getCell():getDrag(picker.playerNum) == picker.cursor then
+        getCell():setDrag(nil, picker.playerNum)
+    end
+end
+
+local function onPickerRightMouseDown()
+    eatRightClick = nil
+    local picker = activePicker
+    if not picker or not picker.cursor or getCell():getDrag(picker.playerNum) ~= picker.cursor then return end
+    getCell():setDrag(nil, picker.playerNum)
+    eatRightClick = "down"
+end
+
+local function onPickerRightMouseUp()
+    if eatRightClick then eatRightClick = "up" end
+end
+
+local function onPickerTick()
+    if eatRightClick == "up" then eatRightClick = nil end
+end
+
+--- ISObjectClickHandler lives in media/lua/server, which loads after client files.
+local function installRightClickGuard()
+    if not ISObjectClickHandler or not ISObjectClickHandler.doRClick or ISObjectClickHandler.zfixPickerGuard then return end
+    local original = ISObjectClickHandler.doRClick
+    ISObjectClickHandler.doRClick = function(object, x, y)
+        if eatRightClick then
+            eatRightClick = nil
+            return
+        end
+        return original(object, x, y)
+    end
+    ISObjectClickHandler.zfixPickerGuard = true
+end
+
+Events.OnRightMouseDown.Add(onPickerRightMouseDown)
+Events.OnRightMouseUp.Add(onPickerRightMouseUp)
+Events.OnTick.Add(onPickerTick)
+Events.OnGameStart.Add(installRightClickGuard)
 
 function Hotbar.prompt(title, default, numbersOnly, onDone)
     local core = getCore()
@@ -770,8 +875,18 @@ end
 -- Resolving settings ---------------------------------------------------------------
 --
 -- player:   "@me", "@ask" or a username
--- location: "@me", "@pick", "@player" (the slot's player) or "x,y,z"
--- vehicle:  "@near" (the one I'm in, else the nearest) or "@pick"
+-- location: "@me", "@pick", "@pickmany", "@player" (the slot's player) or "x,y,z"
+-- vehicle:  "@near" (the one I'm in, else the nearest), "@pick" or "@pickmany"
+-- tile:     a tile sprite name ("<tileset>_<n>"), or empty to choose one when used
+--
+-- "@pickmany" picks like "@pick", but the picker stays up and every click runs the
+-- slot again (see Hotbar.activate).
+
+local PICK_MANY = "@pickmany"
+
+local function isPick(raw)
+    return raw == "@pick" or raw == PICK_MANY
+end
 
 local function settingOf(slot, spec)
     local value = slot.settings and slot.settings[spec.key]
@@ -815,7 +930,7 @@ local function peekValue(slot, spec, admin, values)
         end
         return Hotbar.parseCoords(raw)
     elseif spec.type == "vehicle" then
-        if raw == "@pick" then return nil end
+        if isPick(raw) then return nil end
         return admin:getVehicle() or admin:getNearVehicle()
     elseif spec.type == "number" then
         return tonumber(raw)
@@ -852,9 +967,9 @@ function Hotbar.partAsks(slot)
                 and (isClient() or getNumActivePlayers() > 1) then
             return true
         end
-        if spec.type == "location" and (raw == nil or raw == "@pick") then return true end
-        if spec.type == "vehicle" and raw == "@pick" then return true end
-        if (spec.type == "choice" or spec.type == "text" or spec.type == "number")
+        if spec.type == "location" and (raw == nil or isPick(raw)) then return true end
+        if spec.type == "vehicle" and isPick(raw) then return true end
+        if (spec.type == "choice" or spec.type == "text" or spec.type == "number" or spec.type == "tile")
                 and (raw == nil or raw == "") and not spec.optional then
             return true
         end
@@ -882,9 +997,22 @@ end
 
 --- shared holds the player, square and vehicle already asked for during this click,
 -- so a slot with steps asks for each of them once and every step uses the answer.
+-- A slot that keeps picking also passes shared.memo (the answers to every other
+-- question, per part, so later clicks ask nothing) and, for the pass that asks them
+-- before the picker shows, shared.deferSquares (squares and vehicles left empty).
 local function resolveOne(slot, action, spec, admin, values, done, shared)
     local raw = settingOf(slot, spec)
     local value = peekValue(slot, spec, admin, values)
+    local memo = shared.memo and shared.memo[slot]
+    if memo and memo[spec.key] ~= nil then return done(memo[spec.key]) end
+    if shared.memo and (spec.type == "number" or spec.type == "text" or spec.type == "choice" or spec.type == "tile") then
+        local answer = done
+        done = function(v)
+            shared.memo[slot] = shared.memo[slot] or {}
+            shared.memo[slot][spec.key] = v
+            answer(v)
+        end
+    end
 
     if spec.type == "player" then
         if value or spec.optional then return done(value) end
@@ -902,17 +1030,19 @@ local function resolveOne(slot, action, spec, admin, values, done, shared)
             return
         end
         if shared.location then return done(shared.location) end
+        if shared.deferSquares then return done(nil) end
         return Hotbar.pickSquare(admin, function(square)
             shared.location = squareToLocation(square)
             done(shared.location)
         end)
     elseif spec.type == "vehicle" then
         if value then return done(value) end
-        if raw ~= "@pick" then
+        if not isPick(raw) then
             Hotbar.say(admin, txt("NoVehicleNear"), true)
             return
         end
         if shared.vehicle then return done(shared.vehicle) end
+        if shared.deferSquares then return done(nil) end
         return Hotbar.pickSquare(admin, function(square)
             local vehicle = square:getVehicleContainer()
             if not vehicle then
@@ -937,6 +1067,11 @@ local function resolveOne(slot, action, spec, admin, values, done, shared)
     elseif spec.type == "choice" then
         if value ~= nil or spec.optional then return done(value) end
         return Hotbar.pickFromList(spec.title, Hotbar.choicesOf(spec), done)
+    elseif spec.type == "tile" then
+        if value or spec.optional or not Hotbar.Icons then return done(value) end
+        return Hotbar.Icons.openTilePicker(nil, function(tile)
+            if tile then done(tile) end
+        end)
     end
     return done(value)
 end
@@ -1013,6 +1148,12 @@ local function computeState(slot, admin, now)
             local okOn, on = pcall(action.toggle.isOn, ctx)
             if okOn then state.on = on end
         end
+    end
+
+    -- Its cursor on the map (painting, or picking squares one after another): shown on.
+    if Hotbar.isHoldingFor(slot) then
+        state.toggle = true
+        state.on = true
     end
 
     local pending = slot.pending
@@ -1186,6 +1327,15 @@ Events.OnTick.Add(onWatchTick)
     not a toggle, opens its window, or cannot tell its state (another player's flags
     this client has never seen, which set(ctx, nil) flips on the server), there is
     nothing to follow and the step flips from its own state.
+
+    When a following step is out of step with the first part at click time (turned
+    on or off by hand, or by another admin), that click does not flip anything: the
+    first part keeps its state and only the following steps are turned to match it
+    (the other parts do not run). The next click flips them all together again. A
+    step whose state cannot be read does not count as out of step. The check is
+    skipped while an earlier click of the same slot is still running its steps or
+    waiting for the server (their delays plus PENDING_MS), since states read then
+    are not final yet.
 --]]
 local scheduled = {}
 
@@ -1251,6 +1401,30 @@ local function partOpensWindow(part)
     return (part.window and action.openUI ~= nil) or action.opensWindow == true
 end
 
+--- A following toggle part (a step that follows the first part, not opening its window).
+local function isFollower(ctx)
+    return not ctx.openWindow and isToggle(ctx.action, ctx) and Hotbar.followOf(ctx.slot) ~= nil
+end
+
+--- The first part's current state when a following step is out of step with it, else
+-- nil. Not while an earlier click of this slot is still running or unconfirmed
+-- (slot.syncHoldUntilMs), since its states are still on their way.
+local function outOfSyncLead(slot, contexts)
+    if (slot.syncHoldUntilMs or 0) > getTimestampMs() then return nil end
+    local first = contexts[1]
+    if not first or first.openWindow or not isToggle(first.action, first) then return nil end
+    local okLead, lead = pcall(first.action.toggle.isOn, first)
+    if not okLead or lead == nil then return nil end
+    for index = 2, #contexts do
+        local ctx = contexts[index]
+        if isFollower(ctx) then
+            local ok, current = pcall(ctx.action.toggle.isOn, ctx)
+            if ok and current ~= nil and current ~= followedState(ctx.slot, lead) then return lead end
+        end
+    end
+    return nil
+end
+
 local function runParts(slot, contexts)
     local parts = Hotbar.partsOf(slot)
     local watch = false
@@ -1258,9 +1432,18 @@ local function runParts(slot, contexts)
         if partOpensWindow(part) then watch = true end
     end
     if watch then startWatch(slot) end
+    -- A following step out of step with the first part: this click only brings the
+    -- following steps in line with the first part's current state.
+    local syncLead = outOfSyncLead(slot, contexts)
+    local holdMs = PENDING_MS
+    for index = 2, #contexts do holdMs = holdMs + Hotbar.stepDelay(parts[index]) end
+    slot.syncHoldUntilMs = getTimestampMs() + holdMs
+    if syncLead ~= nil then
+        Hotbar.say(contexts[1].admin, txt("StepsSynced", Hotbar.titleOf(contexts[1].action, slot)))
+    end
     local index = 0
     -- The state the first part asked for, which following steps turn to.
-    local lead = nil
+    local lead = syncLead
     local function runNext()
         -- Every step with no delay runs in this same call, so in the same frame.
         repeat
@@ -1268,8 +1451,13 @@ local function runParts(slot, contexts)
             local ctx = contexts[index]
             if not ctx then return end
             if watch then extendWatch(slot) end
-            local want = runResolved(ctx, slot, lead)
-            if index == 1 then lead = want end
+            ctx.owner = slot
+            if syncLead == nil then
+                local want = runResolved(ctx, slot, lead)
+                if index == 1 then lead = want end
+            elseif index > 1 and isFollower(ctx) then
+                runResolved(ctx, slot, lead)
+            end
         until not contexts[index + 1] or Hotbar.stepDelay(parts[index + 1]) > 0
         if contexts[index + 1] then
             after(Hotbar.stepDelay(parts[index + 1]), runNext)
@@ -1278,32 +1466,13 @@ local function runParts(slot, contexts)
     runNext()
 end
 
-function Hotbar.activate(slot, admin)
-    admin = admin or getPlayer()
-    if not admin or not Hotbar.canUse(admin) then return end
-    -- A second click closes the window the first one opened.
-    if closeSlotWindows(slot) then return end
-    local ok, reason = Hotbar.slotAvailability(slot, admin)
-    if not ok then
-        Hotbar.say(admin, reason, true)
-        return
-    end
-
+--- Resolve every part in order (asking where needed), then done(contexts).
+local function resolveParts(slot, admin, shared, done)
     local parts = Hotbar.partsOf(slot)
     local contexts = {}
-    local shared = {}
     local function resolveAt(index)
         local part = parts[index]
-        if not part then
-            local wantsConfirm = slot.confirm
-            if wantsConfirm == nil then wantsConfirm = Hotbar.defaultConfirm(slot) end
-            if wantsConfirm then
-                Hotbar.confirm(txt("ConfirmRun", Hotbar.slotTitle(slot)), function() runParts(slot, contexts) end)
-            else
-                runParts(slot, contexts)
-            end
-            return
-        end
+        if not part then return done(contexts) end
         local action = Hotbar.getAction(part.action)
         if part.window and action.openUI then
             -- "Open the window instead": nothing to ask, the window takes it from here.
@@ -1318,6 +1487,100 @@ function Hotbar.activate(slot, admin)
         end, shared)
     end
     resolveAt(1)
+end
+
+--- fn() now, or after "Ask before running" when the slot asks.
+local function confirmThen(slot, fn)
+    local wantsConfirm = slot.confirm
+    if wantsConfirm == nil then wantsConfirm = Hotbar.defaultConfirm(slot) end
+    if wantsConfirm then
+        Hotbar.confirm(txt("ConfirmRun", Hotbar.slotTitle(slot)), fn)
+    else
+        fn()
+    end
+end
+
+--- Does a part pick a square or vehicle and keep picking ("@pickmany")? Then so
+-- does the whole slot.
+function Hotbar.keepsPicking(slot)
+    for _, part in ipairs(Hotbar.partsOf(slot)) do
+        local action = Hotbar.getAction(part.action)
+        if action and not (part.window and action.openUI) then
+            for _, spec in ipairs(action.params) do
+                if (spec.type == "location" or spec.type == "vehicle") and settingOf(part, spec) == PICK_MANY then
+                    return true
+                end
+            end
+        end
+    end
+    return false
+end
+
+--- Does a part pick a vehicle on the map?
+local function picksVehicle(slot)
+    for _, part in ipairs(Hotbar.partsOf(slot)) do
+        local action = Hotbar.getAction(part.action)
+        if action and not (part.window and action.openUI) then
+            for _, spec in ipairs(action.params) do
+                if spec.type == "vehicle" and isPick(settingOf(part, spec)) then return true end
+            end
+        end
+    end
+    return false
+end
+
+--[[
+    A slot that keeps picking asks everything else first (players, numbers, lists,
+    then "Ask before running"), once, with the squares left out. Then the picker stays
+    on the map and each click runs the whole slot at the clicked square (and the
+    vehicle on it, for a vehicle pick), with those answers, asking nothing more. Every
+    square and vehicle the slot's parts pick is that click's. Right-click, Esc, or a
+    second click on the slot ends it.
+--]]
+local function startPicking(slot, admin)
+    local memo = {}
+    local first = { memo = memo, deferSquares = true }
+    resolveParts(slot, admin, first, function()
+        confirmThen(slot, function()
+            local picker = Hotbar.pickSquare(admin, function(square)
+                if not Hotbar.canUse(admin) then return Hotbar.endPicking() end
+                local ok, reason = Hotbar.slotAvailability(slot, admin)
+                if not ok then
+                    Hotbar.say(admin, reason, true)
+                    return
+                end
+                local vehicle = nil
+                if picksVehicle(slot) then
+                    vehicle = square:getVehicleContainer()
+                    if not vehicle then
+                        Hotbar.say(admin, txt("NoVehicleThere"), true)
+                        return
+                    end
+                end
+                local shared = { memo = memo, player = first.player, location = squareToLocation(square), vehicle = vehicle }
+                resolveParts(slot, admin, shared, function(contexts) runParts(slot, contexts) end)
+            end, true)
+            picker.slot = slot
+        end)
+    end)
+end
+
+function Hotbar.activate(slot, admin)
+    admin = admin or getPlayer()
+    if not admin or not Hotbar.canUse(admin) then return end
+    -- A second click ends the slot's picking, or closes the window the first one opened.
+    if activePicker and activePicker.slot == slot then return Hotbar.endPicking() end
+    if closeSlotWindows(slot) then return end
+    local ok, reason = Hotbar.slotAvailability(slot, admin)
+    if not ok then
+        Hotbar.say(admin, reason, true)
+        return
+    end
+
+    if Hotbar.keepsPicking(slot) then return startPicking(slot, admin) end
+    resolveParts(slot, admin, {}, function(contexts)
+        confirmThen(slot, function() runParts(slot, contexts) end)
+    end)
 end
 
 -- Slots on the bar ---------------------------------------------------------------------
@@ -1857,9 +2120,11 @@ function Hotbar.describeSetting(slot, spec)
     elseif spec.type == "location" then
         if raw == "@me" then return txt("SettingMyPosition") end
         if raw == "@player" then return txt("SettingPlayerPosition") end
+        if raw == PICK_MANY then return txt("SettingPickMany") end
         if raw == nil or raw == "@pick" then return txt("SettingPick") end
         return raw
     elseif spec.type == "vehicle" then
+        if raw == PICK_MANY then return txt("SettingPickMany") end
         if raw == "@pick" then return txt("SettingPick") end
         return txt("SettingNearVehicle")
     elseif spec.type == "bool" then
@@ -2548,12 +2813,13 @@ function Settings:addParamRow(spec, cx, y)
 
     elseif spec.type == "location" then
         local mode = raw
-        if mode ~= "@me" and mode ~= "@pick" and mode ~= "@player" then
+        if mode ~= "@me" and not isPick(mode) and mode ~= "@player" then
             mode = Hotbar.parseCoords(raw) and "fixed" or "@pick"
         end
         local options = {
             { text = txt("SettingMyPosition"), data = "@me" },
             { text = txt("SettingPick"), data = "@pick" },
+            { text = txt("SettingPickMany"), data = PICK_MANY },
         }
         if Hotbar.hasPlayerParam(self.action) then
             table.insert(options, { text = txt("SettingPlayerPosition"), data = "@player" })
@@ -2580,7 +2846,8 @@ function Settings:addParamRow(spec, cx, y)
         row.combo = self:addCombo(cx, y, CONTROL_WIDTH, {
             { text = txt("SettingNearVehicle"), data = "@near" },
             { text = txt("SettingPick"), data = "@pick" },
-        }, raw == "@pick" and "@pick" or "@near")
+            { text = txt("SettingPickMany"), data = PICK_MANY },
+        }, isPick(raw) and raw or "@near")
         return y + BUTTON_HGT + UI_BORDER_SPACING
 
     elseif spec.type == "number" then
@@ -2627,6 +2894,25 @@ function Settings:addParamRow(spec, cx, y)
             for _, choice in ipairs(choices) do table.insert(options, choice) end
             row.combo = self:addCombo(cx, y, CONTROL_WIDTH, options, raw)
         end
+        return y + BUTTON_HGT + UI_BORDER_SPACING
+
+    elseif spec.type == "tile" then
+        row.value = raw ~= "" and raw or nil
+        local function titleOf(value)
+            return value or (spec.optional and txt("SettingNone") or txt("SettingAsk"))
+        end
+        row.button = self:addButton(cx, y, CONTROL_WIDTH - 90, titleOf(row.value), function()
+            if not Hotbar.Icons then return end
+            Hotbar.Icons.openTilePicker(row.value, function(tile)
+                if not tile then return end
+                row.value = tile
+                row.button:setTitle(titleOf(tile))
+            end)
+        end)
+        self:addButton(cx + CONTROL_WIDTH - 80, y, 80, spec.optional and txt("Clear") or txt("SettingAskShort"), function()
+            row.value = nil
+            row.button:setTitle(titleOf(nil))
+        end)
         return y + BUTTON_HGT + UI_BORDER_SPACING
 
     elseif spec.type == "preset" then
@@ -2686,7 +2972,7 @@ function Settings:collectSettings()
             else
                 value = row.value
             end
-        elseif spec.type == "preset" then
+        elseif spec.type == "preset" or spec.type == "tile" then
             value = row.value
         end
         settings[key] = value

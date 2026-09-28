@@ -1226,6 +1226,43 @@ register({
     run = function(ctx) BrushToolManager.openPanel(ctx.admin) end,
 })
 
+--[[
+    Paint a tile: vanilla's brush cursor (ISBrushToolTileCursor, what the Brush Tool
+    Manager's "Choose tile" puts on the map) for the slot's tile. It never removes
+    itself after placing, so every left-click paints the tile again, until right-click,
+    Esc or a second click on the slot (Hotbar.holdCursor). On a server its tryBuild sends
+    AddObjectToMapPacket (requiredCapability AddItem), which creates the tile there and
+    sends it to everyone near; in single player it places it directly. The Brush Tool
+    admin power is not needed for either. Vanilla's '[' / ']' keys, which swap the brush
+    to the next tile of the set, are left to the Brush Tool's own cursor
+    (isTileCursor off): this one paints the tile the slot names.
+--]]
+register({
+    id = "noise.paintTile",
+    category = "noise",
+    title = txt("PaintTile"),
+    tooltip = txt("PaintTileTooltip"),
+    icon = function(settings)
+        return settings.tile and ("tex:" .. settings.tile) or "item:Base.Paintbrush"
+    end,
+    params = {
+        { key = "tile", type = "tile", title = txt("ParamTile") },
+    },
+    available = needs("UseBrushToolManager", "AddItem"),
+    run = function(ctx)
+        local tile = ctx.values.tile
+        if not tile or not ISBrushToolTileCursor then return end
+        if not tryGetTexture(tile) then
+            Hotbar.say(ctx.admin, txt("TileMissing", tile), true)
+            return
+        end
+        local cursor = ISBrushToolTileCursor:new(tile, tile, ctx.admin)
+        cursor.isTileCursor = false
+        Hotbar.holdCursor(ctx.admin, cursor, { slot = ctx.owner })
+        Hotbar.say(ctx.admin, txt("PaintTileHint"))
+    end,
+})
+
 -- 8. Weather and climate ----------------------------------------------------------------------------------
 
 -- ClimateManager's precipitation, the float /startrain drives (index 3).

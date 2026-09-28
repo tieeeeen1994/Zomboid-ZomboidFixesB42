@@ -297,6 +297,7 @@ local TABS = {
     { id = "ui", title = "IconTabGameUI", build = uiEntries },
     { id = "tiles", title = "IconTabTiles" },
 }
+local TILES_TAB = TABS[#TABS]
 
 local function entriesOf(tab)
     if not sources[tab.id] and tab.build then
@@ -309,7 +310,9 @@ end
 
 local Picker = ISPanel:derive("ZomboidFixesB42_AdminHotbarIconPicker")
 
-function Picker:new(ref, tint, onPick)
+--- tilesOnly: choose a tile (the Paint a tile action), not an icon: the Tiles tab
+-- alone, no tint, no default.
+function Picker:new(ref, tint, onPick, tilesOnly)
     local core = getCore()
     local width = math.min(760, core:getScreenWidth() - 40)
     local height = math.min(620, core:getScreenHeight() - 40)
@@ -322,7 +325,13 @@ function Picker:new(ref, tint, onPick)
     o.backgroundColor = { r = 0, g = 0, b = 0, a = 0.92 }
     o.borderColor = { r = 0.4, g = 0.4, b = 0.4, a = 1 }
     o.moveWithMouse = true
-    o.tab = TABS[1]
+    o.tilesOnly = tilesOnly == true
+    o.tabs = o.tilesOnly and { TILES_TAB } or TABS
+    o.tab = o.tabs[1]
+    -- Open a chosen tile's set.
+    if o.tilesOnly and type(ref) == "string" then
+        o.tileset = string.match(ref, "^tex:(.+)_%d+$")
+    end
     o.entries = {}
     o.columns = 1
     o.hovered = nil
@@ -344,8 +353,9 @@ function Picker:createChildren()
     local y = UI_BORDER_SPACING * 2 + FONT_HGT_MEDIUM
 
     self.tabButtons = {}
-    local tabWidth = math.floor((self.width - x * 2 - UI_BORDER_SPACING * (#TABS - 1)) / #TABS)
-    for i, tab in ipairs(TABS) do
+    local tabs = self.tabs
+    local tabWidth = math.floor((self.width - x * 2 - UI_BORDER_SPACING * (#tabs - 1)) / #tabs)
+    for i, tab in ipairs(tabs) do
         local button = self:addButton(x + (i - 1) * (tabWidth + UI_BORDER_SPACING), y, tabWidth, txt(tab.title), Picker.onTab)
         button.tab = tab
         table.insert(self.tabButtons, button)
@@ -394,16 +404,27 @@ function Picker:createChildren()
     self.previewY = by - UI_BORDER_SPACING - CELL
     local bx = x + CELL + UI_BORDER_SPACING
     self.tintButton = self:addButton(bx, self.previewY + (CELL - BUTTON_HGT) / 2, 110, txt("IconTint"), Picker.onTint)
-    self:addButton(self.tintButton:getRight() + UI_BORDER_SPACING, self.tintButton:getY(), 110, txt("IconNoTint"), function(picker)
+    local noTint = self:addButton(self.tintButton:getRight() + UI_BORDER_SPACING, self.tintButton:getY(), 110, txt("IconNoTint"), function(picker)
         picker.tint = nil
     end)
+    if self.tilesOnly then
+        self.tintButton:setVisible(false)
+        noTint:setVisible(false)
+    end
 
     local buttonWidth = 110
-    local ok = self:addButton(self.width / 2 - buttonWidth * 1.5 - UI_BORDER_SPACING, by, buttonWidth, getText("UI_Ok"), Picker.onOk)
-    ok:enableAcceptColor()
-    self:addButton(ok:getRight() + UI_BORDER_SPACING, by, buttonWidth, txt("IconDefault"), Picker.onDefault)
-    local cancel = self:addButton(ok:getRight() + buttonWidth + UI_BORDER_SPACING * 2, by, buttonWidth, getText("UI_Cancel"), Picker.close)
-    cancel:enableCancelColor()
+    if self.tilesOnly then
+        local ok = self:addButton(self.width / 2 - buttonWidth - UI_BORDER_SPACING / 2, by, buttonWidth, getText("UI_Ok"), Picker.onOk)
+        ok:enableAcceptColor()
+        local cancel = self:addButton(ok:getRight() + UI_BORDER_SPACING, by, buttonWidth, getText("UI_Cancel"), Picker.close)
+        cancel:enableCancelColor()
+    else
+        local ok = self:addButton(self.width / 2 - buttonWidth * 1.5 - UI_BORDER_SPACING, by, buttonWidth, getText("UI_Ok"), Picker.onOk)
+        ok:enableAcceptColor()
+        self:addButton(ok:getRight() + UI_BORDER_SPACING, by, buttonWidth, txt("IconDefault"), Picker.onDefault)
+        local cancel = self:addButton(ok:getRight() + buttonWidth + UI_BORDER_SPACING * 2, by, buttonWidth, getText("UI_Cancel"), Picker.close)
+        cancel:enableCancelColor()
+    end
 
     self:showTab(self.tab)
 end
@@ -434,6 +455,13 @@ function Picker:showTab(tab)
             for i = 0, names:size() - 1 do table.insert(sorted, names:get(i)) end
             table.sort(sorted)
             for _, name in ipairs(sorted) do self.tilesets:addItem(name, name) end
+            for i, item in ipairs(self.tilesets.items) do
+                if item.item == self.tileset then
+                    self.tilesets.selected = i
+                    self.tilesets:ensureVisible(i)
+                    break
+                end
+            end
         end
         self.source = self.tileset and tileEntries(self.tileset) or {}
     else
@@ -542,7 +570,7 @@ end
 
 function Picker:prerender()
     ISPanel.prerender(self)
-    self:drawText(txt("IconPickerTitle"), UI_BORDER_SPACING + 1, UI_BORDER_SPACING, 1, 1, 1, 1, UIFont.Medium)
+    self:drawText(txt(self.tilesOnly and "TilePickerTitle" or "IconPickerTitle"), UI_BORDER_SPACING + 1, UI_BORDER_SPACING, 1, 1, 1, 1, UIFont.Medium)
 
     local x = UI_BORDER_SPACING + 1
     self:drawRectBorder(x, self.previewY, CELL, CELL, 0.6, 0.6, 0.6, 0.6)
@@ -552,6 +580,9 @@ function Picker:prerender()
         self:drawTextureScaledAspect(texture, x + 3, self.previewY + 3, CELL - 6, CELL - 6, 1, tint.r, tint.g, tint.b)
     end
     local status = self.hovered and self.hovered.name or ""
+    if status == "" and self.tilesOnly and self.selected then
+        status = string.match(self.selected, "^tex:(.+)$") or ""
+    end
     if self.tab.id == "tiles" and not self.tileset then
         status = txt("IconPickTileset")
     end
@@ -576,6 +607,19 @@ end
 --- Open the picker. onPick(ref, tint); both nil means "use the action's default".
 function Icons.openPicker(ref, tint, onPick)
     local picker = Picker:new(ref, tint, onPick)
+    picker:initialise()
+    picker:addToUIManager()
+    picker:bringToTop()
+    return picker
+end
+
+--- Choose a tile. onPick(tileName) with the sprite name ("<tileset>_<n>"), nil when
+-- none was chosen; not called on Cancel.
+function Icons.openTilePicker(tileName, onPick)
+    local ref = tileName and ("tex:" .. tileName) or nil
+    local picker = Picker:new(ref, nil, function(chosen)
+        onPick(chosen and string.match(chosen, "^tex:(.+)$") or nil)
+    end, true)
     picker:initialise()
     picker:addToUIManager()
     picker:bringToTop()

@@ -29,4 +29,4 @@ description=- Finished skill books stay read after relogging, also with the inst
 description=- The admin Server Options window no longer leaves an option's description stuck to the mouse.
 description=- Mod options and key bindings of mods that are not loaded are no longer reset or deleted when you save the options (enable this mod in the main menu too).
 description=Must be installed on both the server and clients. Every fix is on by default and can be turned off in the sandbox options; the few that are off by default say so.
-modversion=2.1
+modversion=2.2
