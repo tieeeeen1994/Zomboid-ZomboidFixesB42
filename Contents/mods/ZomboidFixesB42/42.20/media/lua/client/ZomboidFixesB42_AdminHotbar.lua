@@ -22,7 +22,9 @@
         online players, a square picked on the map with vanilla's ISSelectCursor
         (the Horde Manager's picker), a searchable list, or a prompt.
       - A slot can have steps: more actions, each with its own settings and delay,
-        run after its own on the same click (see "Using a slot").
+        run after its own on the same click (see "Using a slot"). A toggle step
+        flips from its own state, or follows the first step's new state (or its
+        opposite), so one click turns a set of cheats on or off together.
       - A second click on a slot that opened a window closes it.
 
     Everything goes through vanilla commands and packets (or this mod's own Body
@@ -268,6 +270,16 @@ function Hotbar.partsOf(slot)
     return parts
 end
 
+--- How a toggle step turns (step.follow): nil flips it from its own state, FOLLOW_SAME
+-- turns it to the state the first part turns to, FOLLOW_OPPOSITE to the other one.
+local FOLLOW_SAME = "same"
+local FOLLOW_OPPOSITE = "opposite"
+
+function Hotbar.followOf(step)
+    if step.follow == FOLLOW_SAME or step.follow == FOLLOW_OPPOSITE then return step.follow end
+    return nil
+end
+
 --- A step's wait in milliseconds after the part before it; 0 runs it in the same frame.
 function Hotbar.stepDelay(step)
     local delay = tonumber(step.delay) or STEP_DELAY_MS
@@ -483,6 +495,7 @@ function Hotbar.load()
                             settings = type(step.settings) == "table" and step.settings or {},
                             window = step.window == true,
                             delay = tonumber(step.delay),
+                            follow = Hotbar.followOf(step),
                         })
                     end
                 end
@@ -1164,6 +1177,15 @@ Events.OnTick.Add(onWatchTick)
     chat commands and client commands are separate packets, and a gap keeps them
     reaching the server in order. A delay of 0 runs the step straight after the part
     before it, in the same frame.
+
+    A toggle step flips from its own state unless it follows the first part (the
+    slot's own action): then it turns to the state the first part asked for, or the
+    opposite one, whatever it was before, and a step already there is left alone.
+    That state is the one asked for at click time, not read back later, since the
+    server confirms it after the step may already have run. When the first part is
+    not a toggle, opens its window, or cannot tell its state (another player's flags
+    this client has never seen, which set(ctx, nil) flips on the server), there is
+    nothing to follow and the step flips from its own state.
 --]]
 local scheduled = {}
 
@@ -1186,24 +1208,40 @@ end
 
 Events.OnTick.Add(onScheduleTick)
 
---- Run one resolved part. Only the slot's own toggle shows as pending on the slot.
-local function runResolved(ctx, owner)
+--- The state a following toggle step turns to, given lead (the state the first part
+-- asked for); nil when it flips from its own state.
+local function followedState(part, lead)
+    local follow = Hotbar.followOf(part)
+    if lead == nil or follow == nil then return nil end
+    if follow == FOLLOW_SAME then return lead end
+    return not lead
+end
+
+--- Run one resolved part and return the state a toggle asked for (nil when not a
+-- toggle or unknown). Only the slot's own toggle shows as pending on the slot.
+local function runResolved(ctx, owner, lead)
     local action = ctx.action
     if ctx.openWindow then
-        return action.openUI(ctx)
+        action.openUI(ctx)
+        return nil
     end
     if isToggle(action, ctx) then
         local current = action.toggle.isOn(ctx)
-        local want = nil
-        if current ~= nil then want = not current end
+        local want = followedState(ctx.slot, lead)
+        if want ~= nil then
+            if current == want then return want end
+        elseif current ~= nil then
+            want = not current
+        end
         action.toggle.set(ctx, want)
         if ctx.slot == owner then
             owner.pending = { want = want, untilMs = getTimestampMs() + PENDING_MS }
             Hotbar.invalidate(owner)
         end
-        return
+        return want
     end
     if action.run then action.run(ctx) end
+    return nil
 end
 
 --- Does running this part open a window a second click should close?
@@ -1221,6 +1259,8 @@ local function runParts(slot, contexts)
     end
     if watch then startWatch(slot) end
     local index = 0
+    -- The state the first part asked for, which following steps turn to.
+    local lead = nil
     local function runNext()
         -- Every step with no delay runs in this same call, so in the same frame.
         repeat
@@ -1228,7 +1268,8 @@ local function runParts(slot, contexts)
             local ctx = contexts[index]
             if not ctx then return end
             if watch then extendWatch(slot) end
-            runResolved(ctx, slot)
+            local want = runResolved(ctx, slot, lead)
+            if index == 1 then lead = want end
         until not contexts[index + 1] or Hotbar.stepDelay(parts[index + 1]) > 0
         if contexts[index + 1] then
             after(Hotbar.stepDelay(parts[index + 1]), runNext)
@@ -1775,6 +1816,12 @@ function Bar:tooltipFor(slot, state)
         if stepAction then
             local delay = Hotbar.stepDelay(step)
             local when = delay > 0 and txt("StepAfter", string.format("%d", delay)) or txt("StepAtOnce")
+            local follow = stepAction.toggle and Hotbar.followOf(step)
+            if follow == FOLLOW_SAME then
+                when = when .. " " .. txt("StepFollowsSame")
+            elseif follow == FOLLOW_OPPOSITE then
+                when = when .. " " .. txt("StepFollowsOpposite")
+            end
             table.insert(lines, string.format("%d", index + 1) .. ". " .. Hotbar.titleOf(stepAction, step) .. " " .. when)
             settingLines(step, stepAction, lines, "    ")
         end
@@ -2031,9 +2078,10 @@ function Hotbar.addStep(slot, actionId)
         slot.steps = slot.steps or {}
         table.insert(slot.steps, {
             action = saved.action, settings = saved.settings or {}, window = saved.window == true, delay = saved.delay,
+            follow = saved.follow,
         })
         stepsChanged(slot)
-    end, true)
+    end, slot)
 end
 
 function Hotbar.editStep(slot, step)
@@ -2041,8 +2089,9 @@ function Hotbar.editStep(slot, step)
         step.settings = saved.settings or {}
         step.window = saved.window == true
         step.delay = saved.delay
+        step.follow = saved.follow
         stepsChanged(slot)
-    end, true)
+    end, slot)
 end
 
 function Hotbar.moveStep(slot, step, delta)
@@ -2273,16 +2322,18 @@ local function wrapLines(text, width, font)
     return lines
 end
 
---- isStep: the dialog edits a step of a slot, which has settings only (the label,
--- icon and "Ask before running" belong to the slot).
-function Settings:new(slot, onSave, isStep)
+--- owner: the dialog edits a step of that slot, which has settings, a delay and, for a
+-- toggle, how it follows the first part (the label, icon and "Ask before running"
+-- belong to the slot).
+function Settings:new(slot, onSave, owner)
     local width = LABEL_WIDTH + CONTROL_WIDTH + UI_BORDER_SPACING * 3
     local core = getCore()
     local o = ISPanel:new(core:getScreenWidth() / 2 - width / 2, 120, width, 200)
     setmetatable(o, self)
     self.__index = self
     o.slot = slot
-    o.isStep = isStep == true
+    o.owner = owner
+    o.isStep = owner ~= nil
     o.action = Hotbar.getAction(slot.action)
     o.onSave = onSave
     o.settings = {}
@@ -2301,6 +2352,18 @@ function Settings:addLabel(text, y)
     label:initialise()
     self:addChild(label)
     return label
+end
+
+--- Grey (or colour's) small text wrapped over the dialog's width; returns the y below it.
+function Settings:addHint(text, y, colour)
+    colour = colour or { r = 0.8, g = 0.8, b = 0.8 }
+    for _, line in ipairs(wrapLines(text, self.width - UI_BORDER_SPACING * 2 - 2, UIFont.Small)) do
+        local label = ISLabel:new(UI_BORDER_SPACING + 1, y, FONT_HGT_SMALL, line, colour.r, colour.g, colour.b, 1, UIFont.Small, true)
+        label:initialise()
+        self:addChild(label)
+        y = y + FONT_HGT_SMALL + 2
+    end
+    return y
 end
 
 function Settings:addButton(x, y, width, title, onClick)
@@ -2372,15 +2435,25 @@ function Settings:createChildren()
     end
 
     if self.isStep then
+        if action.toggle then
+            self:addLabel(txt("StepToggle"), y)
+            self.followCombo = self:addCombo(cx, y, CONTROL_WIDTH, {
+                { text = txt("StepToggleOwn"), data = "own" },
+                { text = txt("StepToggleSame"), data = FOLLOW_SAME },
+                { text = txt("StepToggleOpposite"), data = FOLLOW_OPPOSITE },
+            }, Hotbar.followOf(self.slot) or "own")
+            y = y + BUTTON_HGT + 2
+            y = self:addHint(txt("StepToggleHint"), y)
+            local lead = Hotbar.getAction(self.owner.action)
+            if not (lead and lead.toggle) or self.owner.window then
+                y = self:addHint(txt("StepToggleNoLead"), y, AMBER)
+            end
+            y = y + UI_BORDER_SPACING
+        end
         self:addLabel(txt("StepDelay"), y)
         self.delayEntry = self:addEntry(cx, y, 100, string.format("%d", Hotbar.stepDelay(self.slot)), true)
         y = y + BUTTON_HGT + 2
-        for _, line in ipairs(wrapLines(txt("StepDelayHint"), self.width - UI_BORDER_SPACING * 2 - 2, UIFont.Small)) do
-            local label = ISLabel:new(UI_BORDER_SPACING + 1, y, FONT_HGT_SMALL, line, 0.8, 0.8, 0.8, 1, UIFont.Small, true)
-            label:initialise()
-            self:addChild(label)
-            y = y + FONT_HGT_SMALL + 2
-        end
+        y = self:addHint(txt("StepDelayHint"), y)
         y = y + UI_BORDER_SPACING * 2
         return self:addSaveCancel(y)
     end
@@ -2631,6 +2704,9 @@ function Settings:onSaveClicked()
         -- An empty entry keeps the default.
         local delay = tonumber(self.delayEntry:getText())
         if delay then slot.delay = Hotbar.stepDelay({ delay = delay }) end
+        if self.followCombo then
+            slot.follow = Hotbar.followOf({ follow = self.followCombo:getOptionData(self.followCombo.selected) })
+        end
     else
         slot.icon = self.icon
         slot.tint = self.tint
@@ -2655,12 +2731,12 @@ function Settings:close()
     self:removeFromUIManager()
 end
 
---- Open the settings dialog for a slot or a step (new or existing). onSave(slot) gets
--- a new table.
-function Hotbar.openSettings(slot, onSave, isStep)
+--- Open the settings dialog for a slot, or for a step of owner (new or existing).
+-- onSave(slot) gets a new table.
+function Hotbar.openSettings(slot, onSave, owner)
     local action = Hotbar.getAction(slot.action)
     if not action then return end
-    local window = Settings:new(slot, onSave, isStep)
+    local window = Settings:new(slot, onSave, owner)
     window:initialise()
     window:addToUIManager()
     window:bringToTop()

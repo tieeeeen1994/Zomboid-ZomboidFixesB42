@@ -533,7 +533,7 @@ are gated. Candidates for a hardening fix.
   toggles read their state back from the game every 200 ms; `window = true` slots open the vanilla window.
   Actions marked `opensWindow` (plus openUI and the windows category) remember the UIs that appear within 1.5 s
   and a second click closes them. `slot.steps` = extra `{ action, settings, window }` run after the slot's own
-  (`Hotbar.partsOf`): all resolved first (asked player / square / vehicle shared), one confirm, then each step after its own `delay` (ms, default 300, 0 = same frame, `Hotbar.stepDelay`);
+  (`Hotbar.partsOf`): all resolved first (asked player / square / vehicle shared), one confirm, then each step after its own `delay` (ms, default 300, 0 = same frame, `Hotbar.stepDelay`); a toggle step's `follow` (nil = flip its own state, `same`/`opposite`) takes the state part 1 asked for at click time (`runParts` passes it on), falling back to its own flip when part 1 is no toggle or its state is unknown;
   saved as `steps.#n.*` on the slot line. Focus (`Bar:updateFocus`): many vanilla windows never `bringToTop` on a
   click (ISInventoryPage), so on each press the bar brings itself, or the window it covers that was clicked, to the front.
   Single player: only with `-debug` (`isDebugEnabled()`), every capability assumed, each action has vanilla's single
