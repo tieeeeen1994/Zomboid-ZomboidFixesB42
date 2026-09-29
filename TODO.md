@@ -25,10 +25,11 @@ per fix (default on), README / workshop.txt / mod.info lines, Sandbox.json toolt
 - [ ] **Welding an installed gas tank loses the materials.** `ISFixVehiclePartAction.lua` ~41 reads an
       undefined `part`, so `complete()` errors after the sheet metal and torch are used and the action
       is rejected. Fix: `self.vehiclePart:getContainerContentAmount()`.
-- [ ] **Client-only `checkWeapon` called on the server.** `ISWorldObjectContextMenu.checkWeapon` in
-      `ISRemoveBush.lua` ~79 (animEvent), `ISPickUpGroundCoverItem.lua` ~35 (animEvent),
-      `ISDestroyStuffAction.lua` ~312 (complete). Errors when the tool breaks; sledgehammer destroy
-      queues stop at random. Fix: swap the broken tool on the server and sync the equip.
+- [x] **Client-only `checkWeapon` called on the server.** 42.21 moved it to the shared
+      `ItemUtils.checkWeapon` (sledgehammer destroy fixed by vanilla; ground cover's call is dead code).
+      Left: `ISRemoveBush` never has its tool on the server (set in client `start()`) nor fires "Chop"
+      with a tool in single player, so bushes never wore the tool; `'ui' 'dirtyUI'` never reached the
+      client's `DirtyUI`. Done: `*_RemoveBush.lua`, option `RemoveBushToolWear`.
 - [ ] **Pickaxing ground cover never wears the pickaxe.** `ISPickAxeGroundCoverItem.lua` ~146:
       `self.pickaxe` is never assigned.
 - [ ] **Water dispenser bottle duplication.** `ISAddTakeDispenserBottle.lua` ~6 compares with an

@@ -27,5 +27,6 @@ Zomboid Fixes B42.20 is a set of fixes for Project Zomboid Build 42.20, mostly f
 - Finished skill books stay read after relogging, including books read with the instant timed actions cheat.
 - The admin Server Options window no longer leaves an option's description stuck on screen, following the mouse around, after the mouse leaves the window or it is closed.
 - Vehicle batteries no longer drain twice as fast as intended from headlights, the radio, the lightbar, the siren and the heater.
+- Removing a bush or wall vines with a cutting tool costs endurance and arm strain and wears the tool again, a broken tool is swapped for another, and in multiplayer the inventory window refreshes when the server swaps a tool or uses up building materials.
 
 Steam Workshop ID 3800148259, mod ID ZomboidFixesB42. Licensed under the GNU GPL v3, see [LICENSE](LICENSE).

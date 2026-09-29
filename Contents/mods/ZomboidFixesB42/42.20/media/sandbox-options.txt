@@ -255,3 +255,11 @@ option ZomboidFixesB42.VehicleBatteryDrain
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_VehicleBatteryDrain,
 }
+
+option ZomboidFixesB42.RemoveBushToolWear
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_RemoveBushToolWear,
+}

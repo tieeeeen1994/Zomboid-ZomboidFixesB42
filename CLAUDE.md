@@ -425,7 +425,17 @@ name, pages, modData and clothing holes for any item whose container resolves.
 Server-side timed actions: `NetTimedAction` only calls `new`, `getDuration`, `adjustMaxTime`, `serverStart`,
 `serverStop`, `animEvent`, `complete`, `isUsingTimeout` — never `isValid`, `update` or `perform`. A Lua error in
 `complete()` makes `ActionManager` send Reject (the changes made before the error stay). Client-only globals
-(`ISWorldObjectContextMenu.checkWeapon`) called from a shared action's `complete`/`animEvent` error on a server.
+called from a shared action's `complete`/`animEvent` error on a server (42.20's `ISWorldObjectContextMenu.checkWeapon`;
+42.21 moved it to the shared `ItemUtils.checkWeapon`). The server's table is `Type.new(...)` called with the client
+table's values of `new`'s **parameter names** (`NetTimedAction.set` reads the prototype's locvars), so anything the
+client sets in `new` under another name or in `start()` (`ISRemoveBush.weapon`) is missing there; set it in `serverStart`
+(`ISChopTreeAction.axe` does). Single player runs `start`, the real anim events and `complete` (Java
+`LuaTimedActionNew.complete` when not a client). Anim events with no `m_EventName` (the RemoveBushAxe/Knife/LongBlade
+xmls) never reach `animEvent`.
+Server hand changes sync themselves: `setPrimaryHandItem`/`setSecondaryHandItem` set `handItemShouldSendToClients` and
+`IsoGameCharacter.preupdate` sends `EquipPacket` to the owner, whose client sends it back for the server to relay to
+everyone. `sendServerCommand(p, 'ui', 'dirtyUI')` (ItemUtils, ISBuildUtil, ISMultiStageBuild, GraveHelper) never
+matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lua` answers it.
 
 ### Single player vs a server (what breaks, what to call instead)
 
