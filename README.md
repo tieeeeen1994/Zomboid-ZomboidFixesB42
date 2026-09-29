@@ -1,4 +1,4 @@
-Zomboid Fixes B42.20 is a set of fixes for Project Zomboid Build 42.20, mostly for multiplayer. Install it on both the server and clients. Every fix is on by default and can be turned off in the sandbox options; the few that are off by default say so. Fixes marked beta are new and not fully tested yet.
+Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly for multiplayer. Install it on both the server and clients. Every fix is on by default and can be turned off in the sandbox options; the few that are off by default say so. Fixes marked beta are new and not fully tested yet.
 
 - Fast Timed Actions makes item transfers quick in multiplayer, like in single player.
 - Changing an animal's gender in the animal info window also changes its model and type, and no longer reverts for other players.
