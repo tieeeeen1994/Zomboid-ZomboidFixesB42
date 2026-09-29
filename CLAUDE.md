@@ -716,6 +716,10 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
   (`BodyStats.apply`) and replies with a full snapshot; the window polls every second, batches slider changes every
   200 ms, numbers each change (session + seq per field, stale ones dropped server side) and shows the dragged value
   until acked. Gate: `Capability.CanModifyBodyStats` + target role position <= admin's.
+  Body part conditions (option `BodyPartConditions`, hotbar `players.bodyPart`) are extra fields keyed
+  `Part:<BodyPartType>:<condition>` resolved by `BodyStats.getField` but not in `getFields()`, set like vanilla's
+  `onHealthCheatCurrentPlayer` (which has no access check) then `syncBodyPart`; value `flip` for another player's
+  part, whose body this client cannot read.
 - `*_AdminHotbar*.lua` (client only): admin hotbar. Core (bar, slots, settings dialog, pickers, persistence per
   server in `Zomboid/Lua/ZomboidFixesB42_AdminHotbar_<ip>_<port>.ini`, sidebar button, ModOptions keys), Actions (the
   catalog, one `Hotbar.registerAction` per admin tool), Capture ("Add to Hotbar" in vanilla windows), Icons (icon refs

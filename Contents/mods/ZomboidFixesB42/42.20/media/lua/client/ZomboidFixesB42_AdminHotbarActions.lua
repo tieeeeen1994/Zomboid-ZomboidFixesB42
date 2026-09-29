@@ -608,6 +608,77 @@ register({
     end,
 })
 
+--- One condition on one body part (see "Body part conditions" in the shared body
+-- stats file), sent like a body preset. Only the character's own client (and single
+-- player) holds a real copy of a body: another player's is reset to full health on
+-- this client every update, so their state reads as unknown and a click asks the
+-- server to flip it.
+local BodyStats = ZomboidFixesB42.BodyStats
+
+local function bodyPartChoices()
+    local list = {}
+    for _, name in ipairs(BodyStats.PART_TYPES) do
+        table.insert(list, { text = BodyPartType.getDisplayName(BodyPartType[name]), data = name })
+    end
+    return list
+end
+
+local function bodyConditionChoices()
+    local list = {}
+    for _, condition in ipairs(BodyStats.PART_CONDITIONS) do
+        table.insert(list, { text = getText(condition.title), data = condition.key })
+    end
+    return list
+end
+
+local function bodyPartField(ctx)
+    local part, condition = ctx.values.part, ctx.values.condition
+    if not part or not condition then return nil end
+    return BodyStats.getField(BodyStats.partKey(part, condition))
+end
+
+register({
+    id = "players.bodyPart",
+    category = "players",
+    title = function(slot)
+        local settings = slot and slot.settings or {}
+        if not settings.part or not settings.condition then return txt("BodyPart") end
+        local field = BodyStats.getField(BodyStats.partKey(settings.part, settings.condition))
+        if not field then return txt("BodyPart") end
+        return txt("BodyPartNamed", getText(field.title), BodyPartType.getDisplayName(BodyPartType[settings.part]))
+    end,
+    tooltip = txt("BodyPartTooltip"),
+    icon = "item:Base.Bandage",
+    params = {
+        playerParam("@me"),
+        { key = "part", type = "choice", title = txt("ParamBodyPart"), options = bodyPartChoices },
+        { key = "condition", type = "choice", title = txt("ParamBodyCondition"), options = bodyConditionChoices },
+    },
+    available = function(admin)
+        if not bodyStatsEnabled() then return false, txt("NeedsBodyStats") end
+        if not BodyStats.partsEnabled() then return false, txt("NeedsBodyParts") end
+        return needs("CanModifyBodyStats")(admin)
+    end,
+    toggle = {
+        isOn = function(ctx)
+            local field = bodyPartField(ctx)
+            local player = field and Hotbar.findPlayer(ctx.values.player)
+            if not player then return nil end
+            if isClient() and player:getUsername() ~= ctx.admin:getUsername() then return nil end
+            local ok, on = pcall(field.get, player)
+            if not ok then return nil end
+            return on == true
+        end,
+        set = function(ctx, on)
+            local field = bodyPartField(ctx)
+            if not field or not ZomboidFixesB42.sendBodyStats then return end
+            local value = on
+            if value == nil then value = BodyStats.FLIP end
+            ZomboidFixesB42.sendBodyStats(ctx.admin, ctx.values.player, { [field.key] = value })
+        end,
+    },
+})
+
 -- 3. Teleport ------------------------------------------------------------------------------------------
 
 register({

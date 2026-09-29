@@ -208,6 +208,14 @@ option ZomboidFixesB42.BodyStatsEditor
     translation = ZomboidFixesB42_BodyStatsEditor,
 }
 
+option ZomboidFixesB42.BodyPartConditions
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_BodyPartConditions,
+}
+
 option ZomboidFixesB42.ChopperControls
 {
     type = boolean,

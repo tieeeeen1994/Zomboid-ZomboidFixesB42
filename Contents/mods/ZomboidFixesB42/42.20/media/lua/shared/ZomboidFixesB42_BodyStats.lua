@@ -338,6 +338,167 @@ local function build()
     return list
 end
 
+-- Body part conditions ------------------------------------------------------------
+--[[
+    One condition on one body part (a bite on the left hand, a fracture of the right
+    shin...), for the admin hotbar's per-part toggle. Vanilla's health panel has the
+    same toggles in its Cheat menu, but in multiplayer it sends them as
+    player.onHealthCheatCurrentPlayer (server/ClientCommands.lua), which checks
+    nothing: any client can hurt any player by online ID. These go through the body
+    stats set command instead, with its capability and rank checks and the admin log,
+    and each is set and cleared exactly the way that vanilla handler does it.
+
+    A condition is a field like the editor's, keyed "Part:<BodyPartType>:<condition>",
+    but not in getFields(), so the editor window does not grow a row per part. Its
+    value is true or false, or FLIP to turn it over from whatever the server has:
+    another player's body on an admin's client is reset to full health every update
+    (BodyDamage.Update), so the hotbar cannot read it and asks the server to flip it.
+    After a change the part is sent to its owner at once with syncBodyPart, as vanilla
+    does. Nothing is changed while the BodyPartConditions sandbox option is off.
+--]]
+
+BodyStats.FLIP = "flip"
+
+-- Every syncBodyPart flag, the mask vanilla's cheat handler sends.
+local PART_SYNC_ALL = 0xFFFFFFFFFFF
+
+-- The BodyPartType constants, head to feet.
+BodyStats.PART_TYPES = {
+    "Head", "Neck", "Torso_Upper", "Torso_Lower", "Groin",
+    "UpperArm_L", "UpperArm_R", "ForeArm_L", "ForeArm_R", "Hand_L", "Hand_R",
+    "UpperLeg_L", "UpperLeg_R", "LowerLeg_L", "LowerLeg_R", "Foot_L", "Foot_R",
+}
+
+local function removeStiffness(player, part)
+    part:setStiffness(0)
+    player:getFitness():removeStiffnessValue(BodyPartType.ToString(part:getType()))
+end
+
+-- get(part) and set(part, on, player), after server/ClientCommands.lua
+-- Commands.player.onHealthCheatCurrentPlayer.
+BodyStats.PART_CONDITIONS = {
+    { key = "Bleeding", title = "IGUI_ZomboidFixesB42_BodyPart_Bleeding",
+        get = function(part) return part:getBleedingTime() > 0 end,
+        set = function(part, on) part:setBleedingTime(on and 10 or 0) end },
+    { key = "Scratched", title = "IGUI_ZomboidFixesB42_BodyPart_Scratched",
+        get = function(part) return part:getScratchTime() > 0 end,
+        set = function(part, on)
+            if on then
+                part:setScratched(true, false)
+            else
+                part:setScratched(false, true)
+                part:setScratchTime(0)
+            end
+        end },
+    { key = "Laceration", title = "IGUI_ZomboidFixesB42_BodyPart_Laceration",
+        get = function(part) return part:isCut() end,
+        set = function(part, on)
+            part:setCut(on)
+            if not on then part:setCutTime(0) end
+        end },
+    { key = "DeepWound", title = "IGUI_ZomboidFixesB42_BodyPart_DeepWound",
+        get = function(part) return part:getDeepWoundTime() > 0 end,
+        set = function(part, on)
+            if on then
+                part:generateDeepWound()
+            else
+                part:setDeepWoundTime(0)
+                part:setDeepWounded(false)
+                part:setBleedingTime(0)
+            end
+        end },
+    -- A bite also gives the zombie infection, as a real one does (by the sandbox's
+    -- infection settings); taking it away cures that part.
+    { key = "Bite", title = "IGUI_ZomboidFixesB42_BodyPart_Bite",
+        get = function(part) return part:bitten() end,
+        set = function(part, on)
+            if on then
+                part:SetBitten(true)
+            else
+                part:SetBitten(false)
+                part:SetInfected(false)
+                part:SetFakeInfected(false)
+            end
+        end },
+    -- Vanilla can only add glass (with its deep wound); removing it is what
+    -- ISRemoveGlass does.
+    { key = "Glass", title = "IGUI_ZomboidFixesB42_BodyPart_Glass",
+        get = function(part) return part:haveGlass() end,
+        set = function(part, on)
+            if on then part:generateDeepShardWound() else part:setHaveGlass(false) end
+        end },
+    -- Taking the bullet out leaves the wound it made, as vanilla does.
+    { key = "Bullet", title = "IGUI_ZomboidFixesB42_BodyPart_Bullet",
+        get = function(part) return part:haveBullet() end,
+        set = function(part, on)
+            if on then
+                part:setHaveBullet(true, 0)
+                return
+            end
+            local deepWound = part:isDeepWounded()
+            local deepWoundTime = part:getDeepWoundTime()
+            local bleedTime = part:getBleedingTime()
+            part:setHaveBullet(false, 0)
+            part:setDeepWoundTime(deepWoundTime)
+            part:setDeepWounded(deepWound)
+            part:setBleedingTime(bleedTime)
+        end },
+    { key = "Burned", title = "IGUI_ZomboidFixesB42_BodyPart_Burned",
+        get = function(part) return part:getBurnTime() > 0 end,
+        set = function(part, on) part:setBurnTime(on and 50 or 0) end },
+    { key = "Fracture", title = "IGUI_ZomboidFixesB42_BodyPart_Fracture",
+        get = function(part) return part:getFractureTime() > 0 end,
+        set = function(part, on) part:setFractureTime(on and 21 or 0) end },
+    { key = "WoundInfection", title = "IGUI_ZomboidFixesB42_BodyPart_WoundInfection",
+        get = function(part) return part:isInfectedWound() end,
+        set = function(part, on) part:setWoundInfectionLevel(on and 10 or -1) end },
+    { key = "MuscleStrain", title = "IGUI_ZomboidFixesB42_BodyPart_MuscleStrain",
+        get = function(part) return part:getStiffness() > 0 end,
+        set = function(part, on, player)
+            if on then part:setStiffness(100) else removeStiffness(player, part) end
+        end },
+}
+
+local partTypeSet = {}
+for _, name in ipairs(BodyStats.PART_TYPES) do partTypeSet[name] = true end
+local conditionByKey = {}
+for _, condition in ipairs(BodyStats.PART_CONDITIONS) do conditionByKey[condition.key] = condition end
+local partFields = {}
+
+function BodyStats.partsEnabled()
+    local vars = SandboxVars and SandboxVars.ZomboidFixesB42
+    return vars ~= nil and vars.BodyPartConditions == true
+end
+
+function BodyStats.partKey(partType, conditionKey)
+    return "Part:" .. tostring(partType) .. ":" .. tostring(conditionKey)
+end
+
+--- The field for a "Part:<type>:<condition>" key, or nil.
+local function partField(key)
+    if partFields[key] then return partFields[key] end
+    local typeName, conditionKey = string.match(key, "^Part:([%w_]+):(%w+)$")
+    local condition = conditionKey and conditionByKey[conditionKey]
+    if not typeName or not partTypeSet[typeName] or not condition then return nil end
+    local function bodyPart(player)
+        return player:getBodyDamage():getBodyPart(BodyPartType[typeName])
+    end
+    local field = {
+        key = key,
+        title = condition.title,
+        bool = true,
+        part = true,
+        get = function(player) return condition.get(bodyPart(player)) == true end,
+        set = function(player, on)
+            local part = bodyPart(player)
+            condition.set(part, on, player)
+            if isServer() then syncBodyPart(part, PART_SYNC_ALL) end
+        end,
+    }
+    partFields[key] = field
+    return field
+end
+
 --- Every editable field, in display order.
 function BodyStats.getFields()
     if not fields then
@@ -352,7 +513,8 @@ end
 
 function BodyStats.getField(key)
     BodyStats.getFields()
-    return type(key) == "string" and BodyStats.byKey[key] or nil
+    if type(key) ~= "string" then return nil end
+    return BodyStats.byKey[key] or partField(key)
 end
 
 --- Whether an admin may edit this player's body. Mirrors ISPlayerStatsUI:canModifyThis:
@@ -389,6 +551,11 @@ end
 function BodyStats.apply(player, key, value)
     local field = BodyStats.getField(key)
     if not field or not player then return nil end
+
+    if field.part then
+        if not BodyStats.partsEnabled() then return nil end
+        if value == BodyStats.FLIP then value = not field.get(player) end
+    end
 
     if field.bool then
         if type(value) ~= "boolean" then return nil end
