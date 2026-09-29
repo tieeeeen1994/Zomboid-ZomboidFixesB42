@@ -38,8 +38,10 @@ per fix (default on), README / workshop.txt / mod.info lines, Sandbox.json toolt
       `predicateNotFull` / `predicateEmptySandbag`, locals of `ISWorldObjectContextMenu.lua`. Fixed by
       vanilla in 42.21: the code moved to `ISWorldObjectContextMenu.handleCompost` (~355), where those
       locals are in scope; nothing left to do.
-- [ ] **Plants watered twice in MP.** `ISWaterPlantAction`: the client's `update` sends `water` per
+- [x] **Plants watered twice in MP.** `ISWaterPlantAction`: the client's `update` sends `water` per
       use, then the server's `complete` waters again with the full uses and uses the item again.
+      Done: `*_WaterPlant.lua` (server alone waters, clamped to the can; `serverStop` pours the part
+      done on cancel), option `WaterPlantOnce`.
 - [ ] **Egg taken from a nest box is invisible.** `animal.removeEggFromNestBox`
       (`server/ClientCommands.lua` ~772) adds the egg without `sendAddItemToContainer`.
 - [ ] **Remove Bush skips neighbouring bushes.** `object.removeBush` (`server/ClientCommands.lua` ~122)

@@ -263,3 +263,11 @@ option ZomboidFixesB42.RemoveBushToolWear
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_RemoveBushToolWear,
 }
+
+option ZomboidFixesB42.WaterPlantOnce
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_WaterPlantOnce,
+}

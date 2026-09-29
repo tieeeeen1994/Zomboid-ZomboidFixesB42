@@ -420,7 +420,8 @@ Global object systems (farming, campfire, traps, feeding troughs) reach Lua thro
 from anywhere, campfire `setFuel`/`removeCampfire` (gives 3 stones every time), `camping_tent.removeTent`, traps
 `remove`/`removeAnimal`/`addAnimalDebug`, trough `addFeed`/`addWater` (any amount). `forageServer.OnClientCommand`
 calls any `forageServer` function a client names (`clearData` wipes the server's forage mod data).
-`ISLogSystem.writeLog` writes any text to any server logger. Only their callers' UIs are gated. Candidates for a
+`ISLogSystem.writeLog` writes any text to any server logger. Farming `water` (`farmingCommands.lua`) waters any
+plant by coordinates with any `uses` (only `ISWaterPlantAction`'s client `update` sends it; not sent while `*_WaterPlant.lua` is on). Only their callers' UIs are gated. Candidates for a
 hardening fix. Not fixable from Lua: `SyncItemFieldsPacket` (LoginOnServer only) trusts the client's condition, ammo,
 name, pages, modData and clothing holes for any item whose container resolves.
 
@@ -436,7 +437,14 @@ client sets in `new` under another name or in `start()` (`ISRemoveBush.weapon`) 
 xmls) never reach `animEvent`.
 Server hand changes sync themselves: `setPrimaryHandItem`/`setSecondaryHandItem` set `handItemShouldSendToClients` and
 `IsoGameCharacter.preupdate` sends `EquipPacket` to the owner, whose client sends it back for the server to relay to
-everyone. `sendServerCommand(p, 'ui', 'dirtyUI')` (ItemUtils, ISBuildUtil, ISMultiStageBuild, GraveHelper) never
+everyone. A server action's `serverStop` runs only when the action is cancelled (client Reject, or `stopPlayerActions` on
+disconnect: `ActionManager.remove` → `NetTimedAction.stop`), never after `complete`; `netAction:getProgress()` =
+(now - start) / (end - start), not clamped (above 1 once past the end). On a client `InventoryItem:UseAndSync()` is
+`Use(false, false, GameServer.server)`, i.e. a plain local `Use` with no sync; `SyncItemFieldsPacket` carries the whole
+FluidContainer, so a client-side `adjustAmount` + `syncItemFields` sets the server's fluid amount.
+Actions whose client `update` does the work (`ISWaterPlantAction`: per-use `water` command + can use) and whose server
+`complete` does it again from `new`'s full arguments double it in MP (`*_WaterPlant.lua`).
+`sendServerCommand(p, 'ui', 'dirtyUI')` (ItemUtils, ISBuildUtil, ISMultiStageBuild, GraveHelper) never
 matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lua` answers it.
 
 ### Single player vs a server (what breaks, what to call instead)

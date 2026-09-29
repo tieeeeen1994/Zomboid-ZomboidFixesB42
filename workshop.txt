@@ -32,6 +32,7 @@ description=[*]Finished skill books stay read after relogging, including books r
 description=[*]The admin Server Options window no longer leaves an option's description stuck on screen, following the mouse around, after the mouse leaves the window or it is closed.
 description=[*]Vehicle batteries no longer drain twice as fast as intended from headlights, the radio, the lightbar, the siren and the heater.
 description=[*]Removing a bush or wall vines with a cutting tool costs endurance and arm strain and wears the tool again, a broken tool is swapped for another, and in multiplayer the inventory window refreshes when the server swaps a tool or uses up building materials.
+description=[*]Watering a plant in multiplayer no longer gives it twice the water or empties the can twice as fast.
 description=[/list]
 description=
 description=Licensed under the GNU GPL v3.
