@@ -123,7 +123,9 @@ mappers may need another way than DoParam.
 - [ ] **Explored rooms reset on every relog in MP** (99809, re-confirmed on 42.21): save explored room
       ids per player per server and re-apply.
 - [ ] Map items in MP: symbols lost on relog (96433), brochures don't mark the map (Steam).
-- [ ] Water containers break after a server restart (92679, 93595).
+- [x] Water containers break after a server restart (92679, 93595). Meta entities lost between chunk and
+      entity_data.bin saves (dedicated servers never hot-save). Done: `*_LostEntities.lua`, option
+      `RepairLostEntities`. Not covered: broken items put in a crate before the fix (fixed once carried at login).
 - [ ] Timed actions stuck at 100% block the queue (forge, kiln, bulk crafting; 94615, 100905).
 
 ## 4. Deferred: security hardening of unchecked client commands

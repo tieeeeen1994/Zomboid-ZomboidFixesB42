@@ -31,5 +31,6 @@ description=- Mod options and key bindings of mods that are not loaded are no lo
 description=- Vehicle batteries no longer drain twice as fast as intended.
 description=- Removing bushes with a cutting tool wears the tool again, and broken tools are swapped for another.
 description=- Watering a plant in multiplayer no longer waters it twice or empties the can twice as fast.
+description=- Rain collectors, drying racks and rain-catching buckets and pots no longer break after a server crash or a restored backup, and broken ones are rebuilt.
 description=Must be installed on both the server and clients. Every fix is on by default and can be turned off in the sandbox options; the few that are off by default say so.
-modversion=2.3.3
+modversion=2.3.4

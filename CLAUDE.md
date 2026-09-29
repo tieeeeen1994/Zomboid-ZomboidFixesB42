@@ -278,6 +278,49 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
 - A client world item keeps the server's item ID (chunk data and AddItemToMap serialise it), and
   `IsoGridSquare.removeWorldObject` is local only, so a client can drop an item the server does not have by ID.
 
+### Entities, meta storage and chunk saves (42.21)
+
+- Components (`zombie/entity/ComponentType.java`) with flag 2 "run in meta": FluidContainer, CraftLogic, FurnaceLogic,
+  MashingLogic, DryingLogic, DryingCraftLogic, Resources. On chunk unload `IsoChunk.removeFromWorld` calls
+  `removeFromWorldToMeta` on every square object (world items included) and `GameEntityManager.UnregisterEntity` moves
+  **all** of an IsoObject's components into a `MetaEntity` if one of them qualifies (FluidContainer only while
+  `getRainCatcher() > 0`, the others always), leaving a `MetaTagComponent(storedID)`. MetaEntities are saved only in
+  `<save>/entity_data.bin` (`GameEntityManager.Save`, truncate-then-write, not under `IsoChunk.WriteLock`). Vanilla
+  entities that go to meta: RainCollector(_Tarp), RainCollectorRound(_Tarp), Amphora, Well, every drying rack; plus
+  every world item whose item script's FluidContainer has `RainFactor` (buckets, pots, bowls, mugs...).
+- `RegisterEntity` (on `addToWorld`) removes the MetaTag and moves the MetaEntity's components back; if the ID is not
+  found it returns and the object has **no components** (saved like that for good). It sets `requiresHotSave` on the
+  chunk, but `ServerMap.ServerCell.update` only hot-saves when `!GameServer.server`: a dedicated server writes a loaded
+  chunk only on unload or a full save (`SaveWorldEveryMinutes` default 0), while any unload of another chunk with a
+  MetaTag object rewrites entity_data.bin (`IsoGridSquare.save` sets `needSave`, saved within 1 s by
+  `ServerMap.preupdate`). Crash/kill/backup copy in between = lost entity. A chunk written with the components while
+  entity_data.bin still holds its MetaEntity makes `RegisterEntity` find the stale one and return early: the object is
+  never added to the engine, the stale MetaEntity lives forever. Giving the object a MetaTag with its own
+  `getEntityNetID()` and calling `addToWorld` again adopts and drops the stale one.
+- IsoObject entity net ID = x + y<<16 + z<<32 + objectIndex<<40 (floors index 0). `isAddedToEngine()` is set
+  synchronously. Lua: `GameEntityFactory.CreateIsoObjectEntity(obj, script, true)` (throws if it already has
+  components), `AddComponent(e, true, c)`, `TransferComponent`, `RemoveComponentType`;
+  `ComponentType.X:CreateComponent()` / `:CreateComponentFromScript(script)`; entity script of a sprite:
+  `SpriteConfigManager.GetObjectInfoList()` → `info:getScript()` (`getAllTileNames()`, `getParent()` = GameEntityScript;
+  `getObjectInfoFromSprite` is a linear search).
+- Client sync: `obj:sendSyncEntity(nil)` (server, all components) only reaches client copies **registered** by entity
+  net ID, i.e. that had components when added (a MetaTag copy from a disk-served chunk counts, and requests a sync
+  itself); `obj:sync()` (SyncIsoObject, by square + index) creates a missing FluidContainer on the client. Loaded
+  chunks are served to clients from server memory (`PlayerDownloadServer`, `chunk.loaded`), others from disk.
+- `IsoChunk:Save(true)` from Lua writes a loaded chunk on the main thread under `IsoChunk.WriteLock`, which
+  `ZipBackup` holds for a whole backup (periodic backups run on a thread; startup/version ones before the world loads);
+  vanilla never saves on the main thread during a backup (`QueuedSaveAll` waits for `!ZipBackup.isRunning()`).
+- `MapObjects.OnLoadWithSprite(names, fn, priority)` runs per object after `addToWorld`, dispatched in Java by sprite
+  name; one callback per sprite **and priority** (same priority replaces), higher first; vanilla uses 5.
+  `SpriteConfigManager` is filled by `ScriptManager.PostTileDefinitions` in `IsoWorld.init`, right before
+  `OnLoadedTileDefinitions`; server Lua loads earlier (`GameServer.doMinimumInit`). `LoadChunk(chunk)` fires at the end
+  of `doLoadGridsquare` (server too); `chunk:getGridSquare(x, y, z)` takes chunk-local x, y and a world z.
+- `getCell():getVehicles()` is a **Set** in 42.21 (vanilla `ISVehicleBloodUI` still calls `:get`); copy it with
+  `ArrayList.new()` + `addAll`. `sendReplaceItemInContainer(container, item, item)` re-sends an item (same ID) to the
+  owner or players near the container; the client removes by ID and adds the parsed copy (hand/hotbar keep the old one).
+- IsoObject/IsoThumpable/IsoWorldInventoryObject `addToWorld` can run twice on a server (process lists are sets or
+  checked); the classes in `zombie/iso/objects` with their own override (stoves, doors, generators...) may not.
+
 ## Roles and capabilities
 
 `zombie/characters/Capability.java` is the full list. Default roles (`zombie/characters/Roles.java` ~358–490):
@@ -629,3 +672,9 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
   `AUTO_HOLD_MS`), then opens at the new speed; while it waits, only movement keys or a moving vehicle count as moving.
   Corpse transfers (never timed) wait for the whole transfer. Manual votes stay immediate (see the paramount rule in
   "Time speed and timed actions in multiplayer").
+- `server/ZomboidFixesB42_LostEntities.lua` (option `RepairLostEntities`): MapObjects load callbacks on every sprite of
+  an entity that goes to meta rebuild component-less ones from their script and re-register ones the engine turned
+  away (MetaTag trick); `LoadChunk` does the same for world items (empty container from the item script); joining
+  players' inventories and loading vehicles get rain-catching items without a FluidContainer fixed
+  (`sendReplaceItemInContainer`); chunks holding such objects are saved again after load, 2 per tick, unless
+  `BackupsPeriod` > 0.
