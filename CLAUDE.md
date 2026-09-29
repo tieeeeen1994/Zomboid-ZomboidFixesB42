@@ -3,6 +3,8 @@
 Engine findings for Project Zomboid Build 42.20 (game version 42.20.4, revision b0bbce05d5),
 recorded so they never have to be re-derived. Line numbers refer to the Vineflower
 decompile described below and to the vanilla Lua of 42.20.4; they shift between builds.
+42.21 went Stable around 2026-09-28 (notes: theindiestone.com/forums/topic/101693); re-check line numbers and
+whether a fix is still needed once the local install updates.
 
 ## Paths
 
@@ -124,6 +126,16 @@ Client commands: `ClientCommand` packet is priority 1, reliability 2 = RakNet RE
 LoginOnServer. `PacketsCache.isLimitExceeded`: a client silently drops (cancels) packets of one type beyond
 `MaxPacketsPerSecond` (server option, default 300) per second. `TableNetworkUtils` serialises string, double, boolean,
 nested table (plus item, direction, dead body) keys/values; anything else is skipped.
+Packet ordering: `SyncItemFieldsPacket` and `SyncHandWeaponFieldsPacket` are reliability 2 (RELIABLE, **unordered**),
+`NetTimedActionPacket` is 3 (RELIABLE_ORDERED), so a server-run timed action's Done can reach the client before the item
+and weapon syncs the server sent just before it. Vanilla firearm actions change items only when `not isClient()`
+(`ISInsertMagazine:loadAmmo`, `ISEjectMagazine:unloadAmmo`, `ISLoadBulletsInMagazine` InsertBullet), and the next
+queued action begins in the same call that handles the Done, so client code planning from the inventory right after
+such an action can see the state from before it (TienMagazineBag's `ContinueReload` waits for it). A synced HandWeapon
+is updated in place (`getItemWithID` then setters: count, chambered, containsClip, spent rounds, jammed, parts, modData).
+`ISInsertMagazine:perform` on an MP client queues an `ISRackFirearm` whenever the client's copy shows no chambered
+round and at least `getAmmoPerShoot()` rounds; for a gun with `HaveChamber = false` (revolvers) `canRack` is true, and
+`rackBullet` gives one round back. Whether it is queued depends on that sync having arrived.
 `sendClientCommand(player, ...)` in single player goes to `SinglePlayerClient` (OnClientCommand fires), but
 `sendServerCommand` does nothing outside a server — so a request/reply feature needs its own single-player path.
 Server-side Lua has no `getPlayerFromUsername` (it is client-only, `GameClient.instance`); walk `getOnlinePlayers()`.
@@ -377,8 +389,27 @@ Spawn Survivor Horde, vehicle Jump / Landmine. Without the
 `server/ClientCommands.lua`: `object.addFireOnSquare`, `object.addSmokeOnSquare`, `object.addExplosionOnSquare`
 (the Brush Tool's fire control), `event.thunder` (Trigger Thunder window), `player.setWeight`, `object.addFluidDebug`,
 `deadBody.addBody`, and most other `object.*`, `fireplace/bbq.setFuel`, `hutch.dirt/nestBoxDirt`, `animal.rename`.
-`server/Vehicles/VehicleCommands.lua`: `vehicle.remove` (permanently removes any vehicle by id). Only their callers' UIs
-are gated. Candidates for a hardening fix.
+Worst: `player.onHealthCheatCurrentPlayer` (~451) toggles bite/infection/fractures/burns on **any** player by
+`args.id` (remote kill); `player.onVehicleSleep` / `onDropHeavyItem` act on any player by id;
+`object.clearContainerExplore` re-rolls any container's loot; `object.setWaterAmount` (no max, no vanilla caller),
+`addWaterContainer` / `removeFluidContainer`; `stove.setOvenParamsAndToggle` (any stove, any temperature);
+`object.emptyTrash`; `map.setKnownInSquares` (no clamp, reveals the whole map). `server/Vehicles/VehicleCommands.lua`:
+`fixPart`, `setContainerContentAmount`, `crash`, `setHSV/setSkinIndex`, door/window/tire/key/trailer commands all act on
+any vehicle anywhere. `vehicle.remove` **is** guarded, in Java: `GameServer.receiveClientCommand` (~2335) only passes it
+to Lua for `Core.debug`, `Capability.GeneralCheats` or `isDismantleAllowed()`; every other command is only logged.
+Global object systems (farming, campfire, traps, feeding troughs) reach Lua through
+`SGlobalObjectNetwork.receiveClientCommand` with no Java check: `farmingCommands` `cheat`/`kill`/`destroy`/`harvest`
+from anywhere, campfire `setFuel`/`removeCampfire` (gives 3 stones every time), `camping_tent.removeTent`, traps
+`remove`/`removeAnimal`/`addAnimalDebug`, trough `addFeed`/`addWater` (any amount). `forageServer.OnClientCommand`
+calls any `forageServer` function a client names (`clearData` wipes the server's forage mod data).
+`ISLogSystem.writeLog` writes any text to any server logger. Only their callers' UIs are gated. Candidates for a
+hardening fix. Not fixable from Lua: `SyncItemFieldsPacket` (LoginOnServer only) trusts the client's condition, ammo,
+name, pages, modData and clothing holes for any item whose container resolves.
+
+Server-side timed actions: `NetTimedAction` only calls `new`, `getDuration`, `adjustMaxTime`, `serverStart`,
+`serverStop`, `animEvent`, `complete`, `isUsingTimeout` — never `isValid`, `update` or `perform`. A Lua error in
+`complete()` makes `ActionManager` send Reject (the changes made before the error stay). Client-only globals
+(`ISWorldObjectContextMenu.checkWeapon`) called from a shared action's `complete`/`animEvent` error on a server.
 
 ### Single player vs a server (what breaks, what to call instead)
 
