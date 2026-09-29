@@ -82,8 +82,10 @@ or methods exist.
 - Sandbox vars do not exist yet when a mod file loads. `IsoWorld.init` calls `SandboxOptions.load` (server/SP; a client
   already has the server's) before `GlobalModData.init`, which fires `OnInitGlobalModData` — so load-time work that depends
   on an option (e.g. item script `DoParam`) goes there. There is no Lua event for sandbox options changing mid-game;
-  re-check on a timer (`EveryTenMinutes`) if a load-time change must follow the option. UI strings go in `Translate/EN/IG_UI.json`
-  as `IGUI_ZomboidFixesB42_*`.
+  re-check on a timer (`EveryTenMinutes`) if a load-time change must follow the option. Recipe edits must wait for
+  `OnLoadMapZones` (see "Item and recipe scripts at run time"). Leaving a game runs `ScriptManager.Reset` + `Load`
+  without always reloading Lua, so a file-level "already applied" flag must be cleared at world load.
+  UI strings go in `Translate/EN/IG_UI.json` as `IGUI_ZomboidFixesB42_*`.
 - Every feature is listed in README.md, workshop.txt (`description=[*]...`) and mod.info (`description=- ...`); keep all three in step.
 
 ## Networking (Java)
@@ -320,6 +322,41 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
   owner or players near the container; the client removes by ID and adds the parsed copy (hand/hotbar keep the old one).
 - IsoObject/IsoThumpable/IsoWorldInventoryObject `addToWorld` can run twice on a server (process lists are sets or
   checked); the classes in `zombie/iso/objects` with their own override (stoves, doors, generators...) may not.
+
+### Item and recipe scripts at run time (42.21)
+
+- Order in `IsoWorld.init`: `SandboxOptions.load` → `OnInitGlobalModData` → `WorldDictionary.init` +
+  `ScriptManager.PostWorldDictionaryInit` (every craftRecipe resolves its inputs and output mappers here) →
+  `OnLoadMapZones` (fires on client, server and SP) → `OnLoadedMapZones`. `ItemTags.Init` (tag → items map, not exposed)
+  runs when the item scripts load, before any Lua. Scripts are reset and reloaded on leaving a game.
+- `Item.DoParam(param, value)` (two-arg form is public; empty value clears a string property). Replaces: Weight,
+  ReplaceOnUse, ClothingItemExtra, BloodLocation, MountOn, CombatSpeedModifier, sounds, SpawnWith. Appends: Tags. Read
+  live from the script: ClothingItemExtra, SpawnWith (`ItemPickerJava`), BloodLocation (covered parts), HandWeapon
+  sounds, Food weight (scaled). Copied into the instance at `InstanceItem` and **not saved**: clothing combat speed /
+  condition chance / chance to fall, container sounds, WeaponPart MountOn, food ReplaceOnUse, item weight (saved only
+  when custom). Saved per instance: food nutrition (calories, carbs, lipids, proteins, base hunger).
+- Tag caches: `ItemTags.tagItemMap` (read only by `InputScript.OnPostWorldDictionaryInit`); each tags[...] input's
+  `itemScriptCache` = `input:getPossibleInputItems()` (mutable ArrayList; `CraftRecipeManager` matches with
+  `input.containsItem`); `ScriptManager.getItemsTag(tag)` (lazy, mutable list); `Item.getUsedInRecipes()`. Per-item input
+  amounts (`25:Base.X`) live in private `items`/`amounts` lists: no Lua way to change them. `ItemTag.get(ResourceLocation.of("base:x"))`.
+- `OutputMapper.getOutputItem` takes the first entry whose pattern items each match the most recent item of a distinct
+  registered input (inputs written `mappers[name]`); `registerInputScript` and `getEntrees()` (mutable) are public;
+  `OutputEntree` fields are not readable from Lua. Build a resolved entry in `OutputMapper.new(name)` +
+  `addOutputEntree(result, ArrayList)` + `OnPostWorldDictionaryInit()` (no recipe name = no side effects) and move it.
+  Mapper syntax `Result = A;B` (every item must match). Get a recipe's mapper from `output:getOutputMapper()`.
+- `CraftRecipe:Load(name, "craftRecipe X { OnCreate = Fn, }")` on a loaded recipe sets that key (blocks would be
+  appended). OnCreate is looked up by name at every craft (`CraftRecipeData.initLuaFunctions`), called with
+  `(craftRecipeData, character)` from `ISHandcraftAction:performRecipe` (server / SP only) after the outputs were added
+  with `Actions.addOrDropItem`; performRecipe then stores, for a single result, `modData[consumedFullType] = count`
+  of every consumed (non-keep) item — e.g. `modData["Base.ClayBowl"]`.
+- `Fixing` (repairs): `ScriptManager.instance:getFixing("Base.Fix X")`, `getRequiredItem()` (mutable list of full types,
+  what `FixingManager.getFixes` matches), `getFixers()` (mutable LinkedList); a Fixer comes from
+  `Fixing.new():Load(name, "fixing n { Fixer = Base.X; Aiming=2, }")`.
+- Food weight: `Food.getActualWeight` = script weight × (hunger / script HungerChange) (with ReplaceOnUse: the empty
+  item's weight plus the rest scaled), so portions from very filling food get heavy — engine, not data.
+- In 42.21 `HandWeapon.getAimingMod()` returns 1.0 and `IsoPlayer.IsUsingAimHandWeapon` is never called: the item script
+  `AimingMod` / `IsAimedHandWeapon` do nothing. A weapon part on a model with no matching attachment point is drawn at the
+  gun's origin (`AnimatedModel.transformToParent`).
 
 ## Roles and capabilities
 
@@ -678,3 +715,7 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
   players' inventories and loading vehicles get rain-catching items without a FluidContainer fixed
   (`sendReplaceItemInContainer`); chunks holding such objects are saved again after load, 2 per tick, unless
   `BackupsPeriod` > 0.
+- `shared/ZomboidFixesB42_ScriptFixes.lua` + `*_ItemFixesClothing/Weapons/Food.lua`: item and recipe data fixes, one option
+  each, applied at `OnLoadMapZones` and re-checked every ten minutes (`ScriptFixes.register(option, apply, revert)`,
+  `setParams`, `addTag`/`removeTag`, `newMapperEntry`, `setRecipeCall`, `newFixer`, `onBeforeUse` hooks in
+  ISEatFoodAction / ISDumpContentsAction / ISAddItemInRecipe for per-instance ReplaceOnUse).

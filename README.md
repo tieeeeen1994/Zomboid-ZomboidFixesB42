@@ -30,5 +30,22 @@ Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly 
 - Removing a bush or wall vines with a cutting tool costs endurance and arm strain and wears the tool again, a broken tool is swapped for another, and in multiplayer the inventory window refreshes when the server swaps a tool or uses up building materials.
 - Watering a plant in multiplayer no longer gives it twice the water or empties the can twice as fast.
 - Rain collectors, wells, amphoras, drying racks, and buckets, pots and other items that catch rain, no longer break after a server crash, a killed server or a restored backup. Ones already broken are rebuilt, empty, when their area loads, and broken items already picked up are fixed when their owner joins or their vehicle loads.
+- The right spiked metal and spiked scrap metal thigh armor can be moved to the left thigh, like every other thigh armor.
+- Spiked articulated metal shoulder pads can be smelted like the plain ones.
+- The plain left knee pad and the right gaiter spawn with their other half, like every other pair.
+- The full bow tie weighs 0.1 instead of 1.0.
+- Full chainmail sleeves no longer have their combat speed penalties swapped between the right and left arm.
+- The left tire shoulder pad wears out like the right one, and both protect their own upper arm instead of the torso.
+- The sawn-off double barrel shotgun can be repaired, with itself or the full double barrel shotgun (beta).
+- The sawn-off pump shotgun plays its start and stop loading sounds and an unloading sound.
+- The x2 scope fits the pump shotgun and the sawn-off pump shotgun, which have a model and a place for it.
+- The katana and the broken katana can be sharpened like the other long blades.
+- Pasta cooked in a forged cooking pot gives back the forged pot instead of a normal one.
+- Leeks, jars of leeks and grapefruits have real nutrition values instead of absurd carbohydrates and protein.
+- Pasta and rice cooked in a copper saucepan can be split into bowls, giving back the copper saucepan (beta).
+- Splitting a pot into clay bowls gives clay bowls of food, and beans, oatmeal, cereal and cake made with a clay bowl give the clay bowl back (beta).
+- Opening a pumpkin or sunflower seed packet gives the 25 seeds packing it took, instead of 5 (beta).
+- Pie slices weigh 0.2 like cake slices instead of the whole pie's 0.5, and the .44 Magnum box and carton weigh in line with the other ammunition.
+- A red mug of coffee gives its mug back, the Rangers baseball shirt covers the arms, the red baseball cap falls off like the others, the seafood cooler makes cooler sounds, and the metal, copper, gold, silver and tumbler hot drinks and the clay bowl fruit salad have names.
 
 Steam Workshop ID 3800148259, mod ID ZomboidFixesB42. Licensed under the GNU GPL v3, see [LICENSE](LICENSE).

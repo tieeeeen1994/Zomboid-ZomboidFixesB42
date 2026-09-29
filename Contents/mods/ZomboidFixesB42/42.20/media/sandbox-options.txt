@@ -279,3 +279,139 @@ option ZomboidFixesB42.RepairLostEntities
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_RepairLostEntities,
 }
+
+option ZomboidFixesB42.SpikedThighArmorSide
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_SpikedThighArmorSide,
+}
+
+option ZomboidFixesB42.SpikedShoulderPadSmelting
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_SpikedShoulderPadSmelting,
+}
+
+option ZomboidFixesB42.KneepadGaiterPairs
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_KneepadGaiterPairs,
+}
+
+option ZomboidFixesB42.BowTieWeight
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_BowTieWeight,
+}
+
+option ZomboidFixesB42.ChainmailSleeveSpeed
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_ChainmailSleeveSpeed,
+}
+
+option ZomboidFixesB42.TireShoulderPads
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_TireShoulderPads,
+}
+
+option ZomboidFixesB42.SawnOffDoubleBarrelRepair
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_SawnOffDoubleBarrelRepair,
+}
+
+option ZomboidFixesB42.SawnOffShotgunSounds
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_SawnOffShotgunSounds,
+}
+
+option ZomboidFixesB42.ShotgunScopeMount
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_ShotgunScopeMount,
+}
+
+option ZomboidFixesB42.KatanaSharpening
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_KatanaSharpening,
+}
+
+option ZomboidFixesB42.ForgedPotPasta
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_ForgedPotPasta,
+}
+
+option ZomboidFixesB42.FoodNutrition
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_FoodNutrition,
+}
+
+option ZomboidFixesB42.CopperSaucepanBowls
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_CopperSaucepanBowls,
+}
+
+option ZomboidFixesB42.ClayBowlPortions
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_ClayBowlPortions,
+}
+
+option ZomboidFixesB42.SeedPacketCount
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_SeedPacketCount,
+}
+
+option ZomboidFixesB42.ItemWeights
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_ItemWeights,
+}
+
+option ZomboidFixesB42.MinorItemFixes
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_MinorItemFixes,
+}

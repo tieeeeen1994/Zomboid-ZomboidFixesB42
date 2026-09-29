@@ -62,5 +62,10 @@ local function update()
     applied = enabled
 end
 
-Events.OnInitGlobalModData.Add(update)
+-- Leaving a game reloads the scripts (ScriptManager.Reset + Load) without always
+-- reloading Lua, so every world starts from vanilla values.
+Events.OnInitGlobalModData.Add(function()
+    applied = false
+    update()
+end)
 Events.EveryTenMinutes.Add(update)

@@ -71,42 +71,47 @@ per fix (default on), README / workshop.txt / mod.info lines, Sandbox.json toolt
 
 ## 2. Item / recipe data fixes (one option each)
 
-Script edits in the ArmorStats style (DoParam from `OnInitGlobalModData` + `EveryTenMinutes`, vanilla
-values restored when off). Check for each property whether DoParam replaces or appends and whether a
-cache has to be refreshed (Tags, ClothingItemExtra, SpawnWith, MountOn). Fixing entries and recipe
-mappers may need another way than DoParam.
+Done in 42.21 through `shared/ZomboidFixesB42_ScriptFixes.lua` (DoParam, tags with their recipe input
+caches, output mapper entries, recipe OnCreate, repair fixers; applied from `OnLoadMapZones`, after
+`PostWorldDictionaryInit`, and re-checked every ten minutes) and `*_ItemFixesClothing/Weapons/Food.lua`.
+None of these has been tried in game yet; the four marked beta rely on editing recipes and repairs at
+run time.
 
-- [ ] Spiked metal thigh armour (`ThighMetalSpike_R`, `ThighScrapMetalSpike_R`): `ClothingItemExtra`
-      points at itself, so it can't be moved to the left thigh (`items/clothing.txt` ~22913, ~23984).
-- [ ] Sawn-off double-barrel shotgun has no repair (`fixing.txt`); every other gun has one.
-- [ ] Copper saucepan pasta/rice can't be split into bowls: Make2/Make4Bowls `potType` lacks
-      `SaucepanCopper = PastaPanCopper` (`recipes_cooking.txt` ~378, ~462); RicePanCopper lacks
-      `base:canbedividedinbowls` and its bowlType entries.
-- [ ] Pasta eaten from a forged pot gives back a normal pot: `WaterPotForgedPasta` `ReplaceOnUse =
-      Base.Pot` (`food.txt` ~11252), should be `Base.PotForged`.
-- [ ] Spiked articulated metal shoulder pads lose `base:smeltablesteelmedium` (clothing.txt ~23259).
-- [ ] Sawn-off pump shotgun: no Insert/Eject Start/Stop sounds (the `SawnOffJS2000Shotgun*` sounds
-      exist), no `AimingMod = 2.0` / `IsAimedHandWeapon = true` (weapon.txt ~11579). Check in Java what
-      the two aim fields do first.
-- [ ] Kneepads and gaiters spawn one piece: `SpawnWith` only on Kneepad_Right and Gaiter_Left.
-- [ ] Full bow tie weighs 1.0 (no `Weight`; others 0.1), clothing.txt ~9583.
-- [ ] JS-3T shotgun has models for recoil pad / choke tubes but their `MountOn` leaves it out
-      (weaponpart.txt ~105, ~188, ~206); the sawn-off has an x2 scope model but it can't mount.
-- [ ] Katana and broken Katana lack `base:sharpenable` (the only 2 of 14 long blades).
-- [ ] Full chainmail sleeves: `CombatSpeedModifier` R 0.97 / L 0.95 looks swapped (clothing.txt ~16445).
-- [ ] Tire shoulder pads: left `ConditionLowerChanceOneIn = 5` (right and others 2); both use
-      `BloodLocation = UpperBody` instead of `UpperArm_L/R` (clothing.txt ~14679-14720).
-- [ ] Leek nutrition: 140 carbs for 54 calories (food.txt ~14452, carried into CannedLeek); grapefruit
-      15 kcal with 101 carbs / 17.6 protein (~8752).
-- [ ] Clay bowl portions come back as normal bowls (OutputMapper takes the first match); also
-      MakeBowlOfBeans / Oatmeal / Cereal and PlaceCakeInBakingPan.
-- [ ] Pumpkin / sunflower seed packets take 25 seeds, opening gives 5 (`recipes_farming.txt`).
-- [ ] Weights: pie slice weighs the whole pie (100429), pasta bowl ~6 kg (100315), .44 box (101095);
-      vegetable oil hunger sign (99705).
-- [ ] Minor: `HotDrinkRed` `ReplaceOnUse = Base.MugRed` (no such item); missing EN names HotDrinkMetal /
-      Copper / Gold / Silver / Tumbler, FruitSaladClay; Shirt_Baseball_Rangers `BloodLocation =
-      UpperBody`; Hat_BaseballCapRed `ChanceToFall = 80` (others 60); Cooler_Seafood missing sounds and
-      `CanHaveHoles = false`. Crafted face shemaghs keep full-face stats (maybe deliberate).
+- [x] Spiked metal thigh armour `ClothingItemExtra` -> the left piece. Option `SpikedThighArmorSide`.
+- [x] Sawn-off double-barrel shotgun repair (beta): added to "Fix DoubleBarrelShotgun" as required item
+      and fixer. Option `SawnOffDoubleBarrelRepair`.
+- [x] Copper saucepan pasta/rice split into bowls (beta). Option `CopperSaucepanBowls`.
+- [x] Forged pot pasta gives back `Base.PotForged` (also fixes loaded pots before eating/emptying).
+      Option `ForgedPotPasta`.
+- [x] Spiked articulated metal shoulder pads smeltable. Option `SpikedShoulderPadSmelting`.
+- [x] Sawn-off pump shotgun insert/eject start/stop sounds (eject sound: the full shotgun's). Option
+      `SawnOffShotgunSounds`. Not done: `AimingMod` / `IsAimedHandWeapon` do nothing in 42.21
+      (`HandWeapon.getAimingMod()` returns 1.0, `IsoPlayer.IsUsingAimHandWeapon` is never called).
+- [x] Kneepads and gaiters spawn in pairs. Option `KneepadGaiterPairs`.
+- [x] Full bow tie weight 0.1. Option `BowTieWeight`.
+- [x] x2 scope mounts on the pump shotgun and the sawn-off (both have the model part and the scope
+      attachment points). Option `ShotgunScopeMount`. Not done: the JS-3T's recoil pad / choke tubes, its
+      model (`JS3T_Shotgun` in models_weapons.txt) has no `recoilpad` / `choketube` attachment, so the
+      part would be drawn at the gun's origin; would need attachment offsets added to the model script.
+- [x] Katana and broken Katana sharpenable. Option `KatanaSharpening`.
+- [x] Full chainmail sleeves combat speed R 0.95 / L 0.97. Option `ChainmailSleeveSpeed`.
+- [x] Tire shoulder pads: left ConditionLowerChanceOneIn 2, BloodLocation UpperArm_L/R. Option
+      `TireShoulderPads`. (The football L/R shoulder pads also use UpperBody; left alone.)
+- [x] Leek / CannedLeek carbohydrates, grapefruit (300 g values). Option `FoodNutrition`.
+- [x] Clay bowl portions (beta): bowl input registered in Make2/Make4Bowls' bowlType mapper plus
+      [pot, ClayBowl] / [pot, Bowl] entries in front; beans/oatmeal/cereal use vanilla's
+      `modData["Base.ClayBowl"]` record to return the clay bowl; PlaceCakeInBakingPan gets an OnCreate.
+      Option `ClayBowlPortions`.
+- [x] Pumpkin / sunflower seed packets (beta): opening gives 25 (OnCreate), since input amounts cannot
+      be changed from Lua. Option `SeedPacketCount`.
+- [x] Weights: pie slices 0.2, .44 box 0.48 / carton 4.8. Option `ItemWeights`. Not done (engine, not
+      data): pasta bowl ~6 kg (100315) and the heavy slices of a very filling pie both come from
+      `Food.getActualWeight` scaling the script weight by hunger / script hunger; vegetable oil hunger
+      turning positive (99705) is evolved recipe code (also ranch sauce, flour).
+- [x] Minor: HotDrinkRed -> Base.Mugl, Rangers shirt BloodLocation Shirt, red cap ChanceToFall 60,
+      Cooler_Seafood sounds; names in `Translate/EN/ItemName.json` (always on). Option `MinorItemFixes`.
+      Not done: Cooler_Seafood `CanHaveHoles` (only read for Clothing); crafted face shemaghs (maybe
+      deliberate).
 
 ## 3. Admin / QoL features
 
