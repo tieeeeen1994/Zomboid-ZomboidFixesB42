@@ -246,6 +246,22 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
   `emulateAnimEventOnce` (magazine eject/insert, racking, petting) is fired early on the game clock and the action's own
   `animEvent` wrapper swallows Java's later copy. Every reloading action has `getDuration() -1`: it ends on its events only.
 
+### Vehicle parts and batteries
+
+- `VehicleParts.update()` runs the parts' Lua `update` functions only where the vehicle is simulated (nothing on a
+  client); `updatePart` calls one only once a whole game minute has passed since its `lastUpdated`, with
+  `elapsedMinutes` = game minutes since (so ~1.0x while loaded). A vehicle whose parts need no update still runs
+  `drainBatteryUpdateHack` (engine off: lit lights, turned-on radios, active lightbar/siren).
+- `DrainableComboItem` stores whole uses: `setUsedDelta(v)` = `setCurrentUsesFloat` clamps 0..1 and rounds
+  `v / useDelta`; `getCurrentUsesFloat() = uses * useDelta`. Car batteries have `UseDelta = 0.00001`, so a 2.5-use
+  change rounds to 2 or 3 — carry the remainder when drains are small.
+- Every battery drain goes through `VehicleUtils.chargeBattery(vehicle, delta)` (`server/Vehicles/Vehicles.lua`
+  ~1306 in 42.21): headlights (each lit headlight part) / radio / lightbar / siren -0.000025 a minute with the engine
+  off, heater -0.000035 while running. Vanilla adds `delta` twice (fixed by `*_VehicleBattery.lua`). Engine charging
+  (+0.001 a minute) is in `Vehicles.Update.Battery` and does not use it. Charge reaches clients through
+  `vehicle:transmitPartUsedDelta(part)`, sent when `VehicleUtils.compareFloats(old, new, 2)` (2 decimals, or
+  crossing 0 / 1).
+
 ### Animals, hutches and animal zones in multiplayer
 
 - Hutch state runs on the server only (`IsoHutch.isOwner()` = `!GameClient.client`). `IsoHutch.update` syncs the whole
