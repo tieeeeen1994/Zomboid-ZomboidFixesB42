@@ -34,10 +34,10 @@ per fix (default on), README / workshop.txt / mod.info lines, Sandbox.json toolt
       `self.pickaxe` is never assigned.
 - [ ] **Water dispenser bottle duplication.** `ISAddTakeDispenserBottle.lua` ~6 compares with an
       undefined `bottle` (always true) and `complete()` does not re-check.
-- [ ] **Composter "Get compost" submenu broken.** `client/ContextMenuCode.lua` ~92 uses
-      `predicateNotFull` / `predicateEmptySandbag`, locals of `ISWorldObjectContextMenu.lua` (nil here,
-      NullPointerException in Java), and `addSubMenu` with an undefined `subMenu` (~118). Check what
-      42.21's composter fixes changed.
+- [x] **Composter "Get compost" submenu broken.** `client/ContextMenuCode.lua` ~92 used
+      `predicateNotFull` / `predicateEmptySandbag`, locals of `ISWorldObjectContextMenu.lua`. Fixed by
+      vanilla in 42.21: the code moved to `ISWorldObjectContextMenu.handleCompost` (~355), where those
+      locals are in scope; nothing left to do.
 - [ ] **Plants watered twice in MP.** `ISWaterPlantAction`: the client's `update` sends `water` per
       use, then the server's `complete` waters again with the full uses and uses the item again.
 - [ ] **Egg taken from a nest box is invisible.** `animal.removeEggFromNestBox`

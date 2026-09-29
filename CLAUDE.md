@@ -52,7 +52,9 @@ or methods exist.
   (escape user text with `gsub(s, "%%", "%%%%")`); `string.gsub` returns two values, so wrap it in parentheses when
   returning or concatenating at the end of a list; there is no `next()`; `gsub` with a function replacement works;
   vanilla never uses `string.byte/char`, so avoid them. `tostring` of an integer-valued number gives "5", but
-  `getText(key, n)` gives "5.0" — pass `string.format("%d", n)`.
+  `getText(key, n)` gives "5.0" — pass `string.format("%d", n)`. A literal `%` in a translation string must be
+  written `%%` even when the key takes no arguments (vanilla: `"%% full"`): the Translator runs every string through
+  Java's formatter at load and a lone `%` logs `UnknownFormatConversionException ... ERROR: Formatting "<key>"`.
 - Files: `getFileWriter(name, createIfNull, append)` / `getFileReader(name, createIfNull)` (nil if missing) read and
   write `Zomboid/Lua/<name>`. Server identity on a client: `getServerIP()`, `getServerPort()` ("" in single player);
   save name: `getWorld():getWorld()` (`getCurrentSaveName()` is the full save folder path).

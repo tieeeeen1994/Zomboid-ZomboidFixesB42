@@ -105,7 +105,7 @@
     "IGUI_ZomboidFixesB42_AdminHotbar_ParamVoiceBan": "Voice chat",
     "IGUI_ZomboidFixesB42_AdminHotbar_ParamBodyPreset": "Body values",
     "IGUI_ZomboidFixesB42_AdminHotbar_ParamClimatePreset": "Climate overrides",
-    "IGUI_ZomboidFixesB42_AdminHotbar_ParamIntensity": "Intensity (%)",
+    "IGUI_ZomboidFixesB42_AdminHotbar_ParamIntensity": "Intensity (%%)",
     "IGUI_ZomboidFixesB42_AdminHotbar_ParamHours": "Hours",
     "IGUI_ZomboidFixesB42_AdminHotbar_ParamStrength": "Strength",
     "IGUI_ZomboidFixesB42_AdminHotbar_ParamFront": "Front",
