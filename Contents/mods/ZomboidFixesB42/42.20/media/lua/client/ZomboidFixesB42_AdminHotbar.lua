@@ -25,11 +25,11 @@
         every click runs the slot again there, until right-click or Esc. A
         right-click that ends a picker does not also open the context menu.
       - A slot can have steps: more actions, each with its own settings and delay,
-        run after its own on the same click (see "Using a slot"). A toggle step
-        flips from its own state, or follows the first step's new state (or its
-        opposite), so one click turns a set of cheats on or off together. When
-        a following step is out of step with the first, the click only syncs
-        them to the first step's current state.
+        run after its own on the same click (see "Using a slot"). The slot's
+        "On click" sets how its toggles turn: each flips from its own state, or
+        the first step flips and the steps following it take its new state (or
+        the opposite), or the first step stays and the following steps are
+        only synced to its current state.
       - A second click on a slot that opened a window closes it.
 
     Everything goes through vanilla commands and packets (or this mod's own Body
@@ -275,13 +275,27 @@ function Hotbar.partsOf(slot)
     return parts
 end
 
---- How a toggle step turns (step.follow): nil flips it from its own state, FOLLOW_SAME
--- turns it to the state the first part turns to, FOLLOW_OPPOSITE to the other one.
+--- How a toggle step follows the first part (step.follow) while the slot syncs: nil
+-- flips it from its own state (independent), FOLLOW_SAME turns it to the first
+-- part's state, FOLLOW_OPPOSITE to the other one.
 local FOLLOW_SAME = "same"
 local FOLLOW_OPPOSITE = "opposite"
 
 function Hotbar.followOf(step)
     if step.follow == FOLLOW_SAME or step.follow == FOLLOW_OPPOSITE then return step.follow end
+    return nil
+end
+
+--- A slot's "On click" (slot.syncMode, see "Using a slot"): nil flips every part from
+-- its own state, SYNC_UPDATE flips the first part and turns the following steps to its
+-- new state, SYNC_ONLY leaves the first part and turns them to its current state.
+-- Flip each is saved as SYNC_FLIP, and syncModeOf gives nil for it.
+local SYNC_FLIP = "flip"
+local SYNC_UPDATE = "update"
+local SYNC_ONLY = "only"
+
+function Hotbar.syncModeOf(slot)
+    if slot.syncMode == SYNC_UPDATE or slot.syncMode == SYNC_ONLY then return slot.syncMode end
     return nil
 end
 
@@ -436,7 +450,7 @@ function Hotbar.save()
         local fields = {}
         flatten({
             action = slot.action, label = slot.label, icon = slot.icon, tint = slot.tint,
-            confirm = slot.confirm, window = slot.window,
+            confirm = slot.confirm, window = slot.window, syncMode = slot.syncMode,
         }, "", fields)
         flatten(slot.settings or {}, "s.", fields)
         -- steps.#1.action, steps.#1.settings.<key>, steps.#1.window...
@@ -505,6 +519,16 @@ function Hotbar.load()
                     end
                 end
             end
+            -- "flip" is kept (nil would read as a slot saved before "On click").
+            local syncMode = Hotbar.syncModeOf(record)
+            if record.syncMode == SYNC_FLIP then
+                syncMode = SYNC_FLIP
+            elseif syncMode == nil then
+                -- Saved before "On click": following steps followed on every click.
+                for _, step in ipairs(steps or {}) do
+                    if step.follow then syncMode = SYNC_UPDATE end
+                end
+            end
             table.insert(state.slots, {
                 action = record.action,
                 label = record.label,
@@ -512,6 +536,7 @@ function Hotbar.load()
                 tint = type(record.tint) == "table" and record.tint or nil,
                 confirm = record.confirm,
                 window = record.window == true,
+                syncMode = syncMode,
                 settings = type(record.s) == "table" and record.s or {},
                 steps = steps,
             })
@@ -1319,23 +1344,25 @@ Events.OnTick.Add(onWatchTick)
     reaching the server in order. A delay of 0 runs the step straight after the part
     before it, in the same frame.
 
-    A toggle step flips from its own state unless it follows the first part (the
-    slot's own action): then it turns to the state the first part asked for, or the
-    opposite one, whatever it was before, and a step already there is left alone.
-    That state is the one asked for at click time, not read back later, since the
-    server confirms it after the step may already have run. When the first part is
-    not a toggle, opens its window, or cannot tell its state (another player's flags
-    this client has never seen, which set(ctx, nil) flips on the server), there is
-    nothing to follow and the step flips from its own state.
-
-    When a following step is out of step with the first part at click time (turned
-    on or off by hand, or by another admin), that click does not flip anything: the
-    first part keeps its state and only the following steps are turned to match it
-    (the other parts do not run). The next click flips them all together again. A
-    step whose state cannot be read does not count as out of step. The check is
-    skipped while an earlier click of the same slot is still running its steps or
-    waiting for the server (their delays plus PENDING_MS), since states read then
-    are not final yet.
+    How toggles turn is the slot's "On click" (slot.syncMode), with god mode as the
+    first part and invisible as a step following it:
+      - nil (flip each): every toggle flips from its own state. God mode off and
+        invisible on become god mode on and invisible off.
+      - SYNC_UPDATE: the first part flips and each following step turns to the state
+        the first part asked for (or the opposite, step.follow), whatever it was
+        before; a step already there is left alone. God mode off and invisible on
+        become both on; both off become both on. That state is the one asked for at
+        click time, not read back later, since the server confirms it after the step
+        may already have run.
+      - SYNC_ONLY: the first part does not run; each following step turns to the
+        first part's current state. God mode off and invisible on become both off.
+        Only the following steps run: independent toggle steps and steps that are no
+        toggles are left out.
+    A step set as independent (no step.follow) flips from its own state in every mode
+    but SYNC_ONLY. When the first part is not a toggle, opens its window, or cannot
+    tell its state (another player's flags this client has never seen, which
+    set(ctx, nil) flips on the server), there is nothing to follow: SYNC_UPDATE steps
+    flip from their own state and SYNC_ONLY runs nothing.
 --]]
 local scheduled = {}
 
@@ -1401,45 +1428,37 @@ local function partOpensWindow(part)
     return (part.window and action.openUI ~= nil) or action.opensWindow == true
 end
 
---- A following toggle part (a step that follows the first part, not opening its window).
-local function isFollower(ctx)
-    return not ctx.openWindow and isToggle(ctx.action, ctx) and Hotbar.followOf(ctx.slot) ~= nil
+--- A toggle part that is not opening its window.
+local function isTogglePart(ctx)
+    return not ctx.openWindow and isToggle(ctx.action, ctx)
 end
 
---- The first part's current state when a following step is out of step with it, else
--- nil. Not while an earlier click of this slot is still running or unconfirmed
--- (slot.syncHoldUntilMs), since its states are still on their way.
-local function outOfSyncLead(slot, contexts)
-    if (slot.syncHoldUntilMs or 0) > getTimestampMs() then return nil end
-    local first = contexts[1]
-    if not first or first.openWindow or not isToggle(first.action, first) then return nil end
-    local okLead, lead = pcall(first.action.toggle.isOn, first)
-    if not okLead or lead == nil then return nil end
-    for index = 2, #contexts do
-        local ctx = contexts[index]
-        if isFollower(ctx) then
-            local ok, current = pcall(ctx.action.toggle.isOn, ctx)
-            if ok and current ~= nil and current ~= followedState(ctx.slot, lead) then return lead end
-        end
-    end
-    return nil
+--- A following toggle part (a step that follows the first part, not opening its window).
+local function isFollower(ctx)
+    return isTogglePart(ctx) and Hotbar.followOf(ctx.slot) ~= nil
 end
 
 local function runParts(slot, contexts)
     local parts = Hotbar.partsOf(slot)
-    local watch = false
-    for _, part in ipairs(parts) do
-        if partOpensWindow(part) then watch = true end
+    local mode = Hotbar.syncModeOf(slot)
+    -- Sync only: the first part's current state, which the following steps turn to
+    -- while the first part itself does not run.
+    local syncLead = nil
+    local first = contexts[1]
+    if mode == SYNC_ONLY and first and isTogglePart(first) then
+        local ok, current = pcall(first.action.toggle.isOn, first)
+        if not ok or current == nil then
+            Hotbar.say(first.admin, txt("SyncUnknown", Hotbar.titleOf(first.action, slot)), true)
+            return
+        end
+        syncLead = current
     end
-    if watch then startWatch(slot) end
-    -- A following step out of step with the first part: this click only brings the
-    -- following steps in line with the first part's current state.
-    local syncLead = outOfSyncLead(slot, contexts)
-    local holdMs = PENDING_MS
-    for index = 2, #contexts do holdMs = holdMs + Hotbar.stepDelay(parts[index]) end
-    slot.syncHoldUntilMs = getTimestampMs() + holdMs
-    if syncLead ~= nil then
-        Hotbar.say(contexts[1].admin, txt("StepsSynced", Hotbar.titleOf(contexts[1].action, slot)))
+    local watch = false
+    if syncLead == nil then
+        for _, part in ipairs(parts) do
+            if partOpensWindow(part) then watch = true end
+        end
+        if watch then startWatch(slot) end
     end
     local index = 0
     -- The state the first part asked for, which following steps turn to.
@@ -1454,7 +1473,8 @@ local function runParts(slot, contexts)
             ctx.owner = slot
             if syncLead == nil then
                 local want = runResolved(ctx, slot, lead)
-                if index == 1 then lead = want end
+                -- Only Update and sync hands the first part's new state on.
+                if index == 1 and mode == SYNC_UPDATE then lead = want end
             elseif index > 1 and isFollower(ctx) then
                 runResolved(ctx, slot, lead)
             end
@@ -2079,7 +2099,7 @@ function Bar:tooltipFor(slot, state)
         if stepAction then
             local delay = Hotbar.stepDelay(step)
             local when = delay > 0 and txt("StepAfter", string.format("%d", delay)) or txt("StepAtOnce")
-            local follow = stepAction.toggle and Hotbar.followOf(step)
+            local follow = stepAction.toggle and Hotbar.syncModeOf(slot) and Hotbar.followOf(step)
             if follow == FOLLOW_SAME then
                 when = when .. " " .. txt("StepFollowsSame")
             elseif follow == FOLLOW_OPPOSITE then
@@ -2091,6 +2111,10 @@ function Bar:tooltipFor(slot, state)
     end
     if #steps > 0 and Hotbar.asksWhenUsed(slot) then
         table.insert(lines, txt("StepsAskOnce"))
+    end
+    local syncMode = Hotbar.syncModeOf(slot)
+    if syncMode and action and action.toggle and not slot.window then
+        table.insert(lines, txt(syncMode == SYNC_ONLY and "SyncOnlyTooltip" or "SyncUpdateTooltip"))
     end
     if state.toggle then
         if state.pending then
@@ -2218,6 +2242,7 @@ function Bar:showMenu(slot, index)
                 s.icon = saved.icon
                 s.tint = saved.tint
                 s.confirm = saved.confirm
+                s.syncMode = saved.syncMode
                 s.pending = nil
                 Hotbar.invalidate(s)
                 Hotbar.save()
@@ -2338,7 +2363,7 @@ end
 function Hotbar.addStep(slot, actionId)
     local action = Hotbar.getAction(actionId)
     if not action then return end
-    local step = { action = actionId, settings = {}, window = false }
+    local step = { action = actionId, settings = {}, window = false, follow = FOLLOW_SAME }
     Hotbar.openSettings(step, function(saved)
         slot.steps = slot.steps or {}
         table.insert(slot.steps, {
@@ -2703,9 +2728,9 @@ function Settings:createChildren()
         if action.toggle then
             self:addLabel(txt("StepToggle"), y)
             self.followCombo = self:addCombo(cx, y, CONTROL_WIDTH, {
-                { text = txt("StepToggleOwn"), data = "own" },
                 { text = txt("StepToggleSame"), data = FOLLOW_SAME },
                 { text = txt("StepToggleOpposite"), data = FOLLOW_OPPOSITE },
+                { text = txt("StepToggleOwn"), data = "own" },
             }, Hotbar.followOf(self.slot) or "own")
             y = y + BUTTON_HGT + 2
             y = self:addHint(txt("StepToggleHint"), y)
@@ -2735,6 +2760,18 @@ function Settings:createChildren()
     self.iconButton.settingsWindow = self
     self:addButton(cx + iconSize + UI_BORDER_SPACING, y, 110, txt("IconDefault"), Settings.onIconDefault)
     y = y + iconSize + UI_BORDER_SPACING
+
+    if action.toggle then
+        self:addLabel(txt("OnClick"), y)
+        self.syncCombo = self:addCombo(cx, y, CONTROL_WIDTH, {
+            { text = txt("OnClickFlip"), data = SYNC_FLIP },
+            { text = txt("OnClickSyncUpdate"), data = SYNC_UPDATE },
+            { text = txt("OnClickSyncOnly"), data = SYNC_ONLY },
+        }, Hotbar.syncModeOf(self.slot) or SYNC_FLIP)
+        y = y + BUTTON_HGT + 2
+        y = self:addHint(txt("OnClickHint"), y)
+        y = y + UI_BORDER_SPACING
+    end
 
     local confirm = self.slot.confirm
     if confirm == nil then confirm = Hotbar.defaultConfirm(self.slot) end
@@ -3001,6 +3038,9 @@ function Settings:onSaveClicked()
         local confirm = self.confirmTick.selected[1] == true
         if confirm ~= Hotbar.defaultConfirm(self.slot) then
             slot.confirm = confirm
+        end
+        if self.syncCombo then
+            slot.syncMode = self.syncCombo:getOptionData(self.syncCombo.selected)
         end
     end
     self:close()

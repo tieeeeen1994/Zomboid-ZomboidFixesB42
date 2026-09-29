@@ -54,7 +54,8 @@ or methods exist.
   vanilla never uses `string.byte/char`, so avoid them. `tostring` of an integer-valued number gives "5", but
   `getText(key, n)` gives "5.0" — pass `string.format("%d", n)`. A literal `%` in a translation string must be
   written `%%` even when the key takes no arguments (vanilla: `"%% full"`): the Translator runs every string through
-  Java's formatter at load and a lone `%` logs `UnknownFormatConversionException ... ERROR: Formatting "<key>"`.
+  Java's formatter at load and a lone `%` logs `UnknownFormatConversionException ... ERROR: Formatting "<key>"`. Escaped double quotes (`\"`) inside a
+  translation string do not work in game; quote with single quotes instead.
 - Files: `getFileWriter(name, createIfNull, append)` / `getFileReader(name, createIfNull)` (nil if missing) read and
   write `Zomboid/Lua/<name>`. Server identity on a client: `getServerIP()`, `getServerPort()` ("" in single player);
   save name: `getWorld():getWorld()` (`getCurrentSaveName()` is the full save folder path).
@@ -722,7 +723,7 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
   toggles read their state back from the game every 200 ms; `window = true` slots open the vanilla window.
   Actions marked `opensWindow` (plus openUI and the windows category) remember the UIs that appear within 1.5 s
   and a second click closes them. `slot.steps` = extra `{ action, settings, window }` run after the slot's own
-  (`Hotbar.partsOf`): all resolved first (asked player / square / vehicle shared), one confirm, then each step after its own `delay` (ms, default 300, 0 = same frame, `Hotbar.stepDelay`); a toggle step's `follow` (nil = flip its own state, `same`/`opposite`) takes the state part 1 asked for at click time (`runParts` passes it on), falling back to its own flip when part 1 is no toggle or its state is unknown; a click that finds a follower out of step with part 1's current state only syncs the followers to it (`outOfSyncLead`, not within `slot.syncHoldUntilMs` of the previous click);
+  (`Hotbar.partsOf`): all resolved first (asked player / square / vehicle shared), one confirm, then each step after its own `delay` (ms, default 300, 0 = same frame, `Hotbar.stepDelay`); the slot's `syncMode` ("On click", `Hotbar.syncModeOf`) sets how toggles turn: `flip` (saved explicitly; nil on load = older slot, becomes `update` if a step follows) flips every toggle from its own state; `update` flips part 1 and each step with `follow` (`same`/`opposite`, nil = independent) takes the state part 1 asked for at click time (`runParts` passes it on; own flip when part 1 is no toggle or its state is unknown); `only` does not run part 1 and turns the followers to its current state (independent and non-toggle steps skipped, nothing when the state is unknown); new steps default to `follow = same`;
   saved as `steps.#n.*` on the slot line. Focus (`Bar:updateFocus`): many vanilla windows never `bringToTop` on a
   click (ISInventoryPage), so on each press the bar brings itself, or the window it covers that was clicked, to the front.
   Single player: only with `-debug` (`isDebugEnabled()`), every capability assumed, each action has vanilla's single

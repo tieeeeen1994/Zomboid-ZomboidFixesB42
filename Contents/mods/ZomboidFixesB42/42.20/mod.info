@@ -53,4 +53,4 @@ description=- Pumpkin and sunflower seed packets give back all 25 seeds (beta).
 description=- Pie slices and .44 Magnum boxes weigh what they should.
 description=- Small item fixes: the red coffee mug comes back, the Rangers baseball shirt covers the arms, the red baseball cap stays on like the others, the seafood cooler has sounds, and a few items get their missing names.
 description=Must be installed on both the server and clients. Every fix is on by default and can be turned off in the sandbox options; the few that are off by default say so.
-modversion=2.3.4
+modversion=2.3.5
