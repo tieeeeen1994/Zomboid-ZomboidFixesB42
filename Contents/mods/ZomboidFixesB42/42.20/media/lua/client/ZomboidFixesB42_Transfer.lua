@@ -127,7 +127,38 @@ local function sendBatch(self, queuedItem, command)
         src = self.zfixSrc,
         dst = self.zfixDst,
         items = table.concat(ids, ","),
+        -- Which square each floor item lies on; see "Floor hints" in the shared file.
+        floor = ZomboidFixesB42.encodeFloorHints(items),
     })
+end
+
+--- Does the client still show this item where the batch takes it from?
+local function stillAtSource(action, item)
+    if action.zfixSrc == ZomboidFixesB42.FLOOR then return item:getWorldItem() ~= nil end
+    return action.srcContainer ~= nil and action.srcContainer:containsID(item:getID())
+end
+
+--- The declined items, once we know where they really are. Ones the server has
+-- at the destination after all are waited for; ones still at the source go the
+-- vanilla way (fallBackToVanilla), which is what worked with the cheat off;
+-- ghosts (nowhere on the server) were dropped by the resync and are let go.
+-- Without an answer (resync off), everything the client still shows at the
+-- source goes the vanilla way.
+local function settleDeclined(action, token, items, results)
+    if action.zfixToken ~= token or not action.zfixPending then return end
+    local FLOOR = ZomboidFixesB42.FLOOR
+    local fallback = {}
+    for _, item in ipairs(items) do
+        local place = results and results[item:getID()]
+        if place == "dst" or (place == "floor" and action.zfixDst == FLOOR) then
+            table.insert(action.zfixPending, item)
+        elseif (not results or place == "src" or (place == "floor" and action.zfixSrc == FLOOR))
+                and stillAtSource(action, item) then
+            table.insert(fallback, item)
+        end
+    end
+    if #fallback > 0 then action.zfixFallback = fallback end
+    action.zfixAcked = true
 end
 
 --- The server has finished with a batch and says which items it would not move.
@@ -156,13 +187,29 @@ local function onServerCommand(module, command, args)
     end
 
     if anyDeclined then
-        local keep = {}
+        local keep, refused = {}, {}
         for _, item in ipairs(action.zfixPending) do
-            if not declined[item:getID()] then
+            if declined[item:getID()] then
+                table.insert(refused, item)
+            else
                 table.insert(keep, item)
             end
         end
         action.zfixPending = keep
+
+        -- A declined item used to be dropped from the batch, which then finished
+        -- having moved nothing: the transfer silently did not happen, and worked
+        -- with the cheat off. Now we first ask where each one really is
+        -- (client/ZomboidFixesB42_TransferResync.lua), then settle them.
+        if #refused > 0 then
+            local token = action.zfixToken
+            local resync = ZomboidFixesB42.resyncTransfer
+            if resync and resync(action.character, refused, action.srcContainer, action.destContainer, "declined",
+                    function(results) settleDeclined(action, token, refused, results) end) then
+                return
+            end
+            return settleDeclined(action, token, refused, nil)
+        end
     end
 
     action.zfixAcked = true
@@ -227,6 +274,9 @@ end
 --]]
 local batchFor = nil
 
+-- While set, createItemTransaction opens nothing and returns 0 (see start below).
+local suppressTransaction = false
+
 local function fastForwardRunning()
     local vars = SandboxVars and SandboxVars.ZomboidFixesB42
     return vars ~= nil and vars.MultiplayerFastForward == true and (ZomboidFixesB42.fastForwardSpeed or 1) > 1
@@ -235,6 +285,7 @@ end
 local vanillaCreateItemTransaction = createItemTransaction
 
 function createItemTransaction(character, items, src, dst)
+    if suppressTransaction then return 0 end
     local action = batchFor
     local castAutoVote = ZomboidFixesB42.castAutoVoteForBatch
     if action and (fastForwardRunning() or castAutoVote) then
@@ -296,6 +347,26 @@ local function openDeferred(self)
     end
 end
 
+--- Move what the server declined the vanilla way, and run the rest of this action
+-- as vanilla does. The batch stays queueList[1]: vanilla's perform takes it off
+-- once the transaction is done, skipping the items already moved (isValid sets
+-- dontAdd for items no longer in the source).
+local function fallBackToVanilla(self)
+    local items = self.zfixFallback
+    self.zfixFallback = nil
+    forgetBatch(self)
+    self.zfixFast = false
+    self.zfixTimed = false
+    self.useProgressBar = true
+    self.action:setUseProgressBar(true)
+    -- Vanilla's "the server will say how long" for this batch and every later one.
+    for _, queued in ipairs(self.queueList or {}) do queued.time = -1 end
+    self.maxTime = -1
+    self.action:setTime(-1)
+    self.transactionId = vanillaCreateItemTransaction(self.character, items, self.srcContainer, self.destContainer)
+    print(string.format("[ZomboidFixesB42] The server declined %d item(s) of a quick transfer; moving them the normal way", #items))
+end
+
 function ISInventoryTransferAction:new(character, item, srcContainer, destContainer, time)
     local o = vanilla.new(self, character, item, srcContainer, destContainer, time)
 
@@ -326,7 +397,16 @@ function ISInventoryTransferAction:start()
     -- checkQueueList() so queueList[1] is already the full first batch. It also
     -- sets setWaitForFinished(true), which is left alone: update() below decides
     -- when this action is done.
-    vanilla.start(self)
+    --
+    -- Its transaction is not wanted, and must not even be opened: cancelling one
+    -- sends a Reject that the server applies with removeIf(id == id) over EVERY
+    -- player's transactions (TransactionManager.removeItemTransaction), and IDs are
+    -- one byte numbered by each client, so the cancel could drop another player's
+    -- transfer in flight, which then hangs and moves nothing.
+    suppressTransaction = true
+    local ok, err = pcall(vanilla.start, self)
+    suppressTransaction = false
+    if not ok then error(err) end
 
     -- Vanilla returns early, with the time at 0 and nothing started, when the item
     -- has already moved or is no longer in the source. Nothing to send then.
@@ -334,7 +414,8 @@ function ISInventoryTransferAction:start()
 
     self.action:setUseProgressBar(false)
 
-    -- The transaction it opened is not wanted; we do the move ourselves.
+    -- Nothing should be open (suppressTransaction above); only in case another
+    -- mod's start() opened one of its own.
     if self.transactionId and self.transactionId ~= 0 then
         removeItemTransaction(self.transactionId, true)
         self.transactionId = 0
@@ -389,9 +470,21 @@ function ISInventoryTransferAction:update()
         return
     end
 
-    if not self.zfixCompleted and (batchMoved(self) or waitedTooLong(self)) then
-        self.zfixCompleted = true
-        self:forceComplete()
+    if self.zfixFallback and not self.zfixCompleted then return fallBackToVanilla(self) end
+
+    if not self.zfixCompleted then
+        local moved = batchMoved(self)
+        if moved or waitedTooLong(self) then
+            if moved and self.zfixSrc == ZomboidFixesB42.FLOOR and ZomboidFixesB42.clearGhostsOf then
+                -- The server's removal from the ground goes by the object's index on
+                -- the square and can miss on this client; see clearGhostsOf.
+                ZomboidFixesB42.clearGhostsOf(self.character, self.zfixPending)
+            elseif not moved and ZomboidFixesB42.resyncTransfer then
+                ZomboidFixesB42.resyncTransfer(self.character, self.zfixPending, self.srcContainer, self.destContainer, "lost")
+            end
+            self.zfixCompleted = true
+            self:forceComplete()
+        end
     end
 end
 

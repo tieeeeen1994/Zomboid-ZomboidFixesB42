@@ -111,6 +111,7 @@ ZomboidFixesB42.CMD_BODY_STATS_SET = "bodyStatsSet"
 ZomboidFixesB42.CMD_CHOPPER = "chopper"
 ZomboidFixesB42.CMD_TRANSFER_TIMED = "timedTransfer"
 ZomboidFixesB42.CMD_TRANSFER_TIMED_CANCEL = "timedTransferCancel"
+ZomboidFixesB42.CMD_TRANSFER_RESYNC = "transferResync"
 
 -- server -> clients
 ZomboidFixesB42.CMD_ANIMAL_GENDER_SYNC = "animalGenderSync"
@@ -119,6 +120,7 @@ ZomboidFixesB42.CMD_TRANSFER_DECLINED = "transferDeclined"
 ZomboidFixesB42.CMD_FAST_FORWARD_STATE = "fastForwardState"
 ZomboidFixesB42.CMD_BODY_STATS_STATE = "bodyStatsState"
 ZomboidFixesB42.CMD_CHOPPER_RESULT = "chopperResult"
+ZomboidFixesB42.CMD_TRANSFER_RESYNC_RESULT = "transferResyncResult"
 
 -- The single player speed buttons, as zombie.ui.SpeedControls sets them: play,
 -- fast forward, faster forward and wait. Multiplayer fast forward offers exactly
@@ -360,6 +362,73 @@ function ZomboidFixesB42.findItemOnGround(player, itemId)
         end
     end
     return nil
+end
+
+--[[ Floor hints -----------------------------------------------------------------
+
+    The client lists floor items from the 3x3 squares around its own position
+    (ISInventoryPage:refreshBackpacks), and only when the page refreshes. The
+    server's copy of the position trails the client's by a step or so while
+    walking, so a search of the 3x3 around the server's position misses items on
+    the far edge of what the client shows. Vanilla's transaction does not look
+    around the player at all (it finds the world item by ID on the square the
+    client names), which is why a transfer the fast path refused went through
+    with the cheat off. So the client says which square each floor item lies on,
+    "id|x|y|z;id|x|y|z", and the server looks there first, as long as that square
+    is within FLOOR_HINT_REACH squares of where it has the player.
+--]]
+ZomboidFixesB42.FLOOR_HINT_REACH = 2
+
+--- Encode the squares the given items lie on, for the ones that are on the floor.
+function ZomboidFixesB42.encodeFloorHints(items)
+    local parts = {}
+    for _, item in ipairs(items or {}) do
+        local worldItem = item and item:getWorldItem()
+        local square = worldItem and worldItem:getSquare()
+        if square then
+            table.insert(parts, table.concat({ item:getID(), square:getX(), square:getY(), square:getZ() }, SEP))
+        end
+    end
+    return table.concat(parts, ";")
+end
+
+--- Parse encodeFloorHints back into { [itemId] = { x = , y = , z = } }.
+function ZomboidFixesB42.parseFloorHints(encoded)
+    local hints = {}
+    if type(encoded) ~= "string" then return hints end
+    local count = 0
+    for entry in string.gmatch(encoded, "([^;]+)") do
+        local id, x, y, z = string.match(entry, "^(-?%d+)|(-?%d+)|(-?%d+)|(-?%d+)$")
+        if id then
+            hints[tonumber(id)] = { x = tonumber(x), y = tonumber(y), z = tonumber(z) }
+            count = count + 1
+            if count >= 250 then break end
+        end
+    end
+    return hints
+end
+
+--- Find an item lying on the ground by ID: on the hinted square if it is within
+-- FLOOR_HINT_REACH of the player, else in the 3x3 around the player.
+function ZomboidFixesB42.findItemOnGroundNear(player, itemId, hint)
+    if hint then
+        local reach = ZomboidFixesB42.FLOOR_HINT_REACH
+        local px, py, pz = math.floor(player:getX()), math.floor(player:getY()), math.floor(player:getZ())
+        if hint.z == pz and math.abs(hint.x - px) <= reach and math.abs(hint.y - py) <= reach then
+            local square = getCell():getGridSquare(hint.x, hint.y, hint.z)
+            local worldObjects = square and square:getWorldObjects()
+            if worldObjects then
+                for i = 0, worldObjects:size() - 1 do
+                    local worldObject = worldObjects:get(i)
+                    local item = worldObject and worldObject:getItem()
+                    if item and item:getID() == itemId then
+                        return item, square
+                    end
+                end
+            end
+        end
+    end
+    return ZomboidFixesB42.findItemOnGround(player, itemId)
 end
 
 local function splitEncoded(encoded)

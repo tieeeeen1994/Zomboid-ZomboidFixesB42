@@ -244,6 +244,36 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
   (`BaseAction.update`), so it fills early and waits on `setWaitForFinished`. Transaction ids are numbered by each client
   (`Transaction.lastId`, a byte), and the server handles a cancel (Reject) with `removeIf(id == id)` over every player's
   transactions, so one player's cancelled transfer can drop another's with the same id.
+- How a transaction fails (42.21, `zombie/core/TransactionManager`, `Transaction`, `ItemTransactionPacket`): the server
+  checks `isConsistent` only on Request (Reject packet if it fails), then at `endTime` runs `Transaction.update` →
+  `updateItem` per entry. If that returns false or throws (`"transaction.update() threw. Rejecting transaction"` in the
+  server log), the state becomes Reject **and nothing is sent**; entries already moved stay moved. The client's copy is
+  dropped by its own timeout (reported duration + 10 s, or 20 s with none), after which `isItemTransactionDone(id)` is true
+  (`allMatch` on an empty stream), so `ISInventoryTransferAction` "completes" having changed nothing. A floor item is
+  addressed by **item ID** (`ContainerID` WorldObject, `findObject` walks the square's world objects); if the server has
+  no such item, `isConsistent` still accepts (source null, itemId -1 skips every check), the server logs
+  `ERROR: sendItemsToContainer: can't find world item with id=N` and `updateItem` returns false later. So a ghost floor
+  item (on the client only) gives a bar that hangs ~10-20 s, then nothing; it stays on the client's floor until the chunk
+  reloads. On success the server sends `RemoveItemFromSquare` (`GameServer.RemoveItemFromMap`, to clients relevant to the
+  square) addressed by **object index** on the square, not item ID (`RemoveItemFromSquarePacket.processClient` removes
+  whatever the client has at that index, or nothing if out of range), then `AddInventoryItemToContainer` to the owner
+  (skipped with `Error: Dupe item ID` if the client already has that ID there; a bag destination is found by the bag's ID,
+  `can't find inventory container` if not), then Done. A client whose object list on that square differs from the
+  server's removes the wrong object or none, which is one way ghost floor items are born.
+- Transaction globals from Lua (`LuaManager$GlobalObject` ~9650): `isItemTransactionDone(id)` / `isItemTransactionRejected(id)`
+  are `allMatch` over the client's entries with that id, so **both are true for an id no longer in the list** (timed out,
+  or removed): both = gone, rejected only = Reject packet, done only = Done packet, neither = waiting. Id 0 reads done and
+  rejected. `getItemTransactionDuration(id)` = ms / 20 in integer division, so it is 0 both before the Accept and for an
+  absent id (Java's -1 / 20). `removeItemTransaction(id, false)` drops the client's entry without telling the server.
+  The client entry's clock starts at `createItemTransaction`; the Accept sets its duration (`setStateFromPacket`).
+- `ISGrabItemAction` (right-click Grab, forage icons) never waits on the server: no `setWaitForFinished`, `maxTime`
+  becomes the server's duration, and perform -> `transferItem` drops the transaction and ends, whatever the server did.
+  Its transaction is created with `nil` items and an `"object"` source container whose parent is the world item.
+- The fast transfer path (`*_Transfer.lua` / `*_Server.lua`, Fast Timed Actions cheat and fast forward's timed
+  batches) used to decline floor items outside the 3x3 around the **server's** position of the player (trails the
+  client's while walking) and to check the main inventory's weight, which vanilla's server never does; a declined item
+  was dropped from the batch, so the transfer silently did nothing while vanilla (cheat off) worked. Its `start` also
+  opened a vanilla transaction and cancelled it at once, i.e. sent a Reject per batch (see the removeIf note above).
 - 37 vanilla actions work on `emulateAnimEvent(netAction, periodMs, event)` (Java `AnimEventEmulator`, real-time period,
   not exposed): milking, shearing, reading, fitness, drinking, fluids, reloading... `*_FastForwardAnimEvents.lua` fires
   (speed - 1) extra `netAction:animEvent` per period, stopping on the table's `complete`/`serverStop` or `getProgress() >= 1`.
@@ -715,6 +745,17 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
   players' inventories and loading vehicles get rain-catching items without a FluidContainer fixed
   (`sendReplaceItemInContainer`); chunks holding such objects are saved again after load, 2 per tick, unless
   `BackupsPeriod` > 0.
+- `*_TransferResync.lua` (client/server, option `TransferResync`): watches every vanilla transaction of
+  `ISInventoryTransferAction` / `ISGrabItemAction` and asks the server where the items really are
+  (`ZomboidFixesB42.resyncTransfer` -> `locateTransferItem`: dst, src, player inventory, ground within reach, none) when
+  one is late (2.5 s past its end), gone (timed out; held open by wrapping `isItemTransactionDone/Rejected`, retried once
+  if the items are still at the source), refused, or a grab ended without the item arriving. The server re-sends with
+  `sendAddItemToContainer` what the client does not show (for the inventory tree only if the client holds it nowhere
+  in it); the client drops world items and world/vehicle container items the server does not have there (never from its
+  own inventory). `clearGhostsOf` drops a floor copy of an item that has arrived in the inventory. Fast transfers
+  send floor hints (`encodeFloorHints`, `findItemOnGroundNear`), log why they decline, and fall back to a vanilla
+  transaction for declined items still at the source. Not fixable from Lua: a real floor item the client lost to a
+  wrong-index removal (no way to send one world item to one client), and the cross-player Reject of vanilla cancels.
 - `shared/ZomboidFixesB42_ScriptFixes.lua` + `*_ItemFixesClothing/Weapons/Food.lua`: item and recipe data fixes, one option
   each, applied at `OnLoadMapZones` and re-checked every ten minutes (`ScriptFixes.register(option, apply, revert)`,
   `setParams`, `addTag`/`removeTag`, `newMapperEntry`, `setRecipeCall`, `newFixer`, `onBeforeUse` hooks in

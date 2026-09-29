@@ -76,10 +76,11 @@ local function batchMs(player, args)
     if not src or not dst then return 0 end
 
     local units = 0
+    local hints = ZomboidFixesB42.parseFloorHints(args.floor)
     for _, id in ipairs(ZomboidFixesB42.parseTransferItemIds(args.items)) do
         local item
         if args.src == FLOOR then
-            item = ZomboidFixesB42.findItemOnGround(player, id)
+            item = ZomboidFixesB42.findItemOnGroundNear(player, id, hints[id])
         else
             item = src:getItemWithID(id)
         end

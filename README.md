@@ -1,6 +1,6 @@
 Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly for multiplayer. Install it on both the server and clients. Every fix is on by default and can be turned off in the sandbox options; the few that are off by default say so. Fixes marked beta are new and not fully tested yet.
 
-- Fast Timed Actions makes item transfers quick in multiplayer, like in single player.
+- Fast Timed Actions makes item transfers quick in multiplayer, like in single player, and a quick transfer the server cannot make is done the normal way instead of not at all.
 - Changing an animal's gender in the animal info window also changes its model and type, and no longer reverts for other players.
 - The foraging debug menu can add, move and refresh icons, and added icons can be picked up.
 - Item editor changes save for items in crates, vehicles, on the floor and in other players' inventories.
@@ -29,6 +29,7 @@ Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly 
 - Vehicle batteries no longer drain twice as fast as intended from headlights, the radio, the lightbar, the siren and the heater.
 - Removing a bush or wall vines with a cutting tool costs endurance and arm strain and wears the tool again, a broken tool is swapped for another, and in multiplayer the inventory window refreshes when the server swaps a tool or uses up building materials.
 - Watering a plant in multiplayer no longer gives it twice the water or empties the can twice as fast.
+- Item transfers the server fails without telling the player repair themselves: items only the player's game still shows on the floor or in a container are removed, items the server moved but the player could not see (until relogging) appear, a transfer the server dropped is tried again, and one that did happen ends instead of hanging for up to 20 seconds.
 - Rain collectors, wells, amphoras, drying racks, and buckets, pots and other items that catch rain, no longer break after a server crash, a killed server or a restored backup. Ones already broken are rebuilt, empty, when their area loads, and broken items already picked up are fixed when their owner joins or their vehicle loads.
 - The right spiked metal and spiked scrap metal thigh armor can be moved to the left thigh, like every other thigh armor.
 - Spiked articulated metal shoulder pads can be smelted like the plain ones.

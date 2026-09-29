@@ -70,11 +70,23 @@ local function parseItemIds(encoded)
     return ids
 end
 
+--- Does the destination have room, checked where vanilla's server checks it?
+-- TransactionManager.isConsistent checks the weight of vehicle containers and of
+-- containers not held by a character, never of the player's main inventory: the
+-- client already refused anything too heavy. Checking it here too refused
+-- transfers vanilla lets through whenever the server's idea of the load differed
+-- from the client's (items the client does not show, see TransferResync).
+local function hasRoom(player, destContainer, item)
+    if destContainer == player:getInventory() then return true end
+    return destContainer:hasRoomFor(player, item)
+end
+
 --- Picking an item up off the ground.
-local function moveFromGround(player, itemId, destContainer)
-    local item, square = ZomboidFixesB42.findItemOnGround(player, itemId)
-    if not item then return false end
-    if not destContainer:isItemAllowed(item) or not destContainer:hasRoomFor(player, item) then return false end
+local function moveFromGround(player, itemId, destContainer, hint)
+    local item, square = ZomboidFixesB42.findItemOnGroundNear(player, itemId, hint)
+    if not item then return false, "not on the ground near the player" end
+    if not destContainer:isItemAllowed(item) then return false, "not allowed in the destination" end
+    if not hasRoom(player, destContainer, item) then return false, "no room in the destination" end
 
     -- A floor container bound to the square the item is actually on. Vanilla does
     -- the same thing from TransactionProcessor.dropOnFloor, and transferItem's
@@ -89,9 +101,8 @@ end
 
 --- Putting an item down on the ground.
 local function moveToGround(player, itemId, srcContainer)
-    if not srcContainer:containsID(itemId) then return false end
     local item = srcContainer:getItemWithID(itemId)
-    if not item then return false end
+    if not item then return false, "not in the source container" end
 
     local floorContainer = ItemContainer.new("floor", player:getCurrentSquare(), nil)
 
@@ -99,7 +110,7 @@ local function moveToGround(player, itemId, srcContainer)
     -- checks it: the player's square first, then the eight around it, each tested
     -- for a walkable floor, blocked or window transitions, stairs, and weight.
     local dropSquare = ISTransferAction:getNotFullFloorSquare(player, item, floorContainer)
-    if not dropSquare then return false end
+    if not dropSquare then return false, "no room on the floor" end
 
     -- No sendAddItemToContainer here: the floor branch of transferItem ends in
     -- AddWorldInventoryItem, which does the world replication itself.
@@ -111,11 +122,10 @@ end
 local function moveBetweenContainers(player, itemId, srcContainer, destContainer)
     -- Re-checked every iteration: an earlier item in this batch may have filled
     -- the destination up.
-    if not srcContainer:containsID(itemId) then return false end
-
     local item = srcContainer:getItemWithID(itemId)
-    if not item then return false end
-    if not destContainer:isItemAllowed(item) or not destContainer:hasRoomFor(player, item) then return false end
+    if not item then return false, "not in the source container" end
+    if not destContainer:isItemAllowed(item) then return false, "not allowed in the destination" end
+    if not hasRoom(player, destContainer, item) then return false, "no room in the destination" end
 
     -- Vanilla's own server-side move. It handles worn and equipped items, vehicle
     -- part weights, item replacement and the remove half of the replication.
@@ -127,7 +137,11 @@ end
 --- Tell the client we are done with a batch, and which items we would not move.
 -- The client is waiting with setWaitForFinished(true), so a refusal it never hears
 -- about would leave the action hanging until its lost-packet backstop expires.
-local function replyToClient(player, token, failed)
+local function replyToClient(player, token, failed, why)
+    if why and #failed > 0 then
+        print(string.format("[ZomboidFixesB42] Quick transfer declined for %s: %s",
+            tostring(player:getUsername()), why))
+    end
     if not token then return end
     sendServerCommand(player, ZomboidFixesB42.MODULE, ZomboidFixesB42.CMD_TRANSFER_DECLINED, {
         token = token,
@@ -154,36 +168,39 @@ local function moveBatch(player, args)
     -- Every one of these is a refusal the client has to hear about, otherwise it
     -- sits waiting for a move that is never coming.
     if (not fromGround and not srcContainer) or (not toGround and not destContainer) then
-        return replyToClient(player, args.token, parseItemIds(args.items))
+        return replyToClient(player, args.token, parseItemIds(args.items),
+            string.format("container not found (src %s, dst %s)", tostring(args.src), tostring(args.dst)))
     end
     if srcContainer and destContainer and srcContainer == destContainer then
-        return replyToClient(player, args.token, parseItemIds(args.items))
+        return replyToClient(player, args.token, parseItemIds(args.items), "source and destination are the same")
     end
     if srcContainer and not isInReach(player, srcContainer) then
-        return replyToClient(player, args.token, parseItemIds(args.items))
+        return replyToClient(player, args.token, parseItemIds(args.items), "source out of reach")
     end
     if destContainer and not isInReach(player, destContainer) then
-        return replyToClient(player, args.token, parseItemIds(args.items))
+        return replyToClient(player, args.token, parseItemIds(args.items), "destination out of reach")
     end
 
-    local failed = {}
+    local hints = ZomboidFixesB42.parseFloorHints(args.floor)
+    local failed, reasons = {}, {}
 
     for _, itemId in ipairs(parseItemIds(args.items)) do
-        local moved
+        local moved, reason
         if fromGround then
-            moved = moveFromGround(player, itemId, destContainer)
+            moved, reason = moveFromGround(player, itemId, destContainer, hints[itemId])
         elseif toGround then
-            moved = moveToGround(player, itemId, srcContainer)
+            moved, reason = moveToGround(player, itemId, srcContainer)
         else
-            moved = moveBetweenContainers(player, itemId, srcContainer, destContainer)
+            moved, reason = moveBetweenContainers(player, itemId, srcContainer, destContainer)
         end
 
         if not moved then
             table.insert(failed, tostring(itemId))
+            table.insert(reasons, tostring(itemId) .. " " .. tostring(reason))
         end
     end
 
-    replyToClient(player, args.token, failed)
+    replyToClient(player, args.token, failed, table.concat(reasons, ", "))
 end
 
 ZomboidFixesB42.moveTransferBatch = moveBatch
@@ -193,7 +210,7 @@ local function onInstantTransfer(player, args)
     -- Answered rather than dropped: a client that took the fast path on a cheat
     -- flag the server disagrees about would otherwise hang on every transfer.
     if not isAllowed(player) then
-        return replyToClient(player, args.token, parseItemIds(args.items))
+        return replyToClient(player, args.token, parseItemIds(args.items), "the server does not see the cheat on for this player")
     end
     moveBatch(player, args)
 end

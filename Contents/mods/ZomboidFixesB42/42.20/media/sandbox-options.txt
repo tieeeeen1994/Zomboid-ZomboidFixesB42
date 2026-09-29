@@ -280,6 +280,14 @@ option ZomboidFixesB42.RepairLostEntities
     translation = ZomboidFixesB42_RepairLostEntities,
 }
 
+option ZomboidFixesB42.TransferResync
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_TransferResync,
+}
+
 option ZomboidFixesB42.SpikedThighArmorSide
 {
     type = boolean,
