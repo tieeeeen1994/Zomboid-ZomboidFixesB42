@@ -1,6 +1,8 @@
 name=Zomboid Fixes B42.20
 id=ZomboidFixesB42
 author=Tien
+poster=poster.png
+icon=icon.png
 description=A collection of fixes for Build 42.20, mostly for multiplayer.
 description=- Fast Timed Actions makes item transfers quick in multiplayer, falling back to a normal transfer when the server cannot make a quick one.
 description=- Changing an animal's gender now swaps the animal's model and type with it, and sticks for everyone.

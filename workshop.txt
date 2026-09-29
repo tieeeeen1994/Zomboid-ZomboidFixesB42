@@ -1,7 +1,7 @@
 version=1
 id=3800148259
 title=Zomboid Fixes B42.20+
-description=A set of fixes for Build 42.20, mostly for multiplayer. Install it on both the server and clients. Every fix is on by default and can be turned off in the sandbox options; the few that are off by default say so. Fixes marked beta are new and not fully tested yet. This was supposedly Unlisted, but I feel like people will find the mod useful. It is, however, needed to say that the mod is made by A.I., but under my strict supervision.
+description=A set of fixes for Build 42.20, mostly for multiplayer. Install it on both the server and clients. Every fix is on by default and can be turned off in the sandbox options; the few that are off by default say so. Fixes marked beta are new and not fully tested yet. This was supposedly Unlisted, but I feel like people will find the mod useful. It is, however, needed to say that the mod is made by A.I., but under my strict supervision. I just want to play with my friends smoothly without all these bugs stopping us from enjoying the game...
 description=
 description=[list]
 description=[*]Fast Timed Actions makes item transfers quick in multiplayer, like in single player, and a quick transfer the server cannot make is done the normal way instead of not at all.
