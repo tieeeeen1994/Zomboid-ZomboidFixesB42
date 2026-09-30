@@ -32,6 +32,15 @@ or methods exist.
 
 ## Tooling on this Mac
 
+- Local MP test without Steam: `TienGiveItemMP/scripts/mptest.sh` (server + two clients, separate `-cachedir`s under
+  `~/ZomboidTest`). Launch = the bundled JRE from `Contents/Java` with `-Dzomboid.steam=0 -Djava.library.path=.
+  -classpath .:projectzomboid.jar`, main class `zombie.network.GameServer` (`-nosteam -cachedir= -servername
+  -adminpassword`) or `zombie.gameStates.MainScreenState` (client, also needs `-XstartOnFirstThread`; `-nosteam` and
+  `-cachedir=` work there too). Without Steam, mods are only searched in `<cachedir>/mods` (`ZomboidFileSystem`: the
+  `~/Zomboid/Workshop` staging folders are scanned only in Steam mode), so symlink `<mod>/Contents/mods/<id>` there.
+  A server's first run writes the full `Server/<name>.ini` around a partial one (`Mods=` accepts `id;id`, backslashes
+  are stripped) plus `<name>_SandboxVars.lua`.
+
 - No Lua interpreter. Syntax-check with luaparser: `pip3 install --target <scratch>/py luaparser`, then
   `PYTHONPATH=<scratch>/py python3 -c "from luaparser import ast; ast.parse(open(f).read())"`. It only checks syntax;
   walking its AST for free names is a cheap way to spot typos in globals.
@@ -97,6 +106,11 @@ or methods exist.
   (the sender's role must hold `requiredCapability`), then `parseServer` -> `isConsistent` -> anticheats -> `processServer`.
 - `INetworkPacket.send(IsoPlayer, type, ...)` on the server goes to that player's own connection only;
   `INetworkPacket.send(type, ...)` on a client goes to the server.
+- `GameServer.sendAddItemToContainer` / `sendAddItemsToContainer` / `sendRemoveItem(s)FromContainer` /
+  `sendReplaceItemInContainer` (~2448): a container whose `getCharacter()` is a player (the main inventory, or any bag
+  nested in it) goes to **that player only**; otherwise to clients near the container's parent object or world item.
+  So the server can move an item from one player's inventory into another's with `DoRemoveItem` +
+  `sendRemoveItemFromContainer` and `AddItem` + `sendAddItemToContainer` (TienGiveItemMP does).
 
 ### Player stats are server-authoritative
 
@@ -536,6 +550,24 @@ plant by coordinates with any `uses` (only `ISWaterPlantAction`'s client `update
 hardening fix. Not fixable from Lua: `SyncItemFieldsPacket` (LoginOnServer only) trusts the client's condition, ammo,
 name, pages, modData and clothing holes for any item whose container resolves.
 
+What `new`'s arguments can be (`PZNetKahluaTableImpl.save/load`, 42.20): string, double, boolean, Lua table, InventoryItem
+(sent as ContainerID + item ID, resolved in the server's copy of that container, nil if absent), IsoPlayer (PlayerID, so
+**another player** works: `ISApplyBandage` otherPlayer), IsoObject, ItemContainer, BodyPart, VehiclePart, BaseVehicle,
+IsoGridSquare, dead body, animal, recipes, FluidContainer, and a Java **`ArrayList` of one value type** (type of element 0;
+elements that load as nil are left out, so a list of items arrives with the missing ones dropped). A client-side
+`LuaTimedActionNew` only becomes a server action when the class has a `complete` method (else
+`useCustomRemoteTimedActionSync`); every Request makes the server `ActionManager.stopPlayerActions` for that player first.
+Server duration ms = the table's `getDuration()` (through `adjustMaxTime` on the server only) × 20.
+Vanilla inventory → floor timing: Java `Transaction.getDuration` = max over the entries of `maxTime` × 20 ms, where
+`maxTime` = 120 (50 from the main inventory to outside the character or from outside into it; bag capacity factor
+`capacityWeight / maxWeight` >= 0.4 for packing) × min(actualWeight, 3), × 0.1 main inventory → floor, × 0.2 world
+container → floor, × 0.5 Dexterous, × 2 All Thumbs or awkward gloves; no moodle/hand-pain `adjustMaxTime`. So a drop from
+the main inventory takes 100 ms per weight unit, capped at 300 ms. Items <= 0.1 weight of one type batch 20 per
+transaction (`checkQueueList`); a separate Java hack zeroes the time of up to 19 same-type light grabs from the floor
+within 2 s. `ISDropWorldItemAction:getDuration` uses the same main-inventory → floor formula.
+Vanilla Trade (`ISWorldObjectContextMenuLogic`, Java-built): offered for a clicked player who is not asleep, not an
+animal, not invisible unless the role has `SeesInvisiblePlayers`; greyed out ("get closer") when `|dx| > 2 or |dy| > 2`;
+named with `getDisguisedDisplayName()`. `ISTradingUI` shows "too far away" on the same 2-tile rule.
 Server-side timed actions: `NetTimedAction` only calls `new`, `getDuration`, `adjustMaxTime`, `serverStart`,
 `serverStop`, `animEvent`, `complete`, `isUsingTimeout` — never `isValid`, `update` or `perform`. A Lua error in
 `complete()` makes `ActionManager` send Reject (the changes made before the error stay). Client-only globals
@@ -600,7 +632,9 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
   coordinates, so `rowAt(x, y)` works directly.
 - `PZAPI.ModOptions:create(id, name)` / `addKeyBind(id, name, key, tooltip)` / `getOption(id):getValue()`. Saved values are
   only read back by `PZAPI.ModOptions:load()`, which vanilla calls when it builds the options screen — call it at
-  `OnGameStart` to have saved key binds in game. A mod key bind **drops Shift/Ctrl/Alt**: the options screen records
+  `OnGameStart` to have saved key binds in game. (The in-game options screen is built by vanilla's own `OnGameStart`
+  handler `LoadMainScreenPanelIngame` → `MainOptions:create` → `addModOptionsPanel` → `load()`, so values read later
+  than that, e.g. when a context menu opens, are the saved ones without calling it.) A mod key bind **drops Shift/Ctrl/Alt**: the options screen records
   and shows them (`MainOptions.keyPressHandler` sets `keyCode, shift, ctrl, alt` on `option.element`), but
   `getValue()` is the bare key and ModOptions.ini saves only it; the screen copies `option.shift/ctrl` (not `alt`)
   back into its entry. Vanilla's own rule is `Core.invalidBindingShiftCtrl` (raw keys 42/54 Shift, 29/157 Ctrl,
@@ -640,6 +674,12 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
   (`CLoadBulletsInMagazine`, local to `ISFirearmRadialMenu.lua`) only looks for magazines of the gun's one
   `getMagazineType()` and rounds of the magazine's one `getAmmoType()`, so with Gunworks profiles and ammo families it
   is often missing or loads the magazine's default round.
+- Radial menus (`ISRadialMenu`): each slice is `{ text, texture, command = { fn, arg1..arg6 } }` in `menu.slices`;
+  there is no remove, so rebuild with `clear()` + `addSlice`. Java `RadialMenu.render` draws nothing with 0 slices and
+  sizes slices by `360 / max(count, 2)`. `ISFirearmRadialMenu:fillMenu` adds `addSlice(nil, nil, nil)` for every
+  command that offered nothing (fixed spots); every vanilla caller runs `display()` right after, which is where
+  `*_FirearmRadialBlanks.lua` drops them (after other mods' `fillMenu` wrappers). `ISBackButtonWheel` uses blanks on
+  purpose for its joypad layout.
 - `UIManager.AddUI` / `RemoveElement` only queue; `UIManager.getUI()` (top-level Java elements, `ui:getTable()` →
   the Lua table) changes at the next `UIManager.update`. Base `close()` of ISPanel / ISPanelJoypad /
   ISCollapsableWindow only hides; vanilla reopens windows with `instance:close()` or `closeModal()`. Every forage,

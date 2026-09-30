@@ -190,6 +190,14 @@ option ZomboidFixesB42.GrabAmount
     translation = ZomboidFixesB42_GrabAmount,
 }
 
+option ZomboidFixesB42.FirearmRadialNoBlanks
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_FirearmRadialNoBlanks,
+}
+
 option ZomboidFixesB42.TurboGameMultiplayer
 {
     type = boolean,
