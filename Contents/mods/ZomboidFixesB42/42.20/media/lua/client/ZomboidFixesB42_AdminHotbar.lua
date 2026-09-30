@@ -2808,8 +2808,11 @@ end
 
 local Settings = ISPanel:derive("ZomboidFixesB42_AdminHotbarSettings")
 
-local LABEL_WIDTH = 150
-local CONTROL_WIDTH = 330
+local LABEL_WIDTH = 110
+-- The control column: this much at 1920 wide and below, a quarter of wider screens, up to the max.
+local CONTROL_WIDTH = 480
+local CONTROL_WIDTH_MAX = 720
+local HINT_COLOUR = { r = 0.8, g = 0.8, b = 0.8 }
 
 local function wrapLines(text, width, font)
     local tm = getTextManager()
@@ -2831,15 +2834,29 @@ end
 -- toggle, how it follows the first part (the label, icon and "Ask before running"
 -- belong to the slot).
 function Settings:new(slot, onSave, owner)
-    local width = LABEL_WIDTH + CONTROL_WIDTH + UI_BORDER_SPACING * 3
+    -- The label column is as wide as its longest label, so no label runs under its control.
+    local labelWidth = LABEL_WIDTH
+    local labels = { txt("Label"), txt("Icon"), txt("OnClick"), txt("Repeat"), txt("RepeatEvery"),
+        txt("RepeatTimes"), txt("StepToggle"), txt("StepDelay") }
+    local action = Hotbar.getAction(slot.action)
+    for _, spec in ipairs(action and action.params or {}) do table.insert(labels, spec.title) end
+    local tm = getTextManager()
+    for _, text in ipairs(labels) do
+        labelWidth = math.max(labelWidth, tm:MeasureStringX(UIFont.Small, text) + 8)
+    end
     local core = getCore()
+    local controlWidth = math.floor(math.max(CONTROL_WIDTH, math.min(CONTROL_WIDTH_MAX, core:getScreenWidth() / 4)))
+    local width = labelWidth + controlWidth + UI_BORDER_SPACING * 3
     local o = ISPanel:new(core:getScreenWidth() / 2 - width / 2, 120, width, 200)
     setmetatable(o, self)
     self.__index = self
     o.slot = slot
     o.owner = owner
     o.isStep = owner ~= nil
-    o.action = Hotbar.getAction(slot.action)
+    o.action = action
+    o.labelWidth = labelWidth
+    o.controlWidth = controlWidth
+    o.modeHints = {}
     o.onSave = onSave
     o.settings = {}
     for k, v in pairs(slot.settings or {}) do o.settings[k] = v end
@@ -2861,7 +2878,7 @@ end
 
 --- Grey (or colour's) small text wrapped over the dialog's width; returns the y below it.
 function Settings:addHint(text, y, colour)
-    colour = colour or { r = 0.8, g = 0.8, b = 0.8 }
+    colour = colour or HINT_COLOUR
     for _, line in ipairs(wrapLines(text, self.width - UI_BORDER_SPACING * 2 - 2, UIFont.Small)) do
         local label = ISLabel:new(UI_BORDER_SPACING + 1, y, FONT_HGT_SMALL, line, colour.r, colour.g, colour.b, 1, UIFont.Small, true)
         label:initialise()
@@ -2869,6 +2886,57 @@ function Settings:addHint(text, y, colour)
         y = y + FONT_HGT_SMALL + 2
     end
     return y
+end
+
+--- Grey text on a control's row, to the right of it (a unit or a range).
+function Settings:addSuffix(text, x, y)
+    local label = ISLabel:new(x, y, BUTTON_HGT, text, HINT_COLOUR.r, HINT_COLOUR.g, HINT_COLOUR.b, 1, UIFont.Small, true)
+    label:initialise()
+    self:addChild(label)
+    return label
+end
+
+--- A short hint under a combo that follows its selection (hints keyed by option data), with
+-- the full explanation as a tooltip on the row's label and on the hint. The lines of the
+-- longest hint are reserved so nothing below moves; returns the y below them.
+function Settings:addModeHint(combo, hints, rowLabel, help, y, colour)
+    colour = colour or HINT_COLOUR
+    local width = self.width - UI_BORDER_SPACING * 2 - 2
+    local lineCount = 1
+    for _, text in pairs(hints) do
+        lineCount = math.max(lineCount, #wrapLines(text, width, UIFont.Small))
+    end
+    local hint = { combo = combo, hints = hints, width = width, lines = {} }
+    for i = 1, lineCount do
+        local line = ISLabel:new(UI_BORDER_SPACING + 1, y, FONT_HGT_SMALL, "", colour.r, colour.g, colour.b, 1, UIFont.Small, true)
+        line:initialise()
+        line:setTooltip(help)
+        self:addChild(line)
+        hint.lines[i] = line
+        y = y + FONT_HGT_SMALL + 2
+    end
+    rowLabel:setTooltip(help)
+    table.insert(self.modeHints, hint)
+    self:updateModeHint(hint)
+    return y
+end
+
+--- Does a step of the slot follow its first part (a toggle, not opening its window, set
+-- to Same or Opposite state)?
+function Settings:hasFollowers()
+    for _, step in ipairs(self.slot.steps or {}) do
+        local action = Hotbar.getAction(step.action)
+        if action and action.toggle and not step.window and Hotbar.followOf(step) then return true end
+    end
+    return false
+end
+
+function Settings:updateModeHint(hint)
+    if hint.selected == hint.combo.selected then return end
+    hint.selected = hint.combo.selected
+    local text = hint.hints[hint.combo:getOptionData(hint.selected)] or ""
+    local lines = wrapLines(text, hint.width, UIFont.Small)
+    for i, line in ipairs(hint.lines) do line:setName(lines[i] or "") end
 end
 
 function Settings:addButton(x, y, width, title, onClick)
@@ -2917,7 +2985,7 @@ end
 function Settings:createChildren()
     ISPanel.createChildren(self)
     local action = self.action
-    local cx = UI_BORDER_SPACING * 2 + LABEL_WIDTH
+    local cx = UI_BORDER_SPACING * 2 + self.labelWidth
     local y = UI_BORDER_SPACING * 2 + FONT_HGT_MEDIUM + 4
 
     if action.tooltip then
@@ -2941,72 +3009,97 @@ function Settings:createChildren()
 
     if self.isStep then
         if action.toggle then
-            self:addLabel(txt("StepToggle"), y)
-            self.followCombo = self:addCombo(cx, y, CONTROL_WIDTH, {
+            local label = self:addLabel(txt("StepToggle"), y)
+            self.followCombo = self:addCombo(cx, y, self.controlWidth, {
                 { text = txt("StepToggleSame"), data = FOLLOW_SAME },
                 { text = txt("StepToggleOpposite"), data = FOLLOW_OPPOSITE },
                 { text = txt("StepToggleOwn"), data = "own" },
             }, Hotbar.followOf(self.slot) or "own")
             y = y + BUTTON_HGT + 2
-            y = self:addHint(txt("StepToggleHint"), y)
+            y = self:addModeHint(self.followCombo, {
+                [FOLLOW_SAME] = txt("StepToggleSameHint"),
+                [FOLLOW_OPPOSITE] = txt("StepToggleOppositeHint"),
+                own = txt("StepToggleOwnHint"),
+            }, label, txt("StepToggleHint"), y)
             local lead = Hotbar.getAction(self.owner.action)
             if not (lead and lead.toggle) or self.owner.window then
                 y = self:addHint(txt("StepToggleNoLead"), y, AMBER)
             end
             y = y + UI_BORDER_SPACING
         end
-        self:addLabel(txt("StepDelay"), y)
+        local delayLabel = self:addLabel(txt("StepDelay"), y)
+        delayLabel:setTooltip(txt("StepDelayHint"))
         self.delayEntry = self:addEntry(cx, y, 100, string.format("%d", Hotbar.stepDelay(self.slot)), true)
-        y = y + BUTTON_HGT + 2
-        y = self:addHint(txt("StepDelayHint"), y)
-        y = y + UI_BORDER_SPACING * 2
+        self:addSuffix(txt("StepDelayUnit"), cx + 110, y):setTooltip(txt("StepDelayHint"))
+        y = y + BUTTON_HGT + UI_BORDER_SPACING * 2
         return self:addSaveCancel(y)
     end
 
     self:addLabel(txt("Label"), y)
-    self.labelEntry = self:addEntry(cx, y, CONTROL_WIDTH, self.slot.label or "")
+    self.labelEntry = self:addEntry(cx, y, self.controlWidth, self.slot.label or "")
     self.labelEntry:setPlaceholderText(Hotbar.titleOf(action, self.slot))
     y = y + BUTTON_HGT + UI_BORDER_SPACING
 
     self:addLabel(txt("Icon"), y)
-    local iconSize = BUTTON_HGT * 2
-    self.iconButton = self:addButton(cx, y, iconSize, "", Settings.onIcon)
+    -- As tall as the other buttons (addButton), twice as wide so the icon reads.
+    local iconWidth = BUTTON_HGT * 2
+    self.iconButton = self:addButton(cx, y, iconWidth, "", Settings.onIcon)
     self.iconButton.render = Settings.renderIconButton
     self.iconButton.settingsWindow = self
-    self:addButton(cx + iconSize + UI_BORDER_SPACING, y, 110, txt("IconDefault"), Settings.onIconDefault)
-    y = y + iconSize + UI_BORDER_SPACING
+    self:addButton(cx + iconWidth + UI_BORDER_SPACING, y, 110, txt("IconDefault"), Settings.onIconDefault)
+    y = y + BUTTON_HGT + UI_BORDER_SPACING * 2
 
     if action.toggle then
-        self:addLabel(txt("OnClick"), y)
-        self.syncCombo = self:addCombo(cx, y, CONTROL_WIDTH, {
+        local label = self:addLabel(txt("OnClick"), y)
+        self.syncCombo = self:addCombo(cx, y, self.controlWidth, {
             { text = txt("OnClickFlip"), data = SYNC_FLIP },
             { text = txt("OnClickSyncUpdate"), data = SYNC_UPDATE },
             { text = txt("OnClickSyncOnly"), data = SYNC_ONLY },
         }, Hotbar.syncModeOf(self.slot) or SYNC_FLIP)
         y = y + BUTTON_HGT + 2
-        y = self:addHint(txt("OnClickHint"), y)
-        y = y + UI_BORDER_SPACING
+        y = self:addModeHint(self.syncCombo, {
+            [SYNC_FLIP] = txt("OnClickFlipHint"),
+            [SYNC_UPDATE] = txt("OnClickSyncUpdateHint"),
+            [SYNC_ONLY] = txt("OnClickSyncOnlyHint"),
+        }, label, txt("OnClickHint"), y)
+        -- Steps saved before "Follow step 1" existed read as independent, which is
+        -- easy to miss: say so while a mode that syncs is picked.
+        if self.slot.steps and #self.slot.steps > 0 and not self:hasFollowers() then
+            y = self:addModeHint(self.syncCombo, {
+                [SYNC_UPDATE] = txt("OnClickNoFollowersUpdate"),
+                [SYNC_ONLY] = txt("OnClickNoFollowersOnly"),
+            }, label, txt("OnClickHint"), y, AMBER)
+        end
+        y = y + UI_BORDER_SPACING * 2
     end
 
-    self:addLabel(txt("Repeat"), y)
-    self.repeatCombo = self:addCombo(cx, y, CONTROL_WIDTH, {
+    local repeatLabel = self:addLabel(txt("Repeat"), y)
+    self.repeatCombo = self:addCombo(cx, y, self.controlWidth, {
         { text = txt("RepeatOff"), data = "off" },
         { text = txt("RepeatClick"), data = REPEAT_CLICK },
         { text = txt("RepeatHold"), data = REPEAT_HOLD },
     }, Hotbar.repeatModeOf(self.slot) or "off")
-    y = y + BUTTON_HGT + 4
-    self:addLabel(txt("RepeatEvery"), y)
-    self.repeatMsEntry = self:addEntry(cx, y, 100, string.format("%d", Hotbar.repeatInterval(self.slot)), true)
-    y = y + BUTTON_HGT + 4
-    self:addLabel(txt("RepeatTimes"), y)
-    self.repeatTimesEntry = self:addEntry(cx, y, 100, string.format("%d", Hotbar.repeatTimes(self.slot)), true)
     y = y + BUTTON_HGT + 2
-    y = self:addHint(txt("RepeatHint"), y)
-    y = y + UI_BORDER_SPACING
+    y = self:addModeHint(self.repeatCombo, {
+        off = txt("RepeatOffHint"),
+        [REPEAT_CLICK] = txt("RepeatClickHint"),
+        [REPEAT_HOLD] = txt("RepeatHoldHint"),
+    }, repeatLabel, txt("RepeatHint"), y)
+    y = y + 4
+    -- Greyed out while Off (their values are kept for turning it on again, see prerender).
+    self.repeatRow = {}
+    table.insert(self.repeatRow, self:addLabel(txt("RepeatEvery"), y))
+    self.repeatMsEntry = self:addEntry(cx, y, 100, string.format("%d", Hotbar.repeatInterval(self.slot)), true)
+    table.insert(self.repeatRow, self:addSuffix(txt("RepeatEveryUnit"), cx + 110, y))
+    y = y + BUTTON_HGT + 4
+    table.insert(self.repeatRow, self:addLabel(txt("RepeatTimes"), y))
+    self.repeatTimesEntry = self:addEntry(cx, y, 100, string.format("%d", Hotbar.repeatTimes(self.slot)), true)
+    table.insert(self.repeatRow, self:addSuffix(txt("RepeatTimesUnit"), cx + 110, y))
+    y = y + BUTTON_HGT + UI_BORDER_SPACING * 2
 
     local confirm = self.slot.confirm
     if confirm == nil then confirm = Hotbar.defaultConfirm(self.slot) end
-    self.confirmTick = self:addTick(cx, y, CONTROL_WIDTH, txt("AskBeforeRunning"), confirm)
+    self.confirmTick = self:addTick(cx, y, self.controlWidth, txt("AskBeforeRunning"), confirm)
     y = y + BUTTON_HGT + UI_BORDER_SPACING * 2
 
     self:addSaveCancel(y)
@@ -3070,8 +3163,8 @@ function Settings:addParamRow(spec, cx, y)
             options[2] = { text = txt("SettingNobody"), data = "@ask" }
         end
         row.combo = self:addCombo(cx, y, 150, options, mode)
-        row.entry = self:addEntry(cx + 160, y, CONTROL_WIDTH - 160 - 40, mode == "name" and raw or "")
-        row.pick = self:addButton(cx + CONTROL_WIDTH - 32, y, 32, "...", function()
+        row.entry = self:addEntry(cx + 160, y, self.controlWidth - 160 - 40, mode == "name" and raw or "")
+        row.pick = self:addButton(cx + self.controlWidth - 32, y, 32, "...", function()
             Hotbar.pickPlayer(getPlayer(), function(username)
                 row.entry:setText(username)
                 row.combo:selectData("name")
@@ -3093,7 +3186,7 @@ function Settings:addParamRow(spec, cx, y)
             table.insert(options, { text = txt("SettingPlayerPosition"), data = "@player" })
         end
         table.insert(options, { text = txt("SettingFixed"), data = "fixed" })
-        row.combo = self:addCombo(cx, y, CONTROL_WIDTH, options, mode)
+        row.combo = self:addCombo(cx, y, self.controlWidth, options, mode)
         y = y + BUTTON_HGT + 4
         row.entry = self:addEntry(cx, y, 140, mode == "fixed" and raw or "")
         row.entry:setPlaceholderText("x,y,z")
@@ -3111,7 +3204,7 @@ function Settings:addParamRow(spec, cx, y)
         return y + BUTTON_HGT + UI_BORDER_SPACING
 
     elseif spec.type == "vehicle" then
-        row.combo = self:addCombo(cx, y, CONTROL_WIDTH, {
+        row.combo = self:addCombo(cx, y, self.controlWidth, {
             { text = txt("SettingNearVehicle"), data = "@near" },
             { text = txt("SettingPick"), data = "@pick" },
             { text = txt("SettingPickMany"), data = PICK_MANY },
@@ -3131,26 +3224,26 @@ function Settings:addParamRow(spec, cx, y)
         return y + BUTTON_HGT + UI_BORDER_SPACING
 
     elseif spec.type == "text" then
-        row.entry = self:addEntry(cx, y, CONTROL_WIDTH, raw or "")
+        row.entry = self:addEntry(cx, y, self.controlWidth, raw or "")
         if spec.hint then row.entry:setPlaceholderText(spec.hint) end
         return y + BUTTON_HGT + UI_BORDER_SPACING
 
     elseif spec.type == "bool" then
-        row.tick = self:addTick(cx, y, CONTROL_WIDTH, spec.tickText or getText("IGUI_DebugMenu_Enabled"), raw == true)
+        row.tick = self:addTick(cx, y, self.controlWidth, spec.tickText or getText("IGUI_DebugMenu_Enabled"), raw == true)
         return y + BUTTON_HGT + UI_BORDER_SPACING
 
     elseif spec.type == "choice" then
         local choices = Hotbar.choicesOf(spec)
         if spec.search or #choices > 30 then
             row.value = raw
-            row.button = self:addButton(cx, y, CONTROL_WIDTH - 90, "", function()
+            row.button = self:addButton(cx, y, self.controlWidth - 90, "", function()
                 Hotbar.pickFromList(spec.title, Hotbar.choicesOf(spec), function(data)
                     row.value = data
                     row.button:setTitle(Hotbar.choiceText(spec, data))
                 end)
             end)
             row.button:setTitle(raw ~= nil and Hotbar.choiceText(spec, raw) or (spec.optional and txt("SettingNone") or txt("SettingAsk")))
-            self:addButton(cx + CONTROL_WIDTH - 80, y, 80, spec.optional and txt("Clear") or txt("SettingAskShort"), function()
+            self:addButton(cx + self.controlWidth - 80, y, 80, spec.optional and txt("Clear") or txt("SettingAskShort"), function()
                 row.value = nil
                 row.button:setTitle(spec.optional and txt("SettingNone") or txt("SettingAsk"))
             end)
@@ -3160,7 +3253,7 @@ function Settings:addParamRow(spec, cx, y)
                 table.insert(options, { text = spec.optional and txt("SettingNone") or txt("SettingAsk"), data = nil })
             end
             for _, choice in ipairs(choices) do table.insert(options, choice) end
-            row.combo = self:addCombo(cx, y, CONTROL_WIDTH, options, raw)
+            row.combo = self:addCombo(cx, y, self.controlWidth, options, raw)
         end
         return y + BUTTON_HGT + UI_BORDER_SPACING
 
@@ -3169,7 +3262,7 @@ function Settings:addParamRow(spec, cx, y)
         local function titleOf(value)
             return value or (spec.optional and txt("SettingNone") or txt("SettingAsk"))
         end
-        row.button = self:addButton(cx, y, CONTROL_WIDTH - 90, titleOf(row.value), function()
+        row.button = self:addButton(cx, y, self.controlWidth - 90, titleOf(row.value), function()
             if not Hotbar.Icons then return end
             Hotbar.Icons.openTilePicker(row.value, function(tile)
                 if not tile then return end
@@ -3177,7 +3270,7 @@ function Settings:addParamRow(spec, cx, y)
                 row.button:setTitle(titleOf(tile))
             end)
         end)
-        self:addButton(cx + CONTROL_WIDTH - 80, y, 80, spec.optional and txt("Clear") or txt("SettingAskShort"), function()
+        self:addButton(cx + self.controlWidth - 80, y, 80, spec.optional and txt("Clear") or txt("SettingAskShort"), function()
             row.value = nil
             row.button:setTitle(titleOf(nil))
         end)
@@ -3189,7 +3282,7 @@ function Settings:addParamRow(spec, cx, y)
         row.label = ISLabel:new(cx, y, BUTTON_HGT, summary, 0.85, 0.85, 0.85, 1, UIFont.Small, true)
         row.label:initialise()
         self:addChild(row.label)
-        self:addButton(cx + CONTROL_WIDTH - 80, y, 80, txt("Clear"), function()
+        self:addButton(cx + self.controlWidth - 80, y, 80, txt("Clear"), function()
             row.value = nil
             row.label:setName(txt("PresetNone"))
         end)
@@ -3286,6 +3379,16 @@ end
 
 function Settings:prerender()
     ISPanel.prerender(self)
+    for _, hint in ipairs(self.modeHints) do self:updateModeHint(hint) end
+    if self.repeatCombo then
+        local on = self.repeatCombo:getOptionData(self.repeatCombo.selected) ~= "off"
+        if on ~= self.repeatOn then
+            self.repeatOn = on
+            self.repeatMsEntry:setEditable(on)
+            self.repeatTimesEntry:setEditable(on)
+            for _, label in ipairs(self.repeatRow) do label.a = on and 1 or 0.4 end
+        end
+    end
     self:drawText(txt("SettingsTitle", Hotbar.titleOf(self.action, self.slot)), UI_BORDER_SPACING + 1, UI_BORDER_SPACING, 1, 1, 1, 1, UIFont.Medium)
 end
 
