@@ -69,6 +69,9 @@ or methods exist.
   write `Zomboid/Lua/<name>`. Server identity on a client: `getServerIP()`, `getServerPort()` ("" in single player);
   save name: `getWorld():getWorld()` (`getCurrentSaveName()` is the full save folder path).
 - Keys: `Events.OnKeyPressed(key)`, `getKeyName(key)`; mod key binds via `PZAPI.ModOptions` (see below).
+  `OnKeyPressed` fires when a key is **released** (`GameKeyboard.update`); `OnKeyStartPressed` when it goes down,
+  `OnKeyKeepPressed` every frame while held (none of them while a text box has focus or a UI element takes the key).
+  `isKeyDown(key)` and `isMouseButtonDown(0)` poll the current state.
 
 ## Mod conventions
 
@@ -781,7 +784,11 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
   Actions marked `opensWindow` (plus openUI and the windows category) remember the UIs that appear within 1.5 s
   and a second click closes them. `slot.steps` = extra `{ action, settings, window }` run after the slot's own
   (`Hotbar.partsOf`): all resolved first (asked player / square / vehicle shared), one confirm, then each step after its own `delay` (ms, default 300, 0 = same frame, `Hotbar.stepDelay`); the slot's `syncMode` ("On click", `Hotbar.syncModeOf`) sets how toggles turn: `flip` (saved explicitly; nil on load = older slot, becomes `update` if a step follows) flips every toggle from its own state; `update` flips part 1 and each step with `follow` (`same`/`opposite`, nil = independent) takes the state part 1 asked for at click time (`runParts` passes it on; own flip when part 1 is no toggle or its state is unknown); `only` does not run part 1 and turns the followers to its current state (independent and non-toggle steps skipped, nothing when the state is unknown); new steps default to `follow = same`;
-  saved as `steps.#n.*` on the slot line. Focus (`Bar:updateFocus`): many vanilla windows never `bringToTop` on a
+  saved as `steps.#n.*` on the slot line. `slot.repeatMode` (`click` / `hold`, `repeatMs` >= 100, `repeatTimes` 0 = no
+  limit): the first run resolves and confirms as usual (answers memoised), each later run re-resolves synchronously
+  with them from `onRepeatTick` (at most one run a frame, a stall's backlog dropped); `hold`
+  starts on `SlotButton:onMouseDown` / `OnKeyStartPressed` and polls `isMouseButtonDown(0)` / `isKeyDown(key)`, and
+  falls back to `click` when the first run had to ask or confirm. Keep-picking slots ignore it. Focus (`Bar:updateFocus`): many vanilla windows never `bringToTop` on a
   click (ISInventoryPage), so on each press the bar brings itself, or the window it covers that was clicked, to the front.
   Single player: only with `-debug` (`isDebugEnabled()`), every capability assumed, each action has vanilla's single
   player branch, server-only actions greyed out; the sidebar button goes under the lowest button (no Admin button),

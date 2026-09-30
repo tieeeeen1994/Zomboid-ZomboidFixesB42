@@ -30,6 +30,9 @@
         the first step flips and the steps following it take its new state (or
         the opposite), or the first step stays and the following steps are
         only synced to its current state.
+      - A slot can repeat: run again every N milliseconds (100 at least), a set
+        number of times or until clicked again, or only while its mouse button or
+        key is held (see "Repeating a slot").
       - A second click on a slot that opened a window closes it.
 
     Everything goes through vanilla commands and packets (or this mod's own Body
@@ -103,6 +106,10 @@ local CLIMATE_MS = 10000
 -- a slot"), and the longest wait a step may set.
 local STEP_DELAY_MS = 300
 local STEP_DELAY_MAX_MS = 600000
+-- A repeating slot's interval unless set, and its bounds (see "Repeating a slot").
+local REPEAT_MS = 1000
+local REPEAT_MIN_MS = 100
+local REPEAT_MAX_MS = 600000
 
 local SLOT_KEYS = 10
 local SIZES = { 32, 40, 48 }
@@ -305,6 +312,28 @@ function Hotbar.stepDelay(step)
     return math.max(0, math.min(STEP_DELAY_MAX_MS, math.floor(delay)))
 end
 
+--- A slot's "Repeat" (slot.repeatMode, see "Repeating a slot"): nil runs it once per
+-- click, REPEAT_CLICK runs it again and again until it is clicked again, REPEAT_HOLD
+-- while its mouse button or key is held.
+local REPEAT_CLICK = "click"
+local REPEAT_HOLD = "hold"
+
+function Hotbar.repeatModeOf(slot)
+    if slot.repeatMode == REPEAT_CLICK or slot.repeatMode == REPEAT_HOLD then return slot.repeatMode end
+    return nil
+end
+
+--- A repeating slot's interval in milliseconds, at least REPEAT_MIN_MS.
+function Hotbar.repeatInterval(slot)
+    local interval = tonumber(slot.repeatMs) or REPEAT_MS
+    return math.max(REPEAT_MIN_MS, math.min(REPEAT_MAX_MS, math.floor(interval)))
+end
+
+--- How many times a repeating slot runs per click or hold; 0 = until stopped.
+function Hotbar.repeatTimes(slot)
+    return math.max(0, math.floor(tonumber(slot.repeatTimes) or 0))
+end
+
 --- "Ask before running" when the slot does not say: if any part's action asks.
 function Hotbar.defaultConfirm(slot)
     for _, part in ipairs(Hotbar.partsOf(slot)) do
@@ -451,6 +480,7 @@ function Hotbar.save()
         flatten({
             action = slot.action, label = slot.label, icon = slot.icon, tint = slot.tint,
             confirm = slot.confirm, window = slot.window, syncMode = slot.syncMode,
+            repeatMode = Hotbar.repeatModeOf(slot), repeatMs = slot.repeatMs, repeatTimes = slot.repeatTimes,
         }, "", fields)
         flatten(slot.settings or {}, "s.", fields)
         -- steps.#1.action, steps.#1.settings.<key>, steps.#1.window...
@@ -537,6 +567,9 @@ function Hotbar.load()
                 confirm = record.confirm,
                 window = record.window == true,
                 syncMode = syncMode,
+                repeatMode = Hotbar.repeatModeOf(record),
+                repeatMs = tonumber(record.repeatMs),
+                repeatTimes = tonumber(record.repeatTimes),
                 settings = type(record.s) == "table" and record.s or {},
                 steps = steps,
             })
@@ -1189,6 +1222,14 @@ local function computeState(slot, admin, now)
             state.pending = true
         end
     end
+
+    -- Repeating: shown on (not amber, though each run of a toggle leaves it pending).
+    if Hotbar.isRepeating(slot) then
+        state.toggle = true
+        state.on = true
+        state.pending = nil
+        state.repeating = true
+    end
     return state
 end
 
@@ -1438,7 +1479,9 @@ local function isFollower(ctx)
     return isTogglePart(ctx) and Hotbar.followOf(ctx.slot) ~= nil
 end
 
-local function runParts(slot, contexts)
+--- Run a slot's resolved parts; false when nothing could run. again: a repeat after
+-- the first run, whose windows are not watched again.
+local function runParts(slot, contexts, again)
     local parts = Hotbar.partsOf(slot)
     local mode = Hotbar.syncModeOf(slot)
     -- Sync only: the first part's current state, which the following steps turn to
@@ -1449,12 +1492,12 @@ local function runParts(slot, contexts)
         local ok, current = pcall(first.action.toggle.isOn, first)
         if not ok or current == nil then
             Hotbar.say(first.admin, txt("SyncUnknown", Hotbar.titleOf(first.action, slot)), true)
-            return
+            return false
         end
         syncLead = current
     end
     local watch = false
-    if syncLead == nil then
+    if syncLead == nil and not again then
         for _, part in ipairs(parts) do
             if partOpensWindow(part) then watch = true end
         end
@@ -1484,6 +1527,7 @@ local function runParts(slot, contexts)
         end
     end
     runNext()
+    return true
 end
 
 --- Resolve every part in order (asking where needed), then done(contexts).
@@ -1585,10 +1629,141 @@ local function startPicking(slot, admin)
     end)
 end
 
-function Hotbar.activate(slot, admin)
+--[[
+    Repeating a slot (slot.repeatMode): one click (REPEAT_CLICK) or a press
+    (REPEAT_HOLD) runs the whole slot, steps included, then again every
+    repeatInterval milliseconds, until the slot is clicked again (or, held, its mouse
+    button or key is let go), repeatTimes runs are done, or the slot can no longer
+    be used. What is asked when used, and "Ask before running", is asked once, before
+    the first run, and every later run uses the answers; everything else is read
+    again for each run, so "My position" or "The vehicle I'm in" follow the admin. A
+    run whose settings cannot be read any more (the player left, no vehicle near) ends
+    the repeat, after the one message about it.
+
+    Runs are checked once a frame (OnTick), so each lands on the first frame after
+    its time, at most one a frame; after a stall longer than the interval the missed
+    runs are dropped rather than caught up. The interval is at least REPEAT_MIN_MS:
+    every run that sends something is its own packet, and a client drops its packets
+    of one type beyond the server's MaxPacketsPerSecond (300 by default) in a second
+    (PacketsCache.isLimitExceeded), silently.
+
+    Held: the press starts it (OnKeyStartPressed for a key, the button's onMouseDown
+    for the mouse), and the key's release (OnKeyPressed fires on release) or the
+    mouse button's does nothing more. A slot that has to ask something or confirm
+    first cannot know it is still held after the answer, so it repeats until clicked
+    again instead. Dragging a held slot to move it ends the repeat as the drag
+    begins. A slot that keeps picking squares already runs on every click on the map,
+    and does that instead of repeating.
+--]]
+local repeating = {}
+local repeatingCount = 0
+
+function Hotbar.isRepeating(slot)
+    return repeating[slot] ~= nil
+end
+
+--- Stop a slot's repeat, if it runs. quietly: no message.
+function Hotbar.stopRepeat(slot, quietly)
+    local rep = repeating[slot]
+    if not rep then return end
+    repeating[slot] = nil
+    repeatingCount = repeatingCount - 1
+    Hotbar.invalidate(slot)
+    if not quietly and not rep.held then
+        Hotbar.say(rep.admin, txt("RepeatStopped", string.format("%d", rep.runs)))
+    end
+end
+
+--- Run a repeating slot once more with the answers of its first run; false when a
+-- setting could not be read (resolveOne has said why) or nothing could run.
+local function runRepeat(slot, rep)
+    local shared = { memo = rep.memo, player = rep.shared.player, location = rep.shared.location, vehicle = rep.shared.vehicle }
+    local contexts = nil
+    -- Every answer is known, so this resolves in the same call or not at all.
+    resolveParts(slot, rep.admin, shared, function(resolved) contexts = resolved end)
+    if not contexts then return false end
+    return runParts(slot, contexts, true)
+end
+
+--- held: a function telling whether the press that started it is still held, for a
+-- held repeat; nil repeats until clicked again.
+local function startRepeat(slot, admin, held)
+    local memo = {}
+    local shared = { memo = memo }
+    local waiting = true
+    resolveParts(slot, admin, shared, function(contexts)
+        confirmThen(slot, function()
+            -- Anything answered in a dialog or on the map is no longer the same press.
+            local stillHeld = waiting and held or nil
+            Hotbar.stopRepeat(slot, true)
+            if not runParts(slot, contexts) then return end
+            local rep = {
+                admin = admin, memo = memo, shared = shared, held = stillHeld,
+                interval = Hotbar.repeatInterval(slot), times = Hotbar.repeatTimes(slot),
+                runs = 1,
+            }
+            rep.nextMs = getTimestampMs() + rep.interval
+            if rep.times == 1 then return end
+            repeating[slot] = rep
+            repeatingCount = repeatingCount + 1
+            Hotbar.invalidate(slot)
+            if not stillHeld then
+                Hotbar.say(admin, txt("RepeatStarted", string.format("%d", rep.interval)))
+            end
+        end)
+    end)
+    waiting = false
+end
+
+local function onRepeatTick()
+    if repeatingCount <= 0 then return end
+    local onBar = {}
+    for _, slot in ipairs(Hotbar.state and Hotbar.state.slots or {}) do onBar[slot] = true end
+    local now = getTimestampMs()
+    local stops = {}
+    for slot, rep in pairs(repeating) do
+        local admin = rep.admin
+        local stop = nil
+        if not onBar[slot] or admin ~= getPlayer() or not Hotbar.canUse(admin) then
+            stop = { quietly = true }
+        elseif rep.held and not rep.held() then
+            stop = { quietly = true }
+        else
+            local ok, reason = Hotbar.slotAvailability(slot, admin)
+            if not ok then
+                Hotbar.say(admin, reason, true)
+                stop = {}
+            end
+        end
+        if not stop and rep.nextMs <= now then
+            if not runRepeat(slot, rep) then
+                stop = {}
+            else
+                rep.runs = rep.runs + 1
+                -- On schedule, unless a stall put it a whole interval behind.
+                rep.nextMs = rep.nextMs + rep.interval
+                if rep.nextMs <= now then rep.nextMs = now + rep.interval end
+                if rep.times > 0 and rep.runs >= rep.times then stop = {} end
+            end
+        end
+        if stop then
+            stop.slot = slot
+            table.insert(stops, stop)
+        end
+    end
+    for _, stop in ipairs(stops) do Hotbar.stopRepeat(stop.slot, stop.quietly) end
+end
+
+Events.OnTick.Add(onRepeatTick)
+
+--- Use a slot. held (optional): the slot was pressed rather than clicked, and
+-- held() tells whether that press is still held (see "Repeating a slot").
+function Hotbar.activate(slot, admin, held)
     admin = admin or getPlayer()
     if not admin or not Hotbar.canUse(admin) then return end
-    -- A second click ends the slot's picking, or closes the window the first one opened.
+    -- A second click ends the slot's repeat or picking, or closes the window the first
+    -- one opened.
+    if Hotbar.isRepeating(slot) then return Hotbar.stopRepeat(slot) end
     if activePicker and activePicker.slot == slot then return Hotbar.endPicking() end
     if closeSlotWindows(slot) then return end
     local ok, reason = Hotbar.slotAvailability(slot, admin)
@@ -1598,6 +1773,10 @@ function Hotbar.activate(slot, admin)
     end
 
     if Hotbar.keepsPicking(slot) then return startPicking(slot, admin) end
+    local repeatMode = Hotbar.repeatModeOf(slot)
+    if repeatMode then
+        return startRepeat(slot, admin, repeatMode == REPEAT_HOLD and held or nil)
+    end
     resolveParts(slot, admin, {}, function(contexts)
         confirmThen(slot, function() runParts(slot, contexts) end)
     end)
@@ -1620,6 +1799,7 @@ end
 
 function Hotbar.removeSlot(slot)
     local state = Hotbar.state
+    Hotbar.stopRepeat(slot, true)
     for i, other in ipairs(state.slots) do
         if other == slot then
             table.remove(state.slots, i)
@@ -1806,12 +1986,18 @@ function SlotButton:render()
     if state.asks and state.available then
         self:drawText("?", 3, cell - FONT_HGT_SMALL - 1, 0.6, 0.85, 1, alpha, UIFont.Small)
     end
-    -- "+N": the slot also runs N steps after its own action.
+    -- "+N": the slot also runs N steps after its own action; "R": it repeats.
+    local right = self.width - 3
     local steps = self.slot.steps and #self.slot.steps or 0
     if steps > 0 then
         local text = "+" .. string.format("%d", steps)
         local textWidth = getTextManager():MeasureStringX(UIFont.Small, text)
-        self:drawText(text, self.width - textWidth - 3, cell - FONT_HGT_SMALL - 1, 1, 0.85, 0.4, alpha, UIFont.Small)
+        right = right - textWidth
+        self:drawText(text, right, cell - FONT_HGT_SMALL - 1, 1, 0.85, 0.4, alpha, UIFont.Small)
+    end
+    if Hotbar.repeatModeOf(self.slot) then
+        local textWidth = getTextManager():MeasureStringX(UIFont.Small, "R")
+        self:drawText("R", right - textWidth - 1, cell - FONT_HGT_SMALL - 1, 0.55, 0.8, 1, alpha, UIFont.Small)
     end
     if self.keyText then
         self:drawText(self.keyText, 3, 1, 1, 1, 1, 0.8 * alpha, UIFont.Small)
@@ -1852,10 +2038,18 @@ function DragGhost:prerender()
     end
 end
 
+local function mouseHeld()
+    return isMouseButtonDown(0)
+end
+
 function SlotButton:onMouseDown(x, y)
     ISButton.onMouseDown(self, x, y)
     if self.slot then
         self.dragFrom = { x = getMouseX(), y = getMouseY() }
+        -- Repeat while held: the press uses the slot, the release does not (onSlotClick).
+        if Hotbar.repeatModeOf(self.slot) == REPEAT_HOLD then
+            Hotbar.activate(self.slot, nil, mouseHeld)
+        end
     end
 end
 
@@ -1863,6 +2057,9 @@ function SlotButton:checkDrag()
     if not self.pressed or not self.dragFrom or self.bar.dragging then return end
     local moved = math.abs(getMouseX() - self.dragFrom.x) + math.abs(getMouseY() - self.dragFrom.y)
     if moved < DRAG_THRESHOLD then return end
+    -- Moving a slot held to repeat ends the repeat the press started.
+    local rep = repeating[self.slot]
+    if rep and rep.held then Hotbar.stopRepeat(self.slot, true) end
     self.bar.dragging = self
     self:setCapture(true)
     local ghost = DragGhost:new(self)
@@ -2003,6 +2200,8 @@ function Bar:onSlotClick(button)
     if not button.slot then
         return self:showAddMenu(nil)
     end
+    -- A slot that repeats while held was used when pressed (SlotButton:onMouseDown).
+    if Hotbar.repeatModeOf(button.slot) == REPEAT_HOLD then return end
     Hotbar.activate(button.slot)
 end
 
@@ -2116,7 +2315,19 @@ function Bar:tooltipFor(slot, state)
     if syncMode and action and action.toggle and not slot.window then
         table.insert(lines, txt(syncMode == SYNC_ONLY and "SyncOnlyTooltip" or "SyncUpdateTooltip"))
     end
-    if state.toggle then
+    local repeatMode = Hotbar.repeatModeOf(slot)
+    if repeatMode and not Hotbar.keepsPicking(slot) then
+        local interval = string.format("%d", Hotbar.repeatInterval(slot))
+        local times = Hotbar.repeatTimes(slot)
+        local key = repeatMode == REPEAT_HOLD and "RepeatHoldTooltip" or "RepeatClickTooltip"
+        if times > 0 then key = key .. "Times" end
+        table.insert(lines, txt(key, interval, string.format("%d", times)))
+    end
+    if state.repeating then
+        local rep = repeating[slot]
+        table.insert(lines, txt(rep and rep.held and "StateRepeatingHeld" or "StateRepeating",
+            string.format("%d", rep and rep.runs or 0)))
+    elseif state.toggle then
         if state.pending then
             table.insert(lines, txt("StateWaiting"))
         elseif state.on == true then
@@ -2243,7 +2454,11 @@ function Bar:showMenu(slot, index)
                 s.tint = saved.tint
                 s.confirm = saved.confirm
                 s.syncMode = saved.syncMode
+                s.repeatMode = saved.repeatMode
+                s.repeatMs = saved.repeatMs
+                s.repeatTimes = saved.repeatTimes
                 s.pending = nil
+                Hotbar.stopRepeat(s, true)
                 Hotbar.invalidate(s)
                 Hotbar.save()
                 Hotbar.refreshBar()
@@ -2773,6 +2988,22 @@ function Settings:createChildren()
         y = y + UI_BORDER_SPACING
     end
 
+    self:addLabel(txt("Repeat"), y)
+    self.repeatCombo = self:addCombo(cx, y, CONTROL_WIDTH, {
+        { text = txt("RepeatOff"), data = "off" },
+        { text = txt("RepeatClick"), data = REPEAT_CLICK },
+        { text = txt("RepeatHold"), data = REPEAT_HOLD },
+    }, Hotbar.repeatModeOf(self.slot) or "off")
+    y = y + BUTTON_HGT + 4
+    self:addLabel(txt("RepeatEvery"), y)
+    self.repeatMsEntry = self:addEntry(cx, y, 100, string.format("%d", Hotbar.repeatInterval(self.slot)), true)
+    y = y + BUTTON_HGT + 4
+    self:addLabel(txt("RepeatTimes"), y)
+    self.repeatTimesEntry = self:addEntry(cx, y, 100, string.format("%d", Hotbar.repeatTimes(self.slot)), true)
+    y = y + BUTTON_HGT + 2
+    y = self:addHint(txt("RepeatHint"), y)
+    y = y + UI_BORDER_SPACING
+
     local confirm = self.slot.confirm
     if confirm == nil then confirm = Hotbar.defaultConfirm(self.slot) end
     self.confirmTick = self:addTick(cx, y, CONTROL_WIDTH, txt("AskBeforeRunning"), confirm)
@@ -3042,6 +3273,12 @@ function Settings:onSaveClicked()
         if self.syncCombo then
             slot.syncMode = self.syncCombo:getOptionData(self.syncCombo.selected)
         end
+        slot.repeatMode = Hotbar.repeatModeOf({ repeatMode = self.repeatCombo:getOptionData(self.repeatCombo.selected) })
+        -- Empty entries keep the defaults; kept while Off, for turning it on again.
+        local interval = tonumber(self.repeatMsEntry:getText())
+        if interval then slot.repeatMs = Hotbar.repeatInterval({ repeatMs = interval }) end
+        local times = tonumber(self.repeatTimesEntry:getText())
+        if times then slot.repeatTimes = Hotbar.repeatTimes({ repeatTimes = times }) end
     end
     self:close()
     self.onSave(slot)
@@ -3268,13 +3505,34 @@ local function onKeyPressed(key)
     for i = 1, SLOT_KEYS do
         if core:isKey(slotKeyName(i), key) then
             local slot = Hotbar.state.slots[i]
-            if slot then Hotbar.activate(slot, admin) end
+            -- A slot that repeats while held was used when the key went down.
+            if slot and Hotbar.repeatModeOf(slot) ~= REPEAT_HOLD then Hotbar.activate(slot, admin) end
+            return
+        end
+    end
+end
+
+--- OnKeyPressed fires when a key is released (GameKeyboard.update), OnKeyStartPressed
+-- when it goes down: a slot that repeats while held starts on the press.
+local function onKeyStartPressed(key)
+    if not key or key == 0 or not Hotbar.state then return end
+    local admin = getPlayer()
+    if not admin or not Hotbar.canUse(admin) then return end
+
+    local core = getCore()
+    for i = 1, SLOT_KEYS do
+        if core:isKey(slotKeyName(i), key) then
+            local slot = Hotbar.state.slots[i]
+            if slot and Hotbar.repeatModeOf(slot) == REPEAT_HOLD then
+                Hotbar.activate(slot, admin, function() return isKeyDown(key) end)
+            end
             return
         end
     end
 end
 
 Events.OnKeyPressed.Add(onKeyPressed)
+Events.OnKeyStartPressed.Add(onKeyStartPressed)
 
 -- Start ------------------------------------------------------------------------------------------
 
