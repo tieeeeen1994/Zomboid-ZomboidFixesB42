@@ -673,6 +673,19 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
 - `ISScrollingListBox`: `addItem(text, item)`, `clear()`, `items[i].item`, `selected`, `itemheight`, `font`,
   `setOnMouseDownFunction(target, fn)` / `setOnMouseDoubleClick(target, fn)` → `fn(target, items[selected].item)`;
   replace `doDrawItem(y, item, alt)` (called as `list:doDrawItem`) and return the next y.
+- Grab menus (42.21): loot windows `ISInventoryPaneContextMenu.doGrabMenu(context, items, player)` (~4204, called at
+  ~626) adds Grab one / half / all to the root menu when a stack has >= 2 items (`#k.items > 2`, first is a dummy);
+  handlers take `(items, player)` and flatten with `ISInventoryPane.getActualItems`, `onGrabItems` walks once and queues
+  one transfer per item (corpses → `ISGrabCorpseItem`). Search mode icons: `ISBaseIcon:doGrabSubMenu(context,
+  plInvOption, inventory)` (Foraging/ISBaseIcon.lua ~68) builds a submenu from `itemObjTable` (keyed by item, `pairs`)
+  and calls `self:onClickContext(0, 0, contextMenu, inventory, items)`; only `ISWorldItemIcon` (`doPickup`) takes the
+  item list. `context:insertOptionAfter(name, text, target, fn, ...)` inserts next to an option by its text
+  (appends if not found). `*_GrabAmount.lua` adds "Grab amount..." to both.
+- `ISTextEntryBox:onCommandEntered()` is called by Java on Enter (`UITextBox2.onKeyEnter` → `onCommandEntered` →
+  `UIManager.tableget(table, "onCommandEntered")`, single-line boxes only; multi-line ones insert a newline). `ISTextBox`
+  does not wire it, so Enter does nothing in vanilla text dialogs unless an instance field `entry.onCommandEntered` is
+  set. Closing the dialog from it is safe in game: the only default bind on Enter, `ALT_TOGGLE_CHAT`, is defined in
+  `KeybindId` and keyBinding.lua but read by nothing (chat opens on `TOGGLE_CHAT` = T).
 - `ISModalDialog:new(x, y, w, h, text, yesno, target, onclick)` → `onclick(target, button)`, `button.internal == "YES"`.
 - `ISTextBox:new(x, y, w, h, title, default, target, onclick)` → `onclick(target, button)`, `button.internal == "OK"`,
   text in `button.parent.entry:getText()`; `setOnlyNumbers(true)` after `initialise()`.

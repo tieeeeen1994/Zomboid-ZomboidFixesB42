@@ -21,6 +21,7 @@ description=- Guns of Marz guns show the magazine really in them, and its capaci
 description=- Running players no longer vault stair railings by accident.
 description=- Fast forward in multiplayer, when every player votes for it, with actions, looting and cooking sped up too; right-click a speed to auto fast forward actions longer than 5 seconds.
 description=- Shift-click selects a full range with Nick's Inventory Selection Fix.
+description=- Grab amount... between Grab one and Grab all takes exactly as many items from a stack as you type.
 description=- Turbo Game cartridges, batteries, best scores and mood effects work on servers, best scores are kept per console, playing no longer moves your character, and games close near zombies or in the dark.
 description=- Admins who join are fully healed and briefly in god mode, so a revived admin does not die again (off by default).
 description=- Admins can change any player's body stats (hunger, mood, health, calories, weight and more) like the debug Body panel, and the changes stick for everyone.

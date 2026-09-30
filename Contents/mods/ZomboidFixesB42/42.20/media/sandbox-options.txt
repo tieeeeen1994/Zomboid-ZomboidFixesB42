@@ -182,6 +182,14 @@ option ZomboidFixesB42.NISFShiftRange
     translation = ZomboidFixesB42_NISFShiftRange,
 }
 
+option ZomboidFixesB42.GrabAmount
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_GrabAmount,
+}
+
 option ZomboidFixesB42.TurboGameMultiplayer
 {
     type = boolean,

@@ -379,5 +379,8 @@
     "IGUI_ZomboidFixesB42_AdminHotbar_IconNoTint": "No tint",
     "IGUI_ZomboidFixesB42_AdminHotbar_IconPickTileset": "Pick a tile set on the left.",
     "IGUI_ZomboidFixesB42_AdminHotbar_MultiplayerOnly": "Multiplayer only.",
-    "IGUI_ZomboidFixesB42_AdminHotbar_NeedsOtherPlayer": "Needs another player (split screen in single player)."
+    "IGUI_ZomboidFixesB42_AdminHotbar_NeedsOtherPlayer": "Needs another player (split screen in single player).",
+    "IGUI_ZomboidFixesB42_GrabAmount": "Grab amount...",
+    "IGUI_ZomboidFixesB42_GrabAmount_Prompt": "How many to grab? (1 to %1)",
+    "IGUI_ZomboidFixesB42_GrabAmount_Invalid": "Enter a whole number from 1 to %1"
 }
