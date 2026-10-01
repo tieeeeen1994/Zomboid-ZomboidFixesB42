@@ -743,6 +743,44 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
 - `ISButton:new(x, y, w, h, title, target, onclick)` → `onclick(target, button)`; `tooltip` string (with `\n`);
   `setImage`, `textureColor = { r, g, b, a }`, `enableAcceptColor/enableCancelColor`, `setEnable`.
 - Feedback over a player's head: `HaloTextHelper.addText(player, text)` / `addBadText`.
+- World markers (`zombie/iso/WorldMarkers.java`, `getWorldMarkers()`, client only, each returns an object with `:remove()`;
+  textures in `media/textures/highlights/`): `addDirectionArrow(chr, x, y, z, texName|nil, r, g, b, a)` (Horde Manager /
+  Tile Picker `addMarker`) is a **screen-space** marker, not drawn on the ground: target on screen (< 300 tiles) =
+  `dir_arrow_down` hovering over the square (`dir_arrow_stairs_up` when the target is on a higher floor; for a lower floor
+  the code picks `texStairsUp` again, a vanilla typo, so `dir_arrow_stairs_down` never shows), off screen = `texName`
+  (default `dir_arrow_up`, 48x48) rotated toward it where the line from screen centre crosses the inner screen border.
+  `addPlayerHomingPoint(chr, x, y, r, g, b, a)` (search mode icons, tutorial) = `arrow_triangle` (32x32) near the player,
+  turning (lerped) to point at the target. `addGridSquareMarker(square, r, g, b, doAlpha, radius)` = `circle_center` +
+  `circle_only_highlight` ellipse on the floor (+ `setScaleCircleTexture`); the 10-argument form takes the two texture
+  names first. A grid square marker is a floor sprite (`IsoSpriteInstance.render` in `IsoCell` ~1065, before shadows and
+  characters), drawn only while its z equals the player's; its texture is fixed at creation
+  (`media/textures/highlights/<name>.png`, width scaled to 64 × tileScale per tile size unit, so mods can add their own
+  there) and `setPos(x, y, z)` takes **ints** (snaps per tile).
+- Drawing on the floor from Lua: `IsoCell` (~1092) fires `Events.OnPostFloorLayerDraw(z)` per z layer right after the
+  floor tiles and grid square markers, gated by `DebugOptions.terrain.renderTiles.lua`, a debug-only option whose value is
+  its default (true) without `-debug` (`BooleanDebugOption.getValue`), so it fires in normal play. Vanilla Lua never uses
+  it. `getRenderer()` = `SpriteRenderer` (exposed); quad overload `render(tex, x1, y1, x2, y2, x3, y3, x4, y4, r, g, b, a,
+  nil)` (doubles; also an int-colour one). `IsoUtils` and `IsoCamera` are exposed (`IsoUtils.XToScreen(x, y, z, 0)`,
+  `ISCoordConversion.ToScreen`). Not verified yet: which coordinate space (camera offset, zoom, split screen) a draw
+  made inside that event uses in 42.x. UI-space alternative: `isoToScreenX/Y(playerNum, x, y, z)` (forage icons) +
+  `ISUIElement:drawTextureAllPoint`, drawn over everything.
+- Stairs (IsoGridSquare ~2546-2670, ~10248): a staircase is three squares on the **lower** z, typed `IsoObjectType`
+  stairsBN/MN/TN (north-facing: T at the smallest y, B at T.y + 2, climbed towards -y) or stairsBW/MW/TW (T at the smallest
+  x, climbed towards -x); the top leads onto z + 1 at the square beyond T. `square:getStairs()` (the type, or MAX),
+  `HasStairs()`, `HasStairsNorth/West()`, `HasStairTop()`, `HasStairsBelow()`, `getStairsDirection()` (N, W or nil),
+  `isSameStaircase(x, y, z)`. Sheet ropes: field `haveSheetRope`, `getSheetRope()`.
+- Directions: `IsoDirections` N = (0, -1), i.e. world -y (drawn up-right on screen, up on the world map); E = +x.
+  `IsoDirections.fromAngle(dx, dy)` (8-way, `atan2(dy, dx)`) / `cardinalFromAngle(dx, dy)` (4-way), `dx()`/`dy()`,
+  `toString()` = "N", "NE"... Vanilla shows them untranslated (`ISAnimalTracksUI` prints `getDir():toString()`); no
+  direction-name strings exist in Translate/EN. A world offset (dx, dy) appears on screen along (dx - dy, (dx + dy) / 2).
+- Containers are filled on first view: `ISInventoryPage` (~1106, `checkExplored` ~1511), `ISObjectClickHandler` (~309) and
+  `ISOpenContainerTimedAction` call `ItemPicker.fillContainer` (SP) or `container:requestServerItemsForContainer()` (MP)
+  when `not container:isExplored()`, then `setExplored(true)`. The loot window's Floor is a per-player
+  `ItemContainer.new("floor")` rebuilt in `refreshBackpacks` (~1637) from `getWorldObjects()` of the 3x3 squares around
+  the player that `canReachTo` and `SafeHouse.isSafehouseAllowLoot` allow; a floor bag adds its own container button.
+  Square visibility: `square:isCanSee(playerNum)`, `isCouldSee(playerNum)`, `isSeen(playerNum)` read the per-player
+  lighting flags `bCanSee` / `bCouldSee` / `bSeen` (IsoGridSquare ~9170-9370; vanilla click handlers gate on `isSeen(0)`,
+  cursors on `isCouldSee`). Exact meaning not traced further.
 - Drag and drop inside a panel: on `onMouseDown` remember the mouse, in `onMouseMove` and `onMouseMoveOutside` (both
   keep arriving while the button is pressed) start the drag past a few pixels with `self:setCapture(true)`, finish in
   `onMouseUp` / `onMouseUpOutside` (release the capture, reset `pressed` so ISButton does not also click). A ghost that
