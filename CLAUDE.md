@@ -641,6 +641,12 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
 - `ISEquippedItem:initialise()` stacks sidebar buttons at `prev:getBottom() + 15`, sized to the sidebar texture
   (read `adminBtn:getWidth()`); `adminBtn`/`warManagerBtn` exist only when `isClient()`. `prerender()` re-places
   `warManagerBtn` under `adminBtn` every frame; `shrinkWrap()` sizes the panel to its ISButtons.
+  The buttons exist only for player 0's sidebar; the gap is a file-local `UI_BORDER_SPACING` (10) + 5. Icons are
+  `media/ui/Sidebar/<w>/<Name>_Off|On_<w>.png`, w = 48/64/80/96/128 from `getOptionSidebarSize()` (6 = font size - 1),
+  height w * 0.75; changing the option rebuilds the sidebar (`checkSidebarSizeOption` → `launchEquippedItem`), so
+  wrappers of `initialise` run again. Hover tooltips (`addMouseOverToolTipItem`) read the element's live bounds. To put
+  a button in the middle of the stack, wrap `initialise` and move every child at or below the anchor's bottom down
+  (TienLastSeenWhere does it under Inventory). Tutorial mode hides most buttons in `prerender`.
 - `ISButton` draws everything in its own `prerender`/`render`; a subclass can replace both (call `self:updateTooltip()`).
   `onRightMouseUp(x, y)` is not handled by ISButton, so a subclass can take it.
 - `ISScrollingListBox:prerender` calls `doDrawItem(y, item, alt)` for **every** row every frame (skip off-screen rows:
