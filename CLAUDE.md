@@ -647,6 +647,21 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
   wrappers of `initialise` run again. Hover tooltips (`addMouseOverToolTipItem`) read the element's live bounds. To put
   a button in the middle of the stack, wrap `initialise` and move every child at or below the anchor's bottom down
   (TienLastSeenWhere does it under Inventory). Tutorial mode hides most buttons in `prerender`.
+- More sidebar internals (TienCustomizableLeftSidebar relies on them): the Furniture and Map hover popups are top-level
+  panels placed only at creation (`10 + btn:getX/Y()` = the sidebar's absolute position + the button's) and shown while
+  the button `isMouseOver()`; `movableTooltip` (child, at the Furniture button's y) and `radialIcon` (safety countdown,
+  at the safety button's y) are separate children; vanilla's safety background and countdown text are drawn in
+  `prerender` at the safety button's position. Every frame `prerender` sets the visibility of Admin (role), Safety
+  (server option `SafetySystem`, which leaves a gap when off), War (`getWarNearest()`) and Furniture, and the War button's
+  y. `shrinkWrap` counts invisible buttons too. `checkToolTip` compares the absolute mouse position with the buttons'
+  relative bounds (off by the sidebar's 10 px offset) and ignores visibility. The Building button sits at x = 5. Button
+  `onclick`s are bound at creation to the then `ISEquippedItem.onOptionMouseDown`, so wrapping it after the sidebar
+  exists changes nothing for its buttons.
+- Java UI dispatch (`zombie/ui/UIElement`): `render` = Lua `prerender`, children, Lua `render`, so positions set in a
+  `prerender` apply the same frame; a child lying entirely above or below its parent is not drawn unless the parent has
+  `renderClippedChildren`. `isMouseOver()` only tests bounds, not visibility. Right-click goes to the children first
+  (topmost first), then to the parent's Lua `onRightMouseUp`; a Lua handler returning nil counts as consumed, and
+  `ISUIElement` defines an empty one, so every Lua panel swallows right-clicks unless it returns false.
 - `ISButton` draws everything in its own `prerender`/`render`; a subclass can replace both (call `self:updateTooltip()`).
   `onRightMouseUp(x, y)` is not handled by ISButton, so a subclass can take it.
 - `ISScrollingListBox:prerender` calls `doDrawItem(y, item, alt)` for **every** row every frame (skip off-screen rows:
@@ -775,14 +790,23 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
   characters), drawn only while its z equals the player's; its texture is fixed at creation
   (`media/textures/highlights/<name>.png`, width scaled to 64 × tileScale per tile size unit, so mods can add their own
   there) and `setPos(x, y, z)` takes **ints** (snaps per tile).
-- Drawing on the floor from Lua: `IsoCell` (~1092) fires `Events.OnPostFloorLayerDraw(z)` per z layer right after the
-  floor tiles and grid square markers, gated by `DebugOptions.terrain.renderTiles.lua`, a debug-only option whose value is
-  its default (true) without `-debug` (`BooleanDebugOption.getValue`), so it fires in normal play. Vanilla Lua never uses
-  it. `getRenderer()` = `SpriteRenderer` (exposed); quad overload `render(tex, x1, y1, x2, y2, x3, y3, x4, y4, r, g, b, a,
-  nil)` (doubles; also an int-colour one). `IsoUtils` and `IsoCamera` are exposed (`IsoUtils.XToScreen(x, y, z, 0)`,
-  `ISCoordConversion.ToScreen`). Not verified yet: which coordinate space (camera offset, zoom, split screen) a draw
-  made inside that event uses in 42.x. UI-space alternative: `isoToScreenX/Y(playerNum, x, y, z)` (forage icons) +
-  `ISUIElement:drawTextureAllPoint`, drawn over everything.
+- Drawing on the floor from Lua: **not possible with the B42 renderer.** Only the legacy `IsoCell` render path (~1092)
+  fires `Events.OnPostFloorLayerDraw(z)` (and OnPostFloorSquareDraw / OnPostTileDraw / OnPostWallSquareDraw /
+  OnPostCharactersSquareDraw); the default 42.x renderer, `zombie/iso/fboRenderChunk/FBORenderCell`, fires no Lua
+  event at all (confirmed in game: an arrow drawn from OnPostFloorLayerDraw never showed). FBORenderCell does render
+  `WorldMarkers` grid square markers. So a mod draws world-anchored things in the UI pass: `Events.OnPreUIDraw`
+  (UIManager, before the UI, after the world) with `isoToScreenX/Y(playerNum, x, y, z)` (forage icons use it) and
+  `getRenderer():renderPoly(tex, x1, y1, ..., y4, r, g, b, a)` (screen coordinates; textured, u0/v0 at vertex 1, then
+  TL, TR, BR, BL), drawn over characters and walls. `getRenderer()` = `SpriteRenderer` (exposed); `IsoUtils` and
+  `IsoCamera` are exposed too. To mark an object instead: `obj:setHighlighted(playerNum, true, false)` (third arg
+  renderOnce) + `obj:setHighlightColor(playerNum, r, g, b, a)` tints its sprite (world items too, `IsoWorldInventoryObject`);
+  vanilla's loot window turns highlights off when the mouse leaves a container button, so re-apply every frame to keep
+  one. The loot and inventory pages highlight the parent of their shown container themselves
+  (`ISInventoryPage:updateContainerHighlight`: `setHighlighted` + `getCore():getObjectHighlitedColor()`, outline too when
+  the container-outline option is on; parent = `page:getContainerParent(c)`: the IsoObject, or a bag's world item) and
+  outline a hovered button's container; a mod writing another colour on the same object every frame makes it flicker,
+  so step aside while it is shown. `ISInventoryPage.OnObjectHighlighted(playerNum, object, true|false)` registers an
+  object in `ObjectsHighlightedElsewhere`, which the page then never un-highlights. Characters also have `setOutlineHighlight(playerNum, b)` / `setOutlineHighlightCol(playerNum, r, g, b, a)`.
 - Stairs (IsoGridSquare ~2546-2670, ~10248): a staircase is three squares on the **lower** z, typed `IsoObjectType`
   stairsBN/MN/TN (north-facing: T at the smallest y, B at T.y + 2, climbed towards -y) or stairsBW/MW/TW (T at the smallest
   x, climbed towards -x); the top leads onto z + 1 at the square beyond T. `square:getStairs()` (the type, or MAX),
@@ -798,6 +822,11 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
 - `PZAPI.ModOptions` also has `addColorPicker(id, name, r, g, b, a, tooltip)` (`getValue()` = `{ r, g, b, a }`),
   `addSlider(id, name, min, max, step, value, tooltip)`, `addTextEntry`, `addMultipleTickBox`, `addButton`. A combo's
   `addItem(textKey, selected)` translates the key itself; `getValue()` = 1-based index.
+  `MainOptions:addModOptionsPanel` (42.21) also runs `getText` on every page/option **name and tooltip**, so pass
+  translation keys, not `getText(key)`: `getText` of a string that is not a key and contains `%` (e.g. the translated
+  "Arrow size (%)") goes to `Translator.reportMissingArgumentsFromPastAbuse`, whose log line is built with
+  `String.format` → `UnknownFormatConversionException: Conversion = ')'` at MainOptions.lua:3025, and the whole Mods
+  options page fails to build (at the main menu and again on every Lua reload).
 - Enum sandbox option value labels: `Sandbox_<valueTranslation or translation>_option<n>` (`SandboxOptions` ~1651).
 - `getFileWriter(name, create, append)` creates missing folders (`mkdirs`) and only accepts .ini/.cfg/.txt/.log/.json;
   `..` is refused (`hasRelativePath`); both read and write under `<cachedir>/Lua`. On a dedicated server that is the

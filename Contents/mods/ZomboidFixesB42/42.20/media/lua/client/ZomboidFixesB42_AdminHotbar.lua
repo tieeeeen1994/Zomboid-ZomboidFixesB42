@@ -3423,38 +3423,50 @@ end
 -- Sidebar button ----------------------------------------------------------------------------
 
 -- The bar's own icon, drawn rather than shipped: a disc with three slots in a row,
--- green while the bar is shown, red while it is hidden.
+-- green while the bar is shown, red while it is hidden. Outlined like the game's own
+-- sidebar icons: a thin white line outside a black one, round the disc and each slot.
 local SIDEBAR_ON = { r = 0.2, g = 0.65, b = 0.25 }
 local SIDEBAR_OFF = { r = 0.7, g = 0.2, b = 0.2 }
+
+--- A disc of diameter `size` centred on (cx, cy), with the white-outside-black outline.
+local function outlinedDisc(element, tex, cx, cy, size, stroke, colour)
+    local function disc(d, a, r, g, b)
+        element:drawTextureScaled(tex, cx - d / 2, cy - d / 2, d, d, a, r, g, b)
+    end
+    disc(size + stroke * 4, 1, 1, 1, 1)
+    disc(size + stroke * 2, 1, 0.05, 0.05, 0.05)
+    disc(size, 1, colour.r, colour.g, colour.b)
+end
 
 local function renderSidebarButton(self)
     local tex = circle()
     local shown = Hotbar.isVisible()
     local colour = shown and SIDEBAR_ON or SIDEBAR_OFF
     local lift = self:isMouseOver() and 0.12 or 0
-    local size = math.floor(math.min(self.width, self.height) * 0.86)
-    local x = math.floor((self.width - size) / 2)
-    local y = math.floor((self.height - size) / 2)
+    local stroke = math.max(1, math.floor(math.min(self.width, self.height) / 40 + 0.5))
+    local size = math.min(self.width, self.height) - 2 - stroke * 4
+    local cx, cy = self.width / 2, self.height / 2
     if tex then
-        self:drawTextureScaled(tex, x - 2, y - 2, size + 4, size + 4, 0.75, 0, 0, 0)
-        self:drawTextureScaled(tex, x, y, size, size, 1,
-            math.min(1, colour.r + lift), math.min(1, colour.g + lift), math.min(1, colour.b + lift))
+        outlinedDisc(self, tex, cx, cy, size, stroke, {
+            r = math.min(1, colour.r + lift), g = math.min(1, colour.g + lift), b = math.min(1, colour.b + lift),
+        })
     end
     local square = math.max(3, math.floor(size * 0.19))
-    local gap = math.max(2, math.floor(size * 0.1))
-    local left = math.floor(self.width / 2 - (square * 3 + gap * 2) / 2)
-    local top = math.floor(self.height / 2 - square / 2)
+    local gap = math.max(2, math.floor(size * 0.1)) + stroke
+    local left = math.floor(cx - (square * 3 + gap * 2) / 2)
+    local top = math.floor(cy - square / 2)
     for i = 0, 2 do
-        self:drawRect(left + i * (square + gap), top, square, square, 0.95, 0.96, 0.96, 0.96)
+        local x = left + i * (square + gap)
+        self:drawRect(x - stroke, top - stroke, square + stroke * 2, square + stroke * 2, 1, 0.05, 0.05, 0.05)
+        self:drawRect(x, top, square, square, 1, 0.96, 0.96, 0.96)
     end
 
     -- A toggle still on while the bar is hidden: a small green dot, so cheats are not forgotten.
     local admin = getPlayer()
     if tex and admin and not shown and Hotbar.anyToggleOn(admin) then
-        local on = Hotbar.state.on
         local dot = math.max(8, math.floor(self.width / 6))
-        self:drawTextureScaled(tex, self.width - dot - 1, 0, dot + 2, dot + 2, 0.8, 0, 0, 0)
-        self:drawTextureScaled(tex, self.width - dot, 1, dot, dot, 1, on.r, on.g, on.b)
+        local half = dot / 2 + stroke * 2
+        outlinedDisc(self, tex, self.width - half, half, dot, stroke, Hotbar.state.on)
     end
 end
 
