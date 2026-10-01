@@ -61,8 +61,10 @@ require "ISUI/PlayerStats/ISPlayerStatsUI"
 require "DebugUIs/AdminContextMenu"
 require "DebugUIs/DebugContextMenu"
 require "Foraging/ISSearchManager"
+require "ZomboidFixesB42_Jobs"
 
 local Hotbar = ZomboidFixesB42.AdminHotbar
+local Jobs = ZomboidFixesB42.Jobs
 local txt = Hotbar.txt
 local cmd = Hotbar.command
 local q = Hotbar.quote
@@ -710,25 +712,48 @@ register({
 
 -- 4. Items and keys ---------------------------------------------------------------------------------------
 
+-- Every item, for the item questions. Built by a background job once the game
+-- starts for someone who can use the bar (getAllItems plus a sort of a few
+-- thousand names froze the first settings dialog that asked); a question asked
+-- before it is done finishes it on the spot.
+local ITEMS_JOB = "adminHotbar:itemChoices"
 local itemChoices = nil
-local function items()
-    if itemChoices then return itemChoices end
-    itemChoices = {}
+
+local function buildItems()
+    local list = {}
     local all = getScriptManager():getAllItems()
     for i = 0, all:size() - 1 do
         local item = all:get(i)
         -- The same filter as Item List.
         if item and not item:getObsolete() and not item:isHidden() then
-            table.insert(itemChoices, {
-                text = (item:getDisplayName() or item:getFullName()) .. "  (" .. item:getFullName() .. ")",
+            local text = (item:getDisplayName() or item:getFullName()) .. "  (" .. item:getFullName() .. ")"
+            table.insert(list, {
+                text = text,
                 data = item:getFullName(),
                 scriptItem = item,
+                key = string.lower(text),
             })
         end
+        Jobs.Step()
     end
-    table.sort(itemChoices, function(a, b) return string.lower(a.text) < string.lower(b.text) end)
+    itemChoices = Jobs.Sort(list, function(a, b) return a.key < b.key end)
+end
+
+local function items()
+    if itemChoices then return itemChoices end
+    if Jobs.IsRunning(ITEMS_JOB) then
+        Jobs.Finish(ITEMS_JOB)
+    end
+    if not itemChoices then buildItems() end
     return itemChoices
 end
+
+local function prepareItems()
+    if itemChoices or Jobs.IsRunning(ITEMS_JOB) or not Hotbar.canUse(getPlayer()) then return end
+    Jobs.Start(ITEMS_JOB, buildItems)
+end
+
+Events.OnGameStart.Add(prepareItems)
 
 local function itemName(fullType)
     local item = getScriptManager():getItem(fullType)

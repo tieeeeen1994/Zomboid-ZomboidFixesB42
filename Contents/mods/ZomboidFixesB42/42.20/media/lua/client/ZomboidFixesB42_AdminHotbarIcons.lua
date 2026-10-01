@@ -21,6 +21,11 @@
     Everything else is listed at runtime: map symbols, every script item (modded ones
     too), CharacterTraitDefinition / CharacterProfessionDefinition, and the tile sets
     from getWorld():getAllTilesName() the way the Tile Picker walks them.
+
+    The long lists (every script item, every tile set) are built by a time-sliced
+    job (shared/ZomboidFixesB42_Jobs.lua) when the picker first opens, all tabs at
+    once: built in one go they froze the game for a moment on the first open. A tab
+    whose list is not ready yet shows a spinner and fills in when it is.
 --]]
 
 require "ISUI/ISPanel"
@@ -29,8 +34,10 @@ require "ISUI/ISTextEntryBox"
 require "ISUI/ISScrollingListBox"
 require "ISUI/ISColorPicker"
 require "ZomboidFixesB42_AdminHotbar"
+require "ZomboidFixesB42_Jobs"
 
 local Hotbar = ZomboidFixesB42.AdminHotbar
+local Jobs = ZomboidFixesB42.Jobs
 local Icons = {}
 Hotbar.Icons = Icons
 
@@ -212,6 +219,16 @@ end
 
 local sources = {}
 
+local function byName(a, b) return a.key < b.key end
+
+local function sortByName(list)
+    for _, entry in ipairs(list) do
+        entry.key = string.lower(entry.name)
+        Jobs.Step()
+    end
+    return Jobs.Sort(list, byName)
+end
+
 local function symbolEntries()
     local list = {}
     local defs = MapSymbolDefinitions and MapSymbolDefinitions.getInstance()
@@ -234,9 +251,9 @@ local function itemEntries()
         if icon and icon ~= "" then
             table.insert(list, { ref = "item:" .. item:getFullName(), name = item:getDisplayName() or item:getFullName() })
         end
+        Jobs.Step()
     end
-    table.sort(list, function(a, b) return string.lower(a.name) < string.lower(b.name) end)
-    return list
+    return sortByName(list)
 end
 
 local function definitionEntries(definitions, nameOf)
@@ -250,9 +267,9 @@ local function definitionEntries(definitions, nameOf)
             cache[ref] = texture
             table.insert(list, { ref = ref, name = nameOf(def) or ref })
         end
+        Jobs.Step()
     end
-    table.sort(list, function(a, b) return string.lower(a.name) < string.lower(b.name) end)
-    return list
+    return sortByName(list)
 end
 
 local function traitEntries()
@@ -290,20 +307,56 @@ local function tileEntries(tileset)
 end
 
 local TABS = {
-    { id = "symbols", title = "IconTabSymbols", build = symbolEntries },
+    -- quick: short enough to build on the spot.
+    { id = "symbols", title = "IconTabSymbols", build = symbolEntries, quick = true },
     { id = "items", title = "IconTabItems", build = itemEntries },
-    { id = "traits", title = "IconTabTraits", build = traitEntries },
-    { id = "professions", title = "IconTabProfessions", build = professionEntries },
-    { id = "ui", title = "IconTabGameUI", build = uiEntries },
+    { id = "traits", title = "IconTabTraits", build = traitEntries, quick = true },
+    { id = "professions", title = "IconTabProfessions", build = professionEntries, quick = true },
+    { id = "ui", title = "IconTabGameUI", build = uiEntries, quick = true },
     { id = "tiles", title = "IconTabTiles" },
 }
 local TILES_TAB = TABS[#TABS]
 
+--- Every tile set name, sorted.
+local function tilesetNames()
+    local list = {}
+    local names = getWorld():getAllTilesName()
+    for i = 0, names:size() - 1 do
+        list[#list + 1] = names:get(i)
+        Jobs.Step()
+    end
+    return Jobs.Sort(list, function(a, b) return a < b end)
+end
+
+local TILESETS = { id = "tilesets", build = tilesetNames }
+
+local function jobName(tab)
+    return "adminHotbar:icons:" .. tab.id
+end
+
+--- Starts building a tab's list in the background unless it is built or building.
+local function prepare(tab)
+    if sources[tab.id] or not tab.build or Jobs.IsRunning(jobName(tab)) then return end
+    Jobs.Start(jobName(tab), function()
+        sources[tab.id] = tab.build()
+    end)
+end
+
+--- A tab's list, or nil while it is still being built.
 local function entriesOf(tab)
-    if not sources[tab.id] and tab.build then
+    if not tab.build then return {} end
+    if tab.quick and not sources[tab.id] then
         sources[tab.id] = tab.build()
     end
-    return sources[tab.id] or {}
+    prepare(tab)
+    return sources[tab.id]
+end
+
+local function prepareAll()
+    for _, tab in ipairs(TABS) do
+        if not tab.quick then prepare(tab) end
+    end
+    prepare(TILESETS)
 end
 
 -- Picker window --------------------------------------------------------------------------
@@ -335,6 +388,9 @@ function Picker:new(ref, tint, onPick, tilesOnly)
     o.entries = {}
     o.columns = 1
     o.hovered = nil
+    o.loading = false
+    o.dotTexture = getTexture("media/ui/circle.png")
+    prepareAll()
     return o
 end
 
@@ -449,28 +505,34 @@ function Picker:showTab(tab)
         self.tilesets:setVisible(true)
         self.grid:setX(self.tilesets:getRight() + UI_BORDER_SPACING)
         self.grid:setWidth(self.width - self.grid:getX() - x)
-        if #self.tilesets.items == 0 then
-            local names = getWorld():getAllTilesName()
-            local sorted = {}
-            for i = 0, names:size() - 1 do table.insert(sorted, names:get(i)) end
-            table.sort(sorted)
-            for _, name in ipairs(sorted) do self.tilesets:addItem(name, name) end
-            for i, item in ipairs(self.tilesets.items) do
-                if item.item == self.tileset then
-                    self.tilesets.selected = i
-                    self.tilesets:ensureVisible(i)
-                    break
-                end
-            end
-        end
+        self:fillTilesets()
         self.source = self.tileset and tileEntries(self.tileset) or {}
+        self.loading = false
     else
         self.tilesets:setVisible(false)
         self.grid:setX(x)
         self.grid:setWidth(self.width - x * 2)
-        self.source = entriesOf(tab)
+        local entries = entriesOf(tab)
+        self.source = entries or {}
+        self.loading = entries == nil
     end
     self:filter()
+end
+
+--- Fills the tile set list once the names are ready; true when it is filled.
+function Picker:fillTilesets()
+    if #self.tilesets.items > 0 then return true end
+    local names = entriesOf(TILESETS)
+    if not names then return false end
+    for _, name in ipairs(names) do self.tilesets:addItem(name, name) end
+    for i, item in ipairs(self.tilesets.items) do
+        if item.item == self.tileset then
+            self.tilesets.selected = i
+            self.tilesets:ensureVisible(i)
+            break
+        end
+    end
+    return true
 end
 
 function Picker:onTileset(name)
@@ -568,8 +630,32 @@ function Picker:onTint()
     colorPicker:bringToTop()
 end
 
+--- Eight dots turning, in the middle of the given box.
+function Picker:drawSpinner(x, y, width, height)
+    local dot = self.dotTexture
+    if not dot then return end
+    local cx, cy = x + width / 2, y + height / 2
+    local step = math.floor(getTimestampMs() / 90) % 8
+    for i = 0, 7 do
+        local angle = i * math.pi / 4
+        local alpha = 1 - ((step - i) % 8) / 8
+        self:drawTextureScaled(dot, cx + math.cos(angle) * 10 - 3, cy + math.sin(angle) * 10 - 3, 6, 6, alpha, 1, 1, 1)
+    end
+end
+
 function Picker:prerender()
     ISPanel.prerender(self)
+    if self.loading then
+        local entries = entriesOf(self.tab)
+        if entries then
+            self.loading = false
+            self.source = entries
+            self:filter()
+        end
+    end
+    if self.tab.id == "tiles" and #self.tilesets.items == 0 then
+        self:fillTilesets()
+    end
     self:drawText(txt(self.tilesOnly and "TilePickerTitle" or "IconPickerTitle"), UI_BORDER_SPACING + 1, UI_BORDER_SPACING, 1, 1, 1, 1, UIFont.Medium)
 
     local x = UI_BORDER_SPACING + 1
@@ -587,6 +673,16 @@ function Picker:prerender()
         status = txt("IconPickTileset")
     end
     self:drawText(status, self.tintButton:getX(), self.previewY - FONT_HGT_SMALL - 2, 0.8, 0.8, 0.8, 1, UIFont.Small)
+end
+
+function Picker:render()
+    ISPanel.render(self)
+    if self.loading then
+        self:drawSpinner(self.grid:getX(), self.grid:getY(), self.grid:getWidth(), self.grid:getHeight())
+    end
+    if self.tab.id == "tiles" and #self.tilesets.items == 0 then
+        self:drawSpinner(self.tilesets:getX(), self.tilesets:getY(), self.tilesets:getWidth(), self.tilesets:getHeight())
+    end
 end
 
 function Picker:onOk()

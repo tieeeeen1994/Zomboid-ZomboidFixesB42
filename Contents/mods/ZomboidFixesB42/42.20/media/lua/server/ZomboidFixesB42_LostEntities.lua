@@ -63,6 +63,13 @@
         containers of every vehicle as it loads, get an empty one, sent to clients
         with sendReplaceItemInContainer (same ID; an equipped or attached item is
         only fixed on the server and shows fixed after a relog).
+      * Load: the world items of a loaded chunk, the inventories of joining players
+        and the containers of loading vehicles are walked by a time-sliced job
+        (shared/ZomboidFixesB42_Jobs.lua), not in the LoadChunk event itself: a
+        player driving or teleporting loads dozens of chunks in one tick, and
+        walking all their squares at once stalled the server. A queued chunk that
+        unloads before its turn is skipped (its anchor square no longer belongs
+        to it); it is checked again when it next loads.
       * Prevention: a chunk that holds such an object is saved again shortly after
         it loads (IsoChunk.Save, a few chunks per tick), which is the hot save the
         server skips. Skipped while BackupsPeriod is set: ZipBackup holds
@@ -71,6 +78,10 @@
 --]]
 
 if isClient() or not isServer() then return end
+
+require "ZomboidFixesB42_Jobs"
+
+local Jobs = ZomboidFixesB42.Jobs
 
 local function isEnabled()
     local vars = SandboxVars and SandboxVars.ZomboidFixesB42
@@ -322,20 +333,63 @@ local function repairWorldItem(worldItem)
     end
 end
 
-local function onChunkLoaded(chunk)
-    if not isEnabled() then return end
+-- Loaded chunks waiting for their world items to be checked, oldest first. Each
+-- entry keeps a square of the chunk, like the save queue, to tell whether the
+-- chunk is still the one that loaded.
+local chunkQueue = {}
+local chunkHead = 1
+local CHUNK_JOB = "lostEntities:chunks"
+
+local function anchorOf(chunk)
     for z = chunk:getMinLevel(), chunk:getMaxLevel() do
+        local square = chunk:getGridSquare(0, 0, z)
+        if square then return square end
+    end
+    return nil
+end
+
+local function checkChunk(entry)
+    local chunk = entry.chunk
+    for z = entry.minZ, entry.maxZ do
         for x = 0, 7 do
             for y = 0, 7 do
+                if entry.anchor:getChunk() ~= chunk then return end
                 local square = chunk:getGridSquare(x, y, z)
                 local worldItems = square and square:getWorldObjects()
                 if worldItems and not worldItems:isEmpty() then
-                    for i = 0, worldItems:size() - 1 do
-                        repairWorldItem(worldItems:get(i))
+                    for i = worldItems:size() - 1, 0, -1 do
+                        local worldItem = i < worldItems:size() and worldItems:get(i) or nil
+                        if worldItem then repairWorldItem(worldItem) end
                     end
                 end
+                Jobs.Step()
             end
         end
+    end
+end
+
+local function checkQueuedChunks()
+    while chunkHead <= #chunkQueue do
+        local entry = chunkQueue[chunkHead]
+        chunkHead = chunkHead + 1
+        if isEnabled() then checkChunk(entry) end
+    end
+    chunkQueue = {}
+    chunkHead = 1
+end
+
+local function onChunkLoaded(chunk)
+    if not isEnabled() then return end
+    local anchor = anchorOf(chunk)
+    if not anchor then return end
+    chunkQueue[#chunkQueue + 1] = {
+        chunk = chunk,
+        anchor = anchor,
+        minZ = chunk:getMinLevel(),
+        maxZ = chunk:getMaxLevel(),
+    }
+    if not Jobs.IsRunning(CHUNK_JOB) then
+        Jobs.Start(CHUNK_JOB, checkQueuedChunks)
     end
 end
 
@@ -367,6 +421,7 @@ local function repairContainer(container, depth)
         if instanceof(item, "InventoryContainer") then
             fixed = fixed + repairContainer(item:getInventory(), depth + 1)
         end
+        Jobs.Step()
     end
     return fixed
 end
@@ -379,10 +434,10 @@ local lastPoll = 0
 local players = {}   -- player -> time first seen, or true once checked
 local vehicles = {}  -- vehicle -> true
 
+local PLAYERS_JOB = "lostEntities:playersAndVehicles"
+
 local function checkPlayersAndVehicles()
     local now = getTimestampMs()
-    if now - lastPoll < POLL_MS then return end
-    lastPoll = now
 
     local seenPlayers = {}
     local online = getOnlinePlayers()
@@ -398,6 +453,7 @@ local function checkPlayersAndVehicles()
             state = true
         end
         seenPlayers[player] = state
+        Jobs.Step()
     end
     players = seenPlayers
 
@@ -428,7 +484,11 @@ end
 local function onTick()
     if not isEnabled() then return end
     saveQueuedChunks()
-    checkPlayersAndVehicles()
+    local now = getTimestampMs()
+    if now - lastPoll >= POLL_MS and not Jobs.IsRunning(PLAYERS_JOB) then
+        lastPoll = now
+        Jobs.Start(PLAYERS_JOB, checkPlayersAndVehicles)
+    end
 end
 
 -- SpriteConfigManager is filled in IsoWorld.init (ScriptManager.PostTileDefinitions),

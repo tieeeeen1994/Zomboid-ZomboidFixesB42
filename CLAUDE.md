@@ -60,11 +60,24 @@ or methods exist.
 - Pitfalls: `cond and nil or x` always gives `x` (write an if); a `string.gsub` replacement string treats `%` as special
   (escape user text with `gsub(s, "%%", "%%%%")`); `string.gsub` returns two values, so wrap it in parentheses when
   returning or concatenating at the end of a list; there is no `next()`; `gsub` with a function replacement works;
-  vanilla never uses `string.byte/char`, so avoid them. `tostring` of an integer-valued number gives "5", but
+  vanilla never uses `string.byte/char`, so avoid them. `coroutine` (create/resume/yield/status/running) **is**
+  available (`J2SEPlatform.newEnvironment` registers CoroutineLib; vanilla never uses it); there are no threads for Lua
+  (one `KahluaThread` on the main thread), so long work is time-sliced with coroutines resumed from `OnTick`. A coroutine
+  cannot yield from inside a Lua function that Java called (a `table.sort` comparator, an event handler it calls).
+  A Java `BufferedReader` / `LuaFileWriter` stays usable across yields. Kahlua is slow at string work: one
+  `string.match` with 10 captures per line parses about twice as fast as splitting with `gmatch` into a table
+  (~2000 lines/s of a 10-field record at 8 ms per 100 ms tick on this Mac).
+  A dedicated server with `PauseEmpty=true` (default) does not tick while nobody is online, so `OnTick` work waits.
+  `tostring` of an integer-valued number gives "5", but
   `getText(key, n)` gives "5.0" — pass `string.format("%d", n)`. A literal `%` in a translation string must be
   written `%%` even when the key takes no arguments (vanilla: `"%% full"`): the Translator runs every string through
   Java's formatter at load and a lone `%` logs `UnknownFormatConversionException ... ERROR: Formatting "<key>"`. Escaped double quotes (`\"`) inside a
   translation string do not work in game; quote with single quotes instead.
+- Server load from Lua: `getServerFPS()` is a constant 10; `getAverageFPS` / `getCPUTime` read `GameWindow` (client
+  loop). `getPerformanceLocal()` (`PerformanceStatistic`) has `avg-update-period`, `max-update-period`, `min-update-period`
+  (ms per server update), `fps`, memory counters, but the table is refilled only every `MultiplayerStatisticsPeriod`
+  seconds (server option, default 1, 0 = never; `StatisticManager.update` from `GameServer` ~1146). Timing `OnTick` intervals with
+  `getTimestampMs()` yourself always works (~100 ms per server update when healthy).
 - Files: `getFileWriter(name, createIfNull, append)` / `getFileReader(name, createIfNull)` (nil if missing) read and
   write `Zomboid/Lua/<name>`. Server identity on a client: `getServerIP()`, `getServerPort()` ("" in single player);
   save name: `getWorld():getWorld()` (`getCurrentSaveName()` is the full save folder path).
@@ -768,7 +781,53 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
   stairsBN/MN/TN (north-facing: T at the smallest y, B at T.y + 2, climbed towards -y) or stairsBW/MW/TW (T at the smallest
   x, climbed towards -x); the top leads onto z + 1 at the square beyond T. `square:getStairs()` (the type, or MAX),
   `HasStairs()`, `HasStairsNorth/West()`, `HasStairTop()`, `HasStairsBelow()`, `getStairsDirection()` (N, W or nil),
-  `isSameStaircase(x, y, z)`. Sheet ropes: field `haveSheetRope`, `getSheetRope()`.
+  `isSameStaircase(x, y, z)`. Sheet ropes: field `haveSheetRope`, `getSheetRope()`. Bottom = `HasStairs() and not
+  HasElevatedFloor()` (elevated = M and T squares).
+- `ISUIElement:drawTextureAllPoint(tex, tlx, tly, trx, try, brx, bry, blx, bly, r, g, b, a)` goes straight to
+  `SpriteRenderer` (`UIElement.DrawTexture`, 4-point overload): **absolute screen coordinates**, no element offset, no
+  scroll (add `getAbsoluteX/Y()` and, in a list, `getYScroll()`). Textured `renderPoly` / this map u0,v0 to vertex 1, then
+  TL, TR, BR, BL.
+- Item tags (42.20): script `Item:getTags()` is a `Set<ItemTag>` (iterate with `:iterator()`); `tostring(tag)` = its
+  ResourceLocation, e.g. `"base:saw"`.
+- `PZAPI.ModOptions` also has `addColorPicker(id, name, r, g, b, a, tooltip)` (`getValue()` = `{ r, g, b, a }`),
+  `addSlider(id, name, min, max, step, value, tooltip)`, `addTextEntry`, `addMultipleTickBox`, `addButton`. A combo's
+  `addItem(textKey, selected)` translates the key itself; `getValue()` = 1-based index.
+- Enum sandbox option value labels: `Sandbox_<valueTranslation or translation>_option<n>` (`SandboxOptions` ~1651).
+- `getFileWriter(name, create, append)` creates missing folders (`mkdirs`) and only accepts .ini/.cfg/.txt/.log/.json;
+  `..` is refused (`hasRelativePath`); both read and write under `<cachedir>/Lua`. On a dedicated server that is the
+  server's cache folder.
+- Death events: `OnCharacterDeath(character)` fires everywhere `IsoGameCharacter.OnDeath` runs, server included;
+  `OnPlayerDeath(player)` only for a **local** player on a client / single player (`IsoPlayer.OnDeath`, `!GameServer.server`).
+- `square:getLightLevel(playerNum)` (forage uses it, vanilla reading checks compare with 0.43). `ISGrabItemAction:new(player,
+  worldItem, ISWorldObjectContextMenu.grabItemTime(player, worldItem))` picks a floor item up;
+  `ISInventoryTransferUtil.newInventoryTransferAction(player, item, src, dest)` for containers. `ISBaseTimedAction` has no
+  generic `setOnComplete` (only some subclasses); poll `ISTimedActionQueue.isPlayerDoingAction(player)` instead.
+
+### Loot window: what the player is shown (42.20, `ISInventoryPage` / `ISInventoryPane`)
+
+- No vanilla event says "player N is looking at container C". The loot page (`not page.onCharacter`) is open when
+  `page:isReallyVisible() and not page.isCollapsed` (vanilla's open/close sound test, `updateContainerOpenCloseSounds`
+  ~1072); the shown container is `page.inventoryPane.inventory`, `page.player` the player number. Expanding a collapsed
+  page refreshes nothing, so poll (wrapping `ISInventoryPage.update` works). `isExplored()` is not "seen":
+  `refreshBackpacks` calls `checkExplored` on every container in reach, even while collapsed.
+- `refreshBackpacks` (~1537): player page = main inventory + equipped bags + keyrings; in a vehicle every part with
+  `getItemContainer()` and `canAccessContainer`; on foot the 3x3 squares that `canReachTo` and the safehouse allow: floor
+  items into the fake `GetFloorContainer(playerNum)` (bags on the floor get their own button), corpses from
+  `getStaticMovingObjects()` (an **animal** corpse `break`s the loop, skipping the rest of that square's static objects),
+  every `getContainerByIndex(i)` of every object, then an adjacent vehicle's parts, then the Floor button.
+  `OnRefreshInventoryWindowContainers(page, "begin" | "beforeFloor" | "buttonsAdded" | "end")` fires during it.
+- A bag inside a container gets no button and is never shown in line; its contents are visible only once it is on the
+  floor, in a vehicle seat or trunk, or equipped. `ISInventoryPane.refreshContainer` lists `inventory:getItems()` only
+  (not recursive); it reruns when `inventory:isDrawDirty()`, so MP contents arriving after
+  `requestServerItemsForContainer` show up later.
+- `ISObjectClickHandler.doClick` (container branch ~281) only drives **player 0**'s loot window
+  (`getPlayerLoot(0):setNewContainer(c)`, then un-collapse: `isCollapsed = false`, `clearMaxDrawHeight()`,
+  `collapseCounter = -30`). `ISOpenContainerTimedAction` is no longer queued by vanilla. Select a container in the window
+  with `page:setForceSelectedContainer(c, ms)` + `page:selectButtonForContainer(c)`.
+- Every other UI that lists nearby items (handcraft, build, recipe tooltips, health, radials) takes
+  `ISInventoryPaneContextMenu.getContainers(character)` = every loot button's container (except locked thumpables).
+- Container locator helpers: `container:getContainingItem()` (a bag; `bag:getWorldItem()` when on the floor),
+  `getVehiclePart()`, `getParent()` (IsoObject / IsoDeadBody), `isInCharacterInventory(player)`, `getSourceGrid()`.
 - Directions: `IsoDirections` N = (0, -1), i.e. world -y (drawn up-right on screen, up on the world map); E = +x.
   `IsoDirections.fromAngle(dx, dy)` (8-way, `atan2(dy, dx)`) / `cardinalFromAngle(dx, dy)` (4-way), `dx()`/`dy()`,
   `toString()` = "N", "NE"... Vanilla shows them untranslated (`ISAnimalTracksUI` prints `getDir():toString()`); no
@@ -842,9 +901,19 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
   `AUTO_HOLD_MS`), then opens at the new speed; while it waits, only movement keys or a moving vehicle count as moving.
   Corpse transfers (never timed) wait for the whole transfer. Manual votes stay immediate (see the paramount rule in
   "Time speed and timed actions in multiplayer").
+- `shared/ZomboidFixesB42_Jobs.lua` (no option, infrastructure): time-sliced coroutine jobs. `Jobs.Start(name, fn)`
+  (replaces a job of that name), `Jobs.Step()` in loops (yields once the tick's budget is spent, checked every 25
+  calls), `Jobs.WaitWhile(fn)`, `Jobs.Finish(name)` (runs one to the end now, for a caller that cannot wait),
+  `Jobs.Sort(list, less)` (stable bottom-up merge sort that steps; `table.sort` cannot yield). One budget per tick for
+  all jobs: 8 ms on a server, 3 ms on a client, halved down to 1 ms while ticks are slow (server > 130 ms, client > 50 ms),
+  +1 ms after 3 healthy seconds. Each mod keeps its own copy (TienLastSeenWhere has one), no shared library.
+  Users: Lost Entities (chunk world items, joining players, loading vehicles), the admin hotbar icon picker (Items tab,
+  tile sets; the short tabs are built on the spot) and the hotbar's item list (`items()`, prepared at `OnGameStart` for
+  someone who can use the bar, finished on the spot if asked first).
 - `server/ZomboidFixesB42_LostEntities.lua` (option `RepairLostEntities`): MapObjects load callbacks on every sprite of
   an entity that goes to meta rebuild component-less ones from their script and re-register ones the engine turned
-  away (MetaTag trick); `LoadChunk` does the same for world items (empty container from the item script); joining
+  away (MetaTag trick); `LoadChunk` queues the chunk and a job does the same for its world items (empty container from
+  the item script; a chunk whose anchor square no longer belongs to it is skipped); joining
   players' inventories and loading vehicles get rain-catching items without a FluidContainer fixed
   (`sendReplaceItemInContainer`); chunks holding such objects are saved again after load, 2 per tick, unless
   `BackupsPeriod` > 0.
