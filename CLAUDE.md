@@ -381,6 +381,11 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
 - `getCell():getVehicles()` is a **Set** in 42.21 (vanilla `ISVehicleBloodUI` still calls `:get`); copy it with
   `ArrayList.new()` + `addAll`. `sendReplaceItemInContainer(container, item, item)` re-sends an item (same ID) to the
   owner or players near the container; the client removes by ID and adds the parsed copy (hand/hotbar keep the old one).
+- Dead bodies have a persistent ID: `IsoDeadBody:getObjectIDAsLong()` (`zombie/network/id/ObjectID`, type DeadBody,
+  a short, "permanent": written in `IsoDeadBody.save`, so in the chunk data clients get, and the type's last ID is
+  saved by `ObjectIDManager`). Allocated only on the server / single player (`addObject` returns early on a client
+  for -1), so a client copy can read -1 until the server's ID arrives (vanilla `ISButcherAnimal` checks for it).
+  Wraps at 65536, skipping IDs of loaded bodies only. Better than the index in `square:getDeadBodys()`, which shifts.
 - IsoObject/IsoThumpable/IsoWorldInventoryObject `addToWorld` can run twice on a server (process lists are sets or
   checked); the classes in `zombie/iso/objects` with their own override (stoves, doors, generators...) may not.
 
@@ -758,6 +763,16 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
   and calls `self:onClickContext(0, 0, contextMenu, inventory, items)`; only `ISWorldItemIcon` (`doPickup`) takes the
   item list. `context:insertOptionAfter(name, text, target, fn, ...)` inserts next to an option by its text
   (appends if not found). `*_GrabAmount.lua` adds "Grab amount..." to both.
+- Resizable column headers: `ISResizableButton` (file `ISUI/ISResizeableButton.lua`, note the spelling) drags its right
+  edge, or its left edge with `resizeLeft = true` (vanilla inventory: Type header right, Category header left), clamps
+  to `minimumWidth` / `maximumWidth` and calls `onresize = { fn, target, arg }`. Its `new` writes `minimumWidth` (and
+  `resizing`) on the **class**, so set `minimumWidth` on the instance after `new`. Window geometry that survives
+  restarts: `ISLayoutManager.RegisterWindow(name, Class, window)` (restores at once from `layout.ini`, per screen
+  resolution) calls `Class.RestoreLayout(window, name, layout)` / `SaveLayout` (on `OnPostSave`); `DefaultSaveWindow`
+  / `DefaultRestoreWindow` handle x, y, size and **visibility** (`layout.visible == "true"` shows the window), extra
+  string keys can be added to `layout`. Setting a mod option from Lua: `PZAPI.ModOptions:getOptions(id):getOption(o)`
+  `:setValue(v)` (combo: 1-based index, also updates its options-screen element), then `PZAPI.ModOptions:save()`
+  rewrites ModOptions.ini from every mod's in-memory values.
 - `ISTextEntryBox:onCommandEntered()` is called by Java on Enter (`UITextBox2.onKeyEnter` → `onCommandEntered` →
   `UIManager.tableget(table, "onCommandEntered")`, single-line boxes only; multi-line ones insert a newline). `ISTextBox`
   does not wire it, so Enter does nothing in vanilla text dialogs unless an instance field `entry.onCommandEntered` is
