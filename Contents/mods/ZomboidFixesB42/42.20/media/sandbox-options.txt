@@ -304,6 +304,14 @@ option ZomboidFixesB42.CraftSoundsMP
     translation = ZomboidFixesB42_CraftSoundsMP,
 }
 
+option ZomboidFixesB42.ReloadAnimTiming
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_ReloadAnimTiming,
+}
+
 option ZomboidFixesB42.RepairLostEntities
 {
     type = boolean,

@@ -37,6 +37,7 @@ description=- Vehicle batteries no longer drain twice as fast as intended.
 description=- Removing bushes with a cutting tool wears the tool again, and broken tools are swapped for another.
 description=- Watering a plant in multiplayer no longer waters it twice or empties the can twice as fast.
 description=- Other players hear you craft and cook in multiplayer (stirring, slicing, adding ingredients...).
+description=- Reloading in multiplayer keeps pace with the animation (no more cut-off pumps or shells running ahead).
 description=- Failed item transfers repair themselves: ghost items on the floor go, items hidden until relogging appear, and stuck transfers retry or end.
 description=- Rain collectors, drying racks and rain-catching buckets and pots no longer break after a server crash or a restored backup, and broken ones are rebuilt.
 description=- Right spiked thigh armor can be moved to the left thigh.

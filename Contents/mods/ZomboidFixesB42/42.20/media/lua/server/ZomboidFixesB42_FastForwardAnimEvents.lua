@@ -23,7 +23,8 @@
     so. Loading rounds one at a time (ISReloadWeaponAction, ISLoadBulletsInMagazine
     and the two unload actions) repeats an event per round; swapping a magazine and
     racking (ISEjectMagazine, ISInsertMagazine, ISRackFirearm) wait for once events
-    of 1.2 s, 1.5 s and 0.6-1.2 s. All are divided by the ReloadSpeed variable
+    of 1.2 s, 1.5 s and 0.6-1.2 s (the clip lengths instead with
+    ZomboidFixesB42_ReloadTiming.lua). All are divided by the ReloadSpeed variable
     (ISReloadWeaponAction.getReloadTime), never by the game speed.
 
     The emulator is not exposed to Lua and keeps each event's timing fixed, but

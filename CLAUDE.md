@@ -321,6 +321,15 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
   (speed - 1) extra `netAction:animEvent` per period, stopping on the table's `complete`/`serverStop` or `getProgress() >= 1`.
   `emulateAnimEventOnce` (magazine eject/insert, racking, petting) is fired early on the game clock and the action's own
   `animEvent` wrapper swallows Java's later copy. Every reloading action has `getDuration() -1`: it ends on its events only.
+- Reload timing (42.21): the reload actions' `serverStart` fire their events every `getReloadTime(chr, BASE) = BASE /
+  ReloadSpeed` ms; the client clip plays at the same `ReloadSpeed` (`m_SpeedScale`), but BASE is hand-written: shell 833 vs
+  `Bob_Reload_Shotgun_Load` 700, revolver 950 vs 767, lever 1000 vs 700, bolt no mag 590 vs 700, double barrel 2500 / sawn
+  1000 vs 2133, rifle mag insert 1500 vs 1733, eject 1200 vs 1500 / 1733 (load clip reversed), shotgun rack 600 vs 1400
+  (aimed 767), other racks 1200 vs 1333 handgun / 1767 bolt (aimed 1667) / 1133 lever (aimed 1200). Finishing events are at
+  `End` (Rack*/Unload* nodes `x_extends` the Load* node and override its event by `x_name`). Clip length = (last key -
+  first key) / AnimTicksPerSecond (4800) in `media/anims_X/Bob/<clip>.X`. `*_ReloadTiming.lua` answers `getReloadTime`
+  with the clip length while a reload `serverStart` runs. Gunworks (mod id SWMG) times its profiled guns with
+  `ReloadAnim.getActionDurationMs` (`require "WeaponSystems/Utils/ReloadAnim"`, `GetHandlerForGun(gun)`).
 
 ### Vehicle parts and batteries
 
