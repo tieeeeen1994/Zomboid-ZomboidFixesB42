@@ -296,6 +296,14 @@ option ZomboidFixesB42.WaterPlantOnce
     translation = ZomboidFixesB42_WaterPlantOnce,
 }
 
+option ZomboidFixesB42.CraftSoundsMP
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_CraftSoundsMP,
+}
+
 option ZomboidFixesB42.RepairLostEntities
 {
     type = boolean,

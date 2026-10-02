@@ -127,6 +127,17 @@ or methods exist.
   nested in it) goes to **that player only**; otherwise to clients near the container's parent object or world item.
   So the server can move an item from one player's inventory into another's with `DoRemoveItem` +
   `sendRemoveItemFromContainer` and `AddItem` + `sendAddItemToContainer` (TienGiveItemMP does).
+- Sounds (42.21): `character:playSound(name)` / `getEmitter():playSoundImpl(name, nil)` play on the local FMOD emitter
+  only (`CharacterSoundEmitter`; `playSound` returns 0 for an invisible character, `playSoundImpl` only for a remote
+  invisible one). Other clients hear a character's sound only from anim XML `PlaySound` events (every client animating
+  it runs them) or `PlaySoundPacket` (a client's is relayed by the server to the other connections near the character,
+  70 tiles or the clip distance; Java sends it for item break/damage sounds, voice, combat). Lua's only sender,
+  `sendPlaySound(sound, loop, object)`, is server only and goes to every relevant client, the owner included, with no
+  handle to stop it. So Lua timed-action sounds (crafting, cooking, most `ISBaseTimedAction`s) are silent for others;
+  `*_CraftSounds.lua` relays the craft and ingredient ones with client commands. A remote player's action animation
+  does sync: `BaseAction.setActionAnim` enters `PlayerActionsState` on a client, whose state params carry the action's
+  anim variables captured at that moment (a variable set after `setActionAnim` is missed) and hand models;
+  `IsPerformingAnAction` reaches remote copies through the `NetworkPlayerVariables` flag.
 
 ### Player stats are server-authoritative
 
