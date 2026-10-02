@@ -738,9 +738,33 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
 - `media/ui/circle.png` is a white disc, handy for tinted status dots. `media/ui` holds ~1540 loose PNGs (moodles in
   32/48/64/80/96/128 folders, sidebar icons in 48/64/80/96/128 with `_<size>` suffixes, emotes, speed controls,
   `LootableMaps/map_*.png` = the map symbols). The sidebar Admin icon is grey (Off) / reddish (On), so it tints.
+  `Moodles/<size>/_Moodles_BGsolid.png` is a white shaded disc (the game tints it good / bad), `_Moodles_BGoutline.png`
+  a dark disc with a white ring; moodle glyphs (`Status_Thirst`, `Mood_Pained`...) are full colour on transparent.
+  `Sidebar/<w>/HandMain_Off` / `HandSecondary_Off` are plain dark discs, no hand drawn.
 - Item icon names differ from item names (`Base.Pistol` → `Item_HandGun3`, `Base.NoiseTrap` → `Item_NoiseMaker`), and some
   items have no `Icon` in their script at all (`Base.Key1`, `Base.Screwdriver`, `Base.Hammer`), so resolve through the
-  script item, never by guessing `Item_<name>`.
+  script item, never by guessing `Item_<name>`. Item icons for poster art live in `media/texturepacks/UI2.pack` (B42
+  icons, e.g. `Item_Whiskey`) and `UI.pack` (older ones only there: `Item_BaseballBat`, `Item_PillsPainkiller`); both
+  use the same entry format (TienInspectWeapon / TienActionableHotbar `scripts/make_art.py` read them).
+- The vanilla equipment hotbar (`client/Hotbar/ISHotbar.lua`, 42.20): slot click (`onMouseUp`) and number key
+  (`onKeyPressed`, ignored while the action queue is busy, attacking, paused or on a joypad) both call
+  `ISHotbar:activateSlot(slotIndex)` (~548): `canBeActivated` non-HandWeapons toggle, else `equipItem` (~575): unequip
+  if held, else `ISEquipWeaponAction(both_hands = isTwoHandWeapon(), primary = both_hands or IsWeapon())` (a bat always
+  goes two-handed, a non-weapon to the off hand). Right-click on a filled slot (`doMenu` ~82) =
+  `ISInventoryPaneContextMenu.createMenu(playerNum, true, {item}, x, y)` + an Attach submenu. Only items whose script
+  `AttachmentType` is a key of a slot's `attachments` (`ISHotbarAttachDefinition`) can be slotted: 353 vanilla items,
+  ~320 of them weapons (no drinks or pills). Plysken Attachments Reborn replaces `activateSlot` outright (equips only
+  HandWeapon / InventoryContainer / Radio, wears clothing) and adds ~110 attachable items. TienActionableHotbar wraps
+  `activateSlot` at `OnGameStart` to run a context menu option instead.
+- Context menu internals (`ISUI/ISContextMenu.lua`): an option is a pooled table `{ name, target, onSelect,
+  param1..param10, subOption, notAvailable, isDisabled, checkMark, iconTexture, itemForTexture, toolTip }` (pool reused
+  with `table.wipe`, so copy what you keep); a click runs `ISContextMenu.globalPlayerContext = player`, `closeAll()`,
+  then `onSelect(target, param1..param10)` (~65). Submenus are numbered instances of the player's root menu
+  (`getNew` → `instanceMap`, `addSubMenu` stores the number in `option.subOption`, `menu:getSubMenu(n)`). The tick of
+  `setOptionChecked` is drawn where the option's icon goes. Building a menu and calling `closeAll()` in the same frame
+  should never show it (UI draws later in the frame; not yet confirmed in game), so an item's menu can be built just to
+  read or run its options; `createMenu` returns early (nil)
+  while paused or in the tutorial, and returns nil with the menu hidden when no item applies.
 
 ### UI API cheat sheet (vanilla signatures, 42.20)
 
@@ -766,7 +790,11 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
 - Resizable column headers: `ISResizableButton` (file `ISUI/ISResizeableButton.lua`, note the spelling) drags its right
   edge, or its left edge with `resizeLeft = true` (vanilla inventory: Type header right, Category header left), clamps
   to `minimumWidth` / `maximumWidth` and calls `onresize = { fn, target, arg }`. Its `new` writes `minimumWidth` (and
-  `resizing`) on the **class**, so set `minimumWidth` on the instance after `new`. Window geometry that survives
+  `resizing`) on the **class**, so set `minimumWidth` on the instance after `new`. It grabs only the 4 px inside its own
+  resizing edge and adds up each move's `dx` (no anchor), so an `onresize` that recomputes widths from a layout which
+  differs from the header's width by even 1 px creeps a pixel per move event; TienLastSeenWhere replaced it with an
+  absolute drag (grab offset + mouse position, either side of the line). `ISButton:setVisible(true)` re-reads
+  `mouseOver`, so calling it every frame undoes a `mouseOver = false` set to hide the hover highlight. Window geometry that survives
   restarts: `ISLayoutManager.RegisterWindow(name, Class, window)` (restores at once from `layout.ini`, per screen
   resolution) calls `Class.RestoreLayout(window, name, layout)` / `SaveLayout` (on `OnPostSave`); `DefaultSaveWindow`
   / `DefaultRestoreWindow` handle x, y, size and **visibility** (`layout.visible == "true"` shows the window), extra
