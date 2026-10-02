@@ -424,6 +424,22 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
   `AimingMod` / `IsAimedHandWeapon` do nothing. A weapon part on a model with no matching attachment point is drawn at the
   gun's origin (`AnimatedModel.transformToParent`).
 
+### Hands, hand models and attacks (42.20)
+
+- Primary = **right** hand: `getPrimaryHandItem()` returns a field named `leftHandItem` (`IsoGameCharacter` ~3205), but its
+  model goes on `Bip01_Prop1`, which `IsoPlayer.onAnimPlayerCreated` reparents to `Bip01_R_Hand`; secondary =
+  `rightHandItem` field, `Bip01_Prop2`, left hand.
+- Attacks only use the primary item: `SwipeStatePlayer.doAttack` (~130) sets `useHandWeapon` to `getPrimaryHandItem()` or
+  `bareHands`; a weapon in the secondary hand alone never swings.
+- `WeaponType.getWeaponType`: a one-handed melee weapon stays `1handed` (or `knife` / `heavy` / `throwing` by SwingAnim)
+  even when it is in both hands; only `inv1 == inv2 && isTwoHandWeapon()` gives `2handed`.
+- Hand models (`ModelManager` ~640): `isHideWeaponModel` hides both, `isHideEquippedHandR` drops the primary,
+  `isHideEquippedHandL` the secondary (both are animation variables `hideEquippedHandR/L` too, so anim events may reset
+  them; Lua setters exist). The secondary is drawn only when it is not the primary item, so the same item in both hands
+  with `setHideEquippedHandR(true)` is drawn **in the left hand** while Java attacks with it as primary. A timed action's
+  `overrideHandModels` replaces both; `chr.overridePrimary/SecondaryHandModel` are public fields with no setter (not
+  reachable from Lua).
+
 ## Roles and capabilities
 
 `zombie/characters/Capability.java` is the full list. Default roles (`zombie/characters/Roles.java` ~358–490):
