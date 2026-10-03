@@ -409,6 +409,14 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
 - IsoObject/IsoThumpable/IsoWorldInventoryObject `addToWorld` can run twice on a server (process lists are sets or
   checked); the classes in `zombie/iso/objects` with their own override (stoves, doors, generators...) may not.
 
+### Map files (42.20)
+
+B42 map formats (lotheader, lotpack, chunkdata with its undocumented type 5 / bit 32, biome PNGs, worldmap.xml), where
+they differ from the game's own converter `zombie/pot/POT*`, and how worldgen fills squares a lot leaves empty: see
+`~/Zomboid/Workshop/NagaCity/CLAUDE.md`, whose `tools/pzmap` reads and writes them byte-identical to vanilla.
+A mod's map folder must be in `common/media/maps/`: `MapGroups.createGroups` only looks in the version folder's
+`media/maps/` when `common/media/maps/` exists, so a map only under `42/` is silently ignored.
+
 ### Item and recipe scripts at run time (42.21)
 
 - Order in `IsoWorld.init`: `SandboxOptions.load` → `OnInitGlobalModData` → `WorldDictionary.init` +
