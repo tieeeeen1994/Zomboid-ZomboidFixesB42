@@ -214,6 +214,14 @@ option ZomboidFixesB42.TurboGameMultiplayer
     translation = ZomboidFixesB42_TurboGameMultiplayer,
 }
 
+option ZomboidFixesB42.SewersClimbOut
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_SewersClimbOut,
+}
+
 option ZomboidFixesB42.AdminSpawnProtection
 {
     type = integer,
@@ -254,6 +262,14 @@ option ZomboidFixesB42.AdminHotbar
     default = true,
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_AdminHotbar,
+}
+
+option ZomboidFixesB42.AdminFullBright
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_AdminFullBright,
 }
 
 option ZomboidFixesB42.NoWalkOnSquarePick

@@ -411,5 +411,7 @@
     "IGUI_ZomboidFixesB42_AdminHotbar_NeedsOtherPlayer": "Needs another player (split screen in single player).",
     "IGUI_ZomboidFixesB42_GrabAmount": "Grab amount...",
     "IGUI_ZomboidFixesB42_GrabAmount_Prompt": "How many to grab? (1 to %1)",
-    "IGUI_ZomboidFixesB42_GrabAmount_Invalid": "Enter a whole number from 1 to %1"
+    "IGUI_ZomboidFixesB42_GrabAmount_Invalid": "Enter a whole number from 1 to %1",
+    "IGUI_CheatPanel_ZomboidFixesB42_FullBright": "Full Bright",
+    "IGUI_CheatPanel_ZomboidFixesB42_FullBright_tooltip": "Always Day, and every room around you lit as well. Only you see it."
 }

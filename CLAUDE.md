@@ -129,6 +129,14 @@ or methods exist.
   `handlingType` bits: 1 = server handles, 2 = client handles, 4 = client while loading.
   `PacketTypes.PacketType.onServerPacket` drops a packet unless `PacketAuthorization.isAuthorized(connection, type)`
   (the sender's role must hold `requiredCapability`), then `parseServer` -> `isConsistent` -> anticheats -> `processServer`.
+- A client moving its own player (Lua `setX/Y/Z`) is checked by the server's anti-cheats on the next PlayerPacket
+  (Power, Speed, NoClip, + Player for the reliable one; any option but 4 = on, "log" included). `AntiCheatNoClip`
+  (42.21) compares with `connection.releventPos` and refuses a move **up** a level without stairs, a sheet rope or a
+  burnt-out square (straight up is 3D length exactly 1.0, under the "basement" branch's > 1.0; down always passes).
+  `react` runs whatever the policy: `GameServer.sendTeleport` back to `releventPos`, packet dropped. Admins
+  (`CantBeKickedByAnticheat`) are bounced without any log line. Only `sendTeleport` sets the 500 ms exemption, and
+  no Lua path reaches it; `AntiCheat.isEnabled` reads the option live (`getServerOptions():getOptionByName(...)`
+  `:setValue(4)`). `*_SewersClimbOut.lua` holds it off per climb. Speed is skipped for teleport-capable roles.
 - `INetworkPacket.send(IsoPlayer, type, ...)` on the server goes to that player's own connection only;
   `INetworkPacket.send(type, ...)` on a client goes to the server.
 - `GameServer.sendAddItemToContainer` / `sendAddItemsToContainer` / `sendRemoveItem(s)FromContainer` /
@@ -136,14 +144,18 @@ or methods exist.
   nested in it) goes to **that player only**; otherwise to clients near the container's parent object or world item.
   So the server can move an item from one player's inventory into another's with `DoRemoveItem` +
   `sendRemoveItemFromContainer` and `AddItem` + `sendAddItemToContainer` (TienGiveItemMP does).
-- Sounds (42.21): `character:playSound(name)` / `getEmitter():playSoundImpl(name, nil)` play on the local FMOD emitter
-  only (`CharacterSoundEmitter`; `playSound` returns 0 for an invisible character, `playSoundImpl` only for a remote
-  invisible one). Other clients hear a character's sound only from anim XML `PlaySound` events (every client animating
-  it runs them) or `PlaySoundPacket` (a client's is relayed by the server to the other connections near the character,
-  70 tiles or the clip distance; Java sends it for item break/damage sounds, voice, combat). Lua's only sender,
-  `sendPlaySound(sound, loop, object)`, is server only and goes to every relevant client, the owner included, with no
-  handle to stop it. So Lua timed-action sounds (crafting, cooking, most `ISBaseTimedAction`s) are silent for others;
-  `*_CraftSounds.lua` relays the craft and ingredient ones with client commands. A remote player's action animation
+- Sounds (42.21): on a client `character:playSound(name)` (`CharacterSoundEmitter.playSound` -> `FMODSoundEmitter.playSound`,
+  same in pzopt's copy) plays locally **and sends a `PlaySoundPacket`** for that character (none for an invisible player),
+  and `stopSound` / `stopOrTriggerSound` send a `StopSoundPacket` by sound name; the server relays both to the other
+  connections near the character (70 tiles or the clip distance, never back to the sender), which play it with
+  `playSoundImpl` / stop it with `stopOrTriggerSoundByName`. This holds for **any** character, a remote one included:
+  a client calling `playSound` on another player's character makes every other nearby client, that player too, play it.
+  Local only: `getEmitter():playSoundImpl(name, nil)` (0 for a remote invisible player), `stopSoundLocal(h)`,
+  `stopOrTriggerSoundLocal(h)`. So `ISHandcraftAction` (craft and completion sounds via `playSound`) is heard by
+  everyone, while `ISAddItemInRecipe` (`playSoundImpl`) is not; `*_CraftSounds.lua` relays only the ingredient sound
+  and replays it with the local calls. Other clients also hear anim XML `PlaySound` events (every client animating the
+  character runs them). Lua's `sendPlaySound(sound, loop, object)` is server only and goes to every relevant client,
+  the owner included, with no handle to stop it. A remote player's action animation
   does sync: `BaseAction.setActionAnim` enters `PlayerActionsState` on a client, whose state params carry the action's
   anim variables captured at that moment (a variable set after `setActionAnim` is missed) and hand models;
   `IsPerformingAnAction` reaches remote copies through the `NetworkPlayerVariables` flag.
@@ -445,6 +457,12 @@ they differ from the game's own converter `zombie/pot/POT*`, and how worldgen fi
 `~/Zomboid/Workshop/NagaCity/CLAUDE.md`, whose `tools/pzmap` reads and writes them byte-identical to vanilla.
 A mod's map folder must be in `common/media/maps/`: `MapGroups.createGroups` only looks in the version folder's
 `media/maps/` when `common/media/maps/` exists, so a map only under `42/` is silently ignored.
+Street names: each lot directory's `media/maps/<dir>/streets.xml` (`zombie/worldMap/streets/WorldMapStreetsXML`:
+`<streets version="1"><street name="..." width="n"><points><point x="" y=""/>`, float world coordinates, name required)
+is drawn as street labels on the world map (`ISMapDefinitions` `MapUtils.initDefaultStreetData`) and registered as
+"Nav" zones (`IsoWorld.registerNavZones` from `metazoneHandler` on `OnLoadMapZones`; rects for straight pieces,
+polyline zones for diagonal runs, `width` wide; names containing a railroad word are skipped), which randomized
+vehicle stories and road foraging use. Vanilla, Raven Creek and NagaCity ship one.
 
 ### Item and recipe scripts at run time (42.21)
 
@@ -1087,6 +1105,15 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
 - `*_BrokenClothing.lua` (option `SyncBrokenClothing`) also clears worn ghosts on the client every tick: a worn item not in
   the main inventory for 2 s is swapped for the inventory item with its ID, or taken off when no item with that ID is
   anywhere in the inventory (left alone when it is in a bag); the client's SyncClothing then drops the server's copy.
+- `client/ZomboidFixesB42_AdminFullBright.lua` (option `AdminFullBright`): an Admin Powers option (`ISAdminPowerUI.AddOption`,
+  file named to load before `*_AdminHotbarActions.lua`, which turns every option into a hotbar toggle). Always Day
+  (ClimateManager day/ambient values while `isAlwaysDayCheat`) lights only the outdoors; the native lighting lights
+  interiors only from windows, room lights and light sources. `FBORenderChunk.NoLighting` / `ForceSkyLightLevel` are
+  debug-only (`BooleanDebugOption.getValue` = default without `-debug`), `IsoRoomLight` is not exposed, and per-square
+  lighting is overwritten natively and cached in the chunk renders. So it adds `IsoLightSource`s with
+  `getCell():addLamppost` (radius capped at 20, falloff (1 - d/r)^2, walls block, dropped by `checkLights` outside the
+  loaded area, `removeLamppost(light)` = life 0) every 4 tiles through the rects of the rooms near the player
+  (`getMetaGrid():getRoomsIntersecting(x, y, w, h, list)`, `RoomDef:getRects()`), client only.
 - `shared/ZomboidFixesB42_ScriptFixes.lua` + `*_ItemFixesClothing/Weapons/Food.lua`: item and recipe data fixes, one option
   each, applied at `OnLoadMapZones` and re-checked every ten minutes (`ScriptFixes.register(option, apply, revert)`,
   `setParams`, `addTag`/`removeTag`, `newMapperEntry`, `setRecipeCall`, `newFixer`, `onBeforeUse` hooks in

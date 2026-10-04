@@ -235,6 +235,7 @@ local POWER_ICONS = {
     AnimalCheat = "sym:Pawprint",
     AnimalExtraValues = "sym:Cow",
     AlwaysDay = "sym:Sun",
+    ZomboidFixesB42_FullBright = "item:Base.LightBulb",
 }
 
 for _, option in ipairs(ISAdminPowerUI.OptionList or {}) do

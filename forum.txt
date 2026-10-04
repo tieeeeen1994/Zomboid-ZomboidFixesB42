@@ -28,9 +28,9 @@ Sometimes the server fails a transfer without telling you. Now the game checks w
 Option: [i]Reloads Keep Pace With The Animation[/i]
 On a server, shells and rounds go in as the hand moves, and a shotgun pump or a rifle magazine swap is no longer cut off half way.
 
-[b]Hear other players craft and cook[/b]
-Option: [i]Hear Other Players Craft And Cook[/i]
-In vanilla multiplayer, only the player crafting hears it. Now stirring, slicing, kneading, sawing, adding an ingredient to a pot and the rest are heard by everyone nearby. Invisible players stay silent.
+[b]Hear other players add ingredients[/b]
+Option: [i]Hear Other Players Add Ingredients[/i]
+In vanilla multiplayer, only the cook hears an ingredient going into a soup, stew, salad or drink. Now everyone nearby hears it. Invisible players stay silent. (Crafting sounds are already shared by the game.)
 
 [b]Broken clothing stays broken[/b]
 Option: [i]Sync Broken Clothing[/i]
@@ -96,6 +96,10 @@ Admins who join are fully healed and in god mode for the number of seconds you s
 [b]Admin tag for every cheat[/b]
 Options: [i]Admin Tag For Every Cheat[/i], [i]Hide Admin Tag While Cheating[/i] (off by default)
 The admin tag over an admin's head shows for every admin panel cheat, not only some of them. The second option hides it completely instead.
+
+[b]Full Bright admin power (beta)[/b]
+Option: [i][BETA] Full Bright Admin Power[/i]
+Always Day only lights the outdoors, so rooms stay dark inside. Full Bright, next to Always Day in the Admin Powers window and on the admin hotbar, turns Always Day on and lights every room around the admin as well. Only the admin sees it; nothing changes for anyone else.
 
 [b]Item editor changes save everywhere[/b]
 Option: [i]Item Editor Changes Save Everywhere[/i]
@@ -247,3 +251,7 @@ With Nick's Inventory Selection Fix, shift-click selects the whole range instead
 [b]Turbo Game in multiplayer[/b]
 Option: [i]Turbo Game In Multiplayer[/i]
 Turbo Game cartridges and batteries go in and come out on multiplayer servers, including in consoles spawned from the item list. The battery charge, best scores and mood effects are kept, and best scores belong to the console they were set on. Your character no longer walks around while a game is open, and the game closes when a zombie is near or it is too dark.
+
+[b]Sewers: climbing out in multiplayer (beta)[/b]
+Option: [i][BETA] Sewers: Climbing Out In Multiplayer[/i]
+With Sewers Under Every Town, climbing a ladder back up to the street works on servers with the AntiCheatNoClip option on. Without it the server treats the climb as no-clip and puts you straight back in the sewer (and logs, kicks or bans players who are not admins, as the option says). For the moment of each climb out, normally a fraction of a second, the server's no-clip check is switched off, then set back.

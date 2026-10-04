@@ -1,57 +1,44 @@
 --[[
-    Zomboid Fixes B42.20 -- server, other players hear crafting and cooking
+    Zomboid Fixes B42.20 -- server, other players hear ingredients being added
 
-    In multiplayer nobody hears what another player crafts or cooks: stirring a
-    bowl, slicing, kneading, sawing, adding an ingredient to a stew. Those sounds
-    are played by the actions' Lua on the crafter's own game:
+    In multiplayer nobody hears another player add an ingredient to a soup, stew,
+    salad or drink. ISAddItemInRecipe (evolved recipes) plays the recipe's
+    AddIngredientSound (or AddItemInRecipe, AddWet/DryItemInBeverage) with
+    getEmitter():playSoundImpl(name, nil) in start() and stops it with
+    getEmitter():stopOrTriggerSound in stop() / perform(), on the cook's client only
+    (start/perform/stop never run on the server).
 
-      * ISHandcraftAction (every craftRecipe, shared/Entity/TimedActions) plays its
-        timedAction script's `sound` with self.character:playSound(name) in
-        start() (soundTime action_start), or in animEvent() on "StartActionAnim"
-        (animation_start) / "PlayActionSound" (animation_event), stops it in
-        stop() / perform() / stopSound(), and plays `completionSound` in perform().
-      * ISAddItemInRecipe (evolved recipes: soups, stews, salads, drinks) plays the
-        recipe's AddIngredientSound (or AddItemInRecipe, AddWet/DryItemInBeverage)
-        with getEmitter():playSoundImpl(name, nil) in start() and stops it in
-        stop() / perform().
+    How a character's sound reaches other players (42.21, fmod/fmod/FMODSoundEmitter,
+    the same in PZ_Optimization's copy of that class): CharacterSoundEmitter.playSound
+    -> FMODSoundEmitter.playSound(String) on a client sends a PlaySoundPacket for the
+    character (not for an invisible player), and stopSound / stopOrTriggerSound send a
+    StopSoundPacket by sound name. The server relays both to the other connections
+    near the character (PlaySoundPacket.processServer: 70 tiles or the sound's clip
+    distance; never back to the sender), whose clients play it with playSoundImpl and
+    stop it with stopOrTriggerSoundByName. playSoundImpl, stopSoundLocal and
+    stopOrTriggerSoundLocal send nothing. So crafting (ISHandcraftAction, which uses
+    character:playSound for its sound and completion sound) is already heard by
+    everyone; the ingredient sound, played with playSoundImpl, is not. Lua cannot
+    send a PlaySoundPacket for another character's sound without playing it locally:
+    the only global, sendPlaySound(sound, loop, object), returns unless
+    GameServer.server and goes to every client near the object, the cook included,
+    who already plays it.
 
-    IsoGameCharacter.playSound -> CharacterSoundEmitter.playSound and playSoundImpl
-    only play on the local FMOD emitter; nothing is sent. Sounds that do reach other
-    players are either anim XML "PlaySound" events (IsoGameCharacter
-    OnAnimEvent_PlaySound, run by every client animating that character) or a
-    PlaySoundPacket. A client's PlaySoundPacket is relayed by the server to the
-    other connections near the character (zombie/network/packets/sound/
-    PlaySoundPacket.processServer, 70 tiles or the sound's clip distance), but Lua
-    cannot send one: the only global, sendPlaySound(sound, loop, object), returns
-    unless GameServer.server and sends to every client near the object, the crafter
-    included, who already plays it (the actions above run on the crafter's client,
-    start/perform/stop are never called on the server), and its packet carries no
-    handle, so nobody could stop a looping craft sound when the action is cancelled.
-
-    The animation is not the problem: BaseAction.setActionAnim enters
-    PlayerActionsState on a client, which captures the action's anim variables
-    (PerformingAction, ...) and hand models in its state params, and the remote side
-    builds a BaseAction from them (PlayerActionsState.setParams), so others see the
-    stirring. Adding an ingredient has no animation at all, in single player too.
-
-    So the crafter's client reports each sound it starts or stops
+    So the cook's client reports each ingredient sound it starts or stops
     (client/ZomboidFixesB42_CraftSounds.lua) and this file passes it on to the
-    players near the crafter, whose clients play it on the crafter's character. Only
-    sounds some timedAction script or evolved recipe names are passed on, at most
-    RATE_LIMIT a second per player, and nothing that starts a sound is passed on for
-    an invisible player (CharacterSoundEmitter.playSound already plays nothing for
-    one).
+    players near the cook, whose clients play it on the cook's character. Only
+    ingredient sounds of the game's evolved recipes are passed on, at most
+    RATE_LIMIT a second per player, and none for an invisible player.
 --]]
 
 if not isServer() then return end
 
 local MODULE = ZomboidFixesB42.MODULE
 
--- How far from the crafter, in tiles, other players get the sound. FMOD fades it
--- out well before that.
+-- How far from the cook, in tiles, other players get the sound. FMOD fades it out
+-- well before that.
 local RADIUS = 40
--- Messages a player may send a second; a craft sends two or three per action, more
--- for animation_event sounds, which restart on every event.
+-- Messages a player may send a second; adding an ingredient sends two.
 local RATE_LIMIT = 12
 
 local function isEnabled()
@@ -59,19 +46,13 @@ local function isEnabled()
     return not vars or vars.CraftSoundsMP ~= false
 end
 
--- Every sound a craft or ingredient action can play, built once on first use
--- (scripts are loaded by then and do not change while a server runs).
+-- Every sound adding an ingredient can play, built once on first use (scripts are
+-- loaded by then and do not change while a server runs).
 local allowed = nil
 
 local function allowedSounds()
     if allowed then return allowed end
     allowed = { AddItemInRecipe = true, AddWetItemInBeverage = true, AddDryItemInBeverage = true }
-    local scripts = getScriptManager():getAllTimedActionScripts()
-    for i = 0, scripts:size() - 1 do
-        local script = scripts:get(i)
-        if script:getSound() then allowed[script:getSound()] = true end
-        if script:getCompletionSound() then allowed[script:getCompletionSound()] = true end
-    end
     local recipes = getScriptManager():getAllEvolvedRecipesList()
     for i = 0, recipes:size() - 1 do
         local sound = recipes:get(i):getAddIngredientSound()
@@ -115,11 +96,9 @@ local function relay(player, args)
 end
 
 --[[
-    args from the crafter's client:
-      op  "p" play `s` as the craft sound (stopping the one before), or
-          "s" stop the craft sound, then play `d` once if given
+    args from the cook's client:
+      op  "p" play `s` (stopping the one before), or "s" stop it
       s   sound name (op "p")
-      d   completion sound (op "s", optional)
       k   the client's session number, n its message number; receivers drop a
           message older than the last they saw (client commands are not ordered)
 --]]
@@ -130,16 +109,12 @@ local function onClientCommand(module, command, player, args)
     if not withinRate(player:getOnlineID()) then return end
 
     local out = { id = player:getOnlineID(), k = args.k, n = args.n }
-    local silent = player:isInvisible() or player:isDead()
     if args.op == "p" then
-        if silent or not isAllowedSound(args.s) then return end
+        if player:isInvisible() or player:isDead() or not isAllowedSound(args.s) then return end
         out.op = "p"
         out.s = args.s
     elseif args.op == "s" then
         out.op = "s"
-        if args.d ~= nil and not silent and isAllowedSound(args.d) then
-            out.d = args.d
-        end
     else
         return
     end
