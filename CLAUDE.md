@@ -117,7 +117,11 @@ or methods exist.
   `OnLoadMapZones` (see "Item and recipe scripts at run time"). Leaving a game runs `ScriptManager.Reset` + `Load`
   without always reloading Lua, so a file-level "already applied" flag must be cleared at world load.
   UI strings go in `Translate/EN/IG_UI.json` as `IGUI_ZomboidFixesB42_*`.
-- Every feature is listed in README.md, workshop.txt (`description=[*]...`) and mod.info (`description=- ...`); keep all three in step.
+- Every feature is listed in README.md, forum.txt (one post, the pinned Discussions thread: what it does + its sandbox
+  option) and mod.info (`description=- ...`); keep all three in step. workshop.txt lists no features, only the intro and
+  a pointer to that thread: Steam caps the Workshop description at 8000 characters, and a longer one fails the in-game
+  upload with `Failed to update workshop item, result=8` (every upload from 2026-09-29 to 10-04 failed that way, so
+  the server kept an old copy).
 
 ## Networking (Java)
 

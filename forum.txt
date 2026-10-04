@@ -1,0 +1,249 @@
+[h1]Zomboid Fixes B42.20+: what every fix does[/h1]
+
+A set of fixes for Build 42.20, mostly for multiplayer. Install it on both the server and the clients.
+
+Every fix has its own sandbox option, on the [b]Zomboid Fixes[/b] page of the sandbox settings, and is on by default unless it says otherwise. Each one below names its option, so you can turn off any fix you do not want. Fixes marked [b](beta)[/b] are new and not fully tested yet.
+
+Found a problem? Post it in this thread and say which fix, whether it was single player or a server, and what you did.
+
+[h2]Multiplayer[/h2]
+
+[b]Multiplayer fast forward[/b]
+Option: [i]Multiplayer Fast Forward[/i]
+The single player speed buttons and keys are back in multiplayer. Choosing a speed is a vote: the game only speeds up once every living player has chosen fast forward, and then at the slowest speed anyone chose. Timed actions speed up with it, including one already under way and the step-by-step ones (milking, shearing, reading, exercising, drinking, filling and emptying water and fuel, reloading). So do moving items between containers, cooking, and food heating up or cooling down, which on a server otherwise run at normal speed whatever the game speed. Going back to normal speed, finishing an action, or moving takes back only your own vote. A zombie close to anyone stops it and clears every vote. Single player is not affected.
+
+[b]Auto fast forward[/b]
+Options: [i]Auto Fast Forward Actions[/i], [i]Auto Fast Forward Delay[/i] (5 seconds by default), [i]Auto Fast Forward Ignored Actions[/i], [i]Auto Fast Forward Finish First Actions[/i]
+Right-click a fast forward button to turn it yellow. While it is yellow, once you have been busy with timed actions (reading, crafting, building...) for the delay, you vote for that speed by yourself, and finishing takes the vote back. The game still only speeds up while everyone is voting, so it runs fast while the whole group is busy. Fishing never votes. Item moves vote only as they start, so a transfer is never sped up half way through. Right-click again to turn auto off. The choice is kept on your computer.
+
+[b]Fast item transfers with Fast Timed Actions[/b]
+Option: [i]Fast Item Transfers With Fast Timed Actions[/i]
+The Fast Timed Actions cheat makes item transfers quick in multiplayer too, like in single player. A quick transfer the server cannot make is done the normal way instead of not at all.
+
+[b]Failed item transfers repair themselves[/b]
+Option: [i]Failed Item Transfers Repair Themselves[/i]
+Sometimes the server fails a transfer without telling you. Now the game checks with the server and fixes what you see: items only your game still shows on the floor or in a container are removed, items the server moved but you could not see (until relogging) appear, a transfer the server dropped is tried again, and one that did happen ends instead of hanging for up to 20 seconds.
+
+[b]Reloads keep pace with the animation[/b]
+Option: [i]Reloads Keep Pace With The Animation[/i]
+On a server, shells and rounds go in as the hand moves, and a shotgun pump or a rifle magazine swap is no longer cut off half way.
+
+[b]Hear other players craft and cook[/b]
+Option: [i]Hear Other Players Craft And Cook[/i]
+In vanilla multiplayer, only the player crafting hears it. Now stirring, slicing, kneading, sawing, adding an ingredient to a pot and the rest are heard by everyone nearby. Invisible players stay silent.
+
+[b]Broken clothing stays broken[/b]
+Option: [i]Sync Broken Clothing[/i]
+Clothing destroyed while worn stays destroyed after relogging. It also no longer leaves a plain copy of itself on your character (a white scarf for a green one) that stops the real one on the floor from being picked up.
+
+[b]Zombie attacks wear down clothing and armor (beta)[/b]
+Option: [i][BETA] Zombie Attacks Wear Down Clothing And Armor[/i]
+In vanilla multiplayer, a zombie attack that your clothing or armor stops does not wear it down, so armor with full protection lasts forever. Now it wears down like in single player.
+
+[b]Watering plants uses water once[/b]
+Option: [i]Watering Plants Uses Water Once[/i]
+Watering a plant in multiplayer no longer gives it twice the water or empties the can twice as fast.
+
+[b]Removing bushes wears the tool[/b]
+Option: [i]Removing Bushes Wears The Tool[/i]
+Removing a bush or wall vines with a cutting tool costs endurance and arm strain and wears the tool again, and a broken tool is swapped for another. In multiplayer the inventory window also refreshes when the server swaps a tool or uses up building materials.
+
+[b]Finished books stay read[/b]
+Option: [i]Finished Books Stay Read[/i]
+Finished skill books stay read after relogging, including books read with the instant timed actions cheat.
+
+[b]Rain collectors and drying racks survive crashes[/b]
+Option: [i]Rain Collectors And Drying Racks Survive Crashes[/i]
+Rain collectors, wells, amphoras, drying racks, and buckets, pots and other items that catch rain, no longer break after a server crash, a killed server or a restored backup. Ones already broken are rebuilt, empty, when their area loads. Broken items already picked up are fixed when their owner joins or their vehicle loads.
+
+[b]Working animal gender change[/b]
+Option: [i]Working Animal Gender Change[/i]
+Changing an animal's gender in the animal info window also changes its model and type, and no longer reverts for other players.
+
+[h2]Admin tools[/h2]
+
+[b]Admin hotbar[/b]
+Option: [i]Admin Hotbar[/i]
+Admins and moderators get a new sidebar button under Admin that opens a floating bar of one-click shortcuts to every admin tool: admin powers, admin panel windows, the Tools and Debug menus, weather and climate, meta events, foraging and player actions.
+[list]
+[*]Each shortcut keeps its own settings, such as a target player, a location, an item or a saved climate preset.
+[*]Toggles show whether they are on, and a second click closes the window a shortcut opened.
+[*]One shortcut can run several actions in a row, each after a delay you choose or all at once (for example pick a square, then spawn a horde and make noise there).
+[*]A picked square can keep picking, so every click on the map runs the shortcut again until right-click or Esc.
+[*]A shortcut can hold a chosen tile and paint it with the Brush Tool on every click.
+[*]A shortcut's toggles can each flip on their own, or follow the first one (same state or the opposite), so one click turns a set of cheats on or off together.
+[*]A shortcut can repeat itself every N milliseconds (100 or more), a set number of times, until clicked again, or while its button or key is held.
+[*]Any image in the game can be a shortcut's icon, and shortcuts have key binds in the Key Bindings tab.
+[/list]
+Single player gets the hotbar with the -debug launch option.
+
+[b]Body stats editor[/b]
+Option: [i]Body Stats Editor For Admins[/i]
+Admins and moderators can change any online player's hunger, mood, health, nutrition, weight and other body stats, like the debug menu's Body panel, from a Body button in the Player Stats window, the admin panel or the scoreboard. The changes are made on the server, so they stick and the player sees them.
+
+[b]Body part conditions[/b]
+Option: [i]Body Part Conditions For Admins[/i]
+A Body part condition shortcut for the admin hotbar: one click turns a bite, scratch, laceration, deep wound, bleeding, glass shards, a lodged bullet, a burn, a fracture, a wound infection or a muscle strain on or off on any body part of any online player. It has the same permission checks and admin log as the body stats editor (vanilla's own health cheat has none in multiplayer).
+
+[b]Admin chopper controls (beta)[/b]
+Option: [i][BETA] Admin Chopper Controls[/i]
+Admins and moderators can send and stop the chopper from the right-click Debug menu, and the debug menu's chopper buttons work on servers. Stopping it ends today's chopper event, so it does not fly straight back, and it reaches every player, including anyone who still hears a chopper that already left.
+
+[b]Admin spawn protection (off by default)[/b]
+Option: [i]Admin Spawn Protection[/i] (seconds, 0 = off)
+Admins who join are fully healed and in god mode for the number of seconds you set, so an admin revived on the server does not die again on load.
+
+[b]Admin tag for every cheat[/b]
+Options: [i]Admin Tag For Every Cheat[/i], [i]Hide Admin Tag While Cheating[/i] (off by default)
+The admin tag over an admin's head shows for every admin panel cheat, not only some of them. The second option hides it completely instead.
+
+[b]Item editor changes save everywhere[/b]
+Option: [i]Item Editor Changes Save Everywhere[/i]
+Changes made in the item editor save for items in crates, vehicles, on the floor and in other players' inventories, not only in your own.
+
+[b]Working Debug Add Fluid[/b]
+Option: [i]Working Debug Add Fluid On World Objects[/i]
+Debug Add Fluid fills rain collectors and other world containers instead of emptying them.
+
+[b]Working foraging debug tools[/b]
+Option: [i]Working Foraging Debug Tools[/i]
+The foraging debug menu can add, move and refresh icons, and added icons can be picked up.
+
+[b]No walking when picking a square[/b]
+Option: [i]No Walking When Picking A Square[/i]
+Picking a square in the debug Horde Manager or Tile Picker no longer walks your character over to it.
+
+[b]Server Options tooltip fix[/b]
+Option: [i]Server Options Tooltip Fix[/i]
+The admin Server Options window no longer leaves an option's description stuck on screen, following the mouse around, after the mouse leaves the window or it is closed.
+
+[b]No fall damage with Fast Move (beta)[/b]
+Option: [i][BETA] No Fall Damage With Fast Move[/i]
+No fall damage on stairs while Fast Move is on.
+
+[h2]Gameplay[/h2]
+
+[b]Vehicle battery drain fix[/b]
+Option: [i]Vehicle Battery Drain Fix[/i]
+Vehicle batteries no longer drain twice as fast as intended from headlights, the radio, the lightbar, the siren and the heater.
+
+[b]No auto vault over stair railings[/b]
+Option: [i]No Auto Vault Over Stair Railings[/i]
+Running into a stair railing no longer vaults you over it.
+
+[b]Rescue animals lost in hutch nest boxes[/b]
+Option: [i]Rescue Animals Lost In Hutch Nest Boxes[/i]
+Chickens the game deletes after laying in a full hutch are put back.
+
+[b]Hutch dirt speed[/b]
+Option: [i]Hutch Dirt Speed[/i] (0.25 by default, 1 = vanilla)
+Hutches and nest boxes get dirty at a quarter of the normal speed. Set any speed you like, or 1 for vanilla.
+
+[b]Delete negative weight items[/b]
+Option: [i]Delete Negative Weight Items[/i]
+Items with negative weight are deleted.
+
+[b]Grab amount[/b]
+Option: [i]Grab Amount[/i]
+A new Grab amount... option between Grab one and Grab all takes exactly as many items from a stack as you type, in loot windows and in search mode.
+
+[b]No empty slices in the firearm radial menu[/b]
+Option: [i]No Empty Slices In The Firearm Radial Menu[/i]
+Empty slices are left out of the firearm radial menu, so it only shows what can be done.
+
+[b]Mod options of unloaded mods are kept[/b]
+(always on)
+Saving the options no longer resets or deletes the mod options, or the Key Bindings tab keys, of mods that are not loaded, and settings an earlier save left glued together are read back instead of reset. Enable Zomboid Fixes in the main menu's Mods list too, since options saved at the main menu are only protected while it is loaded there.
+
+[h2]Items and recipes[/h2]
+
+[b]Metal shin armor run speed[/b]
+Option: [i]Fix Metal Shin Armor Run Speed[/i]
+Metal Shin Armor and Articulated Metal Shin Armor no longer have their run speeds swapped.
+
+[b]Chainmail sleeve combat speed[/b]
+Option: [i]Chainmail Sleeve Combat Speed[/i]
+Full chainmail sleeves no longer have their combat speed penalties swapped between the right and left arm.
+
+[b]Tire shoulder pads[/b]
+Option: [i]Tire Shoulder Pads[/i]
+The left tire shoulder pad wears out like the right one, and both protect their own upper arm instead of the torso.
+
+[b]Spiked thigh armor can change side[/b]
+Option: [i]Spiked Thigh Armor Can Change Side[/i]
+The right spiked metal and spiked scrap metal thigh armor can be moved to the left thigh, like every other thigh armor.
+
+[b]Spiked shoulder pads can be smelted[/b]
+Option: [i]Spiked Articulated Shoulder Pads Can Be Smelted[/i]
+Spiked articulated metal shoulder pads can be smelted like the plain ones.
+
+[b]Knee pads and gaiters spawn in pairs[/b]
+Option: [i]Knee Pads And Gaiters Spawn In Pairs[/i]
+The plain left knee pad and the right gaiter spawn with their other half, like every other pair.
+
+[b]Bow tie weight[/b]
+Option: [i]Bow Tie Weight[/i]
+The full bow tie weighs 0.1 instead of 1.0.
+
+[b]Sawn-off double barrel shotgun repair (beta)[/b]
+Option: [i][BETA] Sawn-Off Double Barrel Shotgun Repair[/i]
+The sawn-off double barrel shotgun can be repaired, with itself or the full double barrel shotgun.
+
+[b]Sawn-off shotgun loading sounds[/b]
+Option: [i]Sawn-Off Shotgun Loading Sounds[/i]
+The sawn-off pump shotgun plays its start and stop loading sounds and an unloading sound.
+
+[b]Pump shotguns take the x2 scope[/b]
+Option: [i]Pump Shotguns Take The x2 Scope[/i]
+The x2 scope fits the pump shotgun and the sawn-off pump shotgun, which have a model and a place for it.
+
+[b]Katana can be sharpened[/b]
+Option: [i]Katana Can Be Sharpened[/i]
+The katana and the broken katana can be sharpened like the other long blades.
+
+[b]Forged pot pasta[/b]
+Option: [i]Forged Pot Pasta Gives Back The Forged Pot[/i]
+Pasta cooked in a forged cooking pot gives back the forged pot instead of a normal one.
+
+[b]Copper saucepan bowls (beta)[/b]
+Option: [i][BETA] Copper Saucepan Pasta And Rice Split Into Bowls[/i]
+Pasta and rice cooked in a copper saucepan can be split into bowls, giving back the copper saucepan.
+
+[b]Clay bowls stay clay bowls (beta)[/b]
+Option: [i][BETA] Clay Bowls Stay Clay Bowls[/i]
+Splitting a pot into clay bowls gives clay bowls of food, and beans, oatmeal, cereal and cake made with a clay bowl give the clay bowl back.
+
+[b]Pumpkin and sunflower seed packets (beta)[/b]
+Option: [i][BETA] Pumpkin And Sunflower Seed Packets[/i]
+Opening a pumpkin or sunflower seed packet gives the 25 seeds packing it took, instead of 5.
+
+[b]Leek and grapefruit nutrition[/b]
+Option: [i]Leek And Grapefruit Nutrition[/i]
+Leeks, jars of leeks and grapefruits have real nutrition values instead of absurd carbohydrates and protein.
+
+[b]Pie slice and .44 box weights[/b]
+Option: [i]Pie Slice And .44 Box Weights[/i]
+Pie slices weigh 0.2 like cake slices instead of the whole pie's 0.5, and the .44 Magnum box and carton weigh in line with the other ammunition.
+
+[b]Minor item fixes[/b]
+Option: [i]Minor Item Fixes[/i]
+A red mug of coffee gives its mug back, the Rangers baseball shirt covers the arms, the red baseball cap falls off like the others, the seafood cooler makes cooler sounds, and the metal, copper, gold, silver and tumbler hot drinks and the clay bowl fruit salad have names.
+
+[h2]Fixes for other mods[/h2]
+These only do something when that mod is installed.
+
+[b]Guns of Marz tooltip line length[/b]
+Option: [i]Guns of Marz Tooltip Line Length[/i] (200 characters by default)
+Guns of Marz attachment tooltips wrap instead of stretching across the screen.
+
+[b]Guns of Marz magazine tooltip[/b]
+Option: [i]Guns of Marz Magazine Tooltip[/i]
+A Guns of Marz gun's tooltip names the magazine really in it, with its capacity, instead of an earlier one.
+
+[b]Nick's Inventory Selection Fix shift range[/b]
+Option: [i]Nick's Inventory Selection Fix Shift Range[/i]
+With Nick's Inventory Selection Fix, shift-click selects the whole range instead of acting like ctrl-click.
+
+[b]Turbo Game in multiplayer[/b]
+Option: [i]Turbo Game In Multiplayer[/i]
+Turbo Game cartridges and batteries go in and come out on multiplayer servers, including in consoles spawned from the item list. The battery charge, best scores and mood effects are kept, and best scores belong to the console they were set on. Your character no longer walks around while a game is open, and the game closes when a zombie is near or it is too dark.
