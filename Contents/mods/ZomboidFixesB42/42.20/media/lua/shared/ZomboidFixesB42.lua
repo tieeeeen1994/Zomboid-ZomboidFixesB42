@@ -113,6 +113,7 @@ ZomboidFixesB42.CMD_TRANSFER_TIMED = "timedTransfer"
 ZomboidFixesB42.CMD_TRANSFER_TIMED_CANCEL = "timedTransferCancel"
 ZomboidFixesB42.CMD_TRANSFER_RESYNC = "transferResync"
 ZomboidFixesB42.CMD_CRAFT_SOUND = "craftSound"
+ZomboidFixesB42.CMD_ZOMBIE_ATTACK_WEAR = "zombieAttackWear"
 
 -- server -> clients
 ZomboidFixesB42.CMD_ANIMAL_GENDER_SYNC = "animalGenderSync"

@@ -12,6 +12,20 @@ per fix (default on), README / workshop.txt / mod.info lines, Sandbox.json toolt
       vanilla made redundant (42.21 fixed reading progress stalls, which overlaps ReadBooks).
 - [ ] Update the line numbers in CLAUDE.md to 42.21 as they are touched.
 
+## 0b. In progress
+
+- [ ] **Zombie attacks wear clothing: victim-side hit registration** (option `ZombieAttacksWearClothing`,
+      beta). Rewritten, not tried in game yet. The old version read the victim's own `OnClothingUpdated`
+      and missed every attack by a zombie another client owns (that client rolls the attack on its copy
+      of the victim). Now the victim's client reports each attack whose `getAttackOutcome()` turns
+      `"success"` (own and remote zombies) and the server rolls the outcome and calls vanilla's
+      `addHoleFromZombieAttacks` + `syncVisuals` (`client/` + `server/ZomboidFixesB42_ZombieAttacksWearClothing.lua`).
+      To check on a server (needs a Workshop upload): reports arrive for zombies another player owns,
+      one per attack (not twice, not missed while the outcome flips fast), armor condition goes down at
+      about the single player rate, breaks drop the item for everyone. Open: a client SyncVisuals (dirt,
+      fall, weapon hit) sent before the server's ItemStats arrives undoes a wear; fake-dead and vehicle
+      attacks are not reported.
+
 ## 1. Small Lua bug fixes
 
 - [x] **Vehicle batteries drain at double speed.** `VehicleUtils.chargeBattery`

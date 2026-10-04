@@ -1097,11 +1097,16 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
   send floor hints (`encodeFloorHints`, `findItemOnGroundNear`), log why they decline, and fall back to a vanilla
   transaction for declined items still at the source. Not fixable from Lua: a real floor item the client lost to a
   wrong-index removal (no way to send one world item to one client), and the cross-player Reject of vanilla cancels.
-- `client/ZomboidFixesB42_ZombieAttacksWearClothing.lua` (option `ZombieAttacksWearClothing`, beta): on each `OnClothingUpdated` while one
-  of this client's zombies can hit the player, weighs every vanilla outcome (part chances, thump / blocked scratch /
-  blocked bite / through, hole attempt) against a per-frame snapshot of the layers' holes, keeps the cases whose
-  predicted holes match what changed, picks one, and finishes it as the server would (hole cost, or armor's 1 in N);
-  then `syncVisuals()`. Breaks go through `*_BrokenClothing.lua`.
+- `*_ZombieAttacksWearClothing.lua` (client/server, option `ZombieAttacksWearClothing`, beta): the victim's client is
+  the source of the hit. A zombie owned by **another** client rolls the attack on that client's copy of the victim (no
+  Lua event there, only a sound in the victim's `AttackNetworkState`), so the old `OnClothingUpdated` inference missed
+  most attacks in a group. Now the victim's client watches every zombie targeting a local player (own or remote) for
+  `getAttackOutcome()` turning `"success"` (set at the `SetAttackOutcome` anim event in both states), checks vanilla's
+  `triggerPlayerReaction` conditions, and sends `zombieAttackWear {zombie, side, crawling, canBite, attackers}`; the
+  server finds the zombie near the player, rolls part / thump / blocked against `getBodyPartClothingDefense`, calls
+  vanilla's `player:addHoleFromZombieAttacks(part, scratch)` (condition via `setConditionAndSync`, breaks via the
+  server's own Unwear) and `player:syncVisuals()`. A client `SyncVisuals` replaces every worn item's holes and
+  condition on the server, so one sent before the client has the server's ItemStats can undo a wear.
 - `*_BrokenClothing.lua` (option `SyncBrokenClothing`) also clears worn ghosts on the client every tick: a worn item not in
   the main inventory for 2 s is swapped for the inventory item with its ID, or taken off when no item with that ID is
   anywhere in the inventory (left alone when it is in a bag); the client's SyncClothing then drops the server's copy.
