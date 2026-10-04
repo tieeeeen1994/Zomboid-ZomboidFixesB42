@@ -9,7 +9,8 @@ Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly 
 - Metal Shin Armor and Articulated Metal Shin Armor no longer have their run speeds swapped.
 - No fall damage on stairs while Fast Move is on (beta).
 - Items with negative weight are deleted.
-- Clothing destroyed while worn stays destroyed after relogging.
+- Clothing destroyed while worn stays destroyed after relogging, and no longer leaves a plain copy of itself on your character (a white scarf for a green one) that stops the real one on the floor from being picked up.
+- In multiplayer, zombie attacks that clothing or armor stops wear it down like in single player, so armor with full protection no longer lasts forever (beta).
 - Chickens the game deletes after laying in a full hutch are put back.
 - Hutches and nest boxes get dirty at a quarter of the normal speed. The speed can be changed, or set back to vanilla.
 - Running into a stair railing no longer vaults you over it.

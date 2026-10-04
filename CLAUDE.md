@@ -45,6 +45,11 @@ or methods exist.
   `PYTHONPATH=<scratch>/py python3 -c "from luaparser import ast; ast.parse(open(f).read())"`. It only checks syntax;
   walking its AST for free names is a cheap way to spot typos in globals.
 - Python 3 with Pillow and `sips` are available (image sizes, generating lists of game files).
+- On the Windows machine Python is the `py` launcher (`python3` is a Store stub). A real Lua (5.5) for running a mod
+  file against mocked Java objects: `py -m pip install --target <scratch>/lupa lupa`, then
+  `lupa.LuaRuntime().execute('loadfile([[harness.lua]])([[mod.lua]])')`. Mocks are plain Lua tables with methods
+  (Python objects do not take `obj:method()` calls). `ZombieAttacksWearClothing` was checked that way, against a Lua port of
+  vanilla's attack code.
 - The shell is zsh: `$var[...]` is array subscripting, so `"$f[:.]"` inside a grep pattern breaks; use Python for
   such loops.
 
@@ -167,6 +172,26 @@ alive player, and for **remote** players it calls `RestoreToFullHealth()` every 
 stats/body/nutrition on an admin's client are fake (full health, default stats). **The vanilla Player Stats
 ("Check Stats") window is therefore not accurate for other players** (weight etc. are stale/default). Anything that
 shows another player's live values must ask the server.
+
+Zombie attacks on players and clothing wear (42.21): `BodyDamage.AddRandomDamageFromZombie` (~1251) runs on the client
+that owns the zombie (`AttackState` "AttackCollisionCheck"; remote zombies run `AttackNetworkState`). Its outcomes:
+thump (`Rand.Next(100) <= baseChance`, no wound) and blocked (`Rand.Next(100) < getBodyPartClothingDefense`) call
+`addHoleFromZombieAttacks` and send nothing; only a wound that gets through sends `ZombieHitPlayerPacket`, and the server
+rolls the whole attack again (`Bite.process`). Condition loss (`BloodClothingType.setConditionAndSync`: hole =
+`getCondLossPerHole`, `CanHaveHoles = false` armor 1 in `ConditionLowerChanceOneIn`) does nothing on a client, so in
+MP blocked hits never wear clothing (100-defense armor never breaks). Defense stays full until condition 0. Lua sees
+each hole attempt as a synchronous `OnClothingUpdated` (from `IsoGameCharacter.addHole`), with no part; the zombie's
+`AttackDidDamage` is true for a thump too. `SyncVisualsPacket` (client `player:syncVisuals()`, reliability 3, ordering 0)
+carries every worn item's holes **and condition** and the server applies them (`setConditionNoSound`); after each hit
+it rolls, the server sends its own copy back the same way (`GameServer.syncVisuals`), overwriting the owner's.
+Worn lists: `setWornItem` / `removeWornItem` send `SyncClothing` themselves (server: to everyone, with SyncVisuals;
+client: to the server). `SyncClothingPacket.process` (both sides) unwears every worn item not listed and, for a listed one
+neither worn nor in the inventory, `CreateItem(type)` + `setID` and wears it outside any container, copying tint and
+texture **only for remote players**: the owner's copy has the script's default look (a white scarf for a green one) and
+is never saved. A client's `ItemContainer.Remove` (RemoveInventoryItemFromContainer) does not unwear. So a SyncClothing
+from the client crossing the server's Unwear of an item it broke (a hit rolled on the server) leaves such a copy on both
+sides with the real item's ID while the real item lies on the floor. `ItemContainer.AddItem` refuses an ID the
+container already has (`Error, container already has id`), as does the client's AddInventoryItemToContainer (`Dupe item ID`).
 
 Client commands: `ClientCommand` packet is priority 1, reliability 2 = RakNet RELIABLE (**not ordered**), capability
 LoginOnServer. `PacketsCache.isLimitExceeded`: a client silently drops (cancels) packets of one type beyond
@@ -1050,6 +1075,14 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
   send floor hints (`encodeFloorHints`, `findItemOnGroundNear`), log why they decline, and fall back to a vanilla
   transaction for declined items still at the source. Not fixable from Lua: a real floor item the client lost to a
   wrong-index removal (no way to send one world item to one client), and the cross-player Reject of vanilla cancels.
+- `client/ZomboidFixesB42_ZombieAttacksWearClothing.lua` (option `ZombieAttacksWearClothing`, beta): on each `OnClothingUpdated` while one
+  of this client's zombies can hit the player, weighs every vanilla outcome (part chances, thump / blocked scratch /
+  blocked bite / through, hole attempt) against a per-frame snapshot of the layers' holes, keeps the cases whose
+  predicted holes match what changed, picks one, and finishes it as the server would (hole cost, or armor's 1 in N);
+  then `syncVisuals()`. Breaks go through `*_BrokenClothing.lua`.
+- `*_BrokenClothing.lua` (option `SyncBrokenClothing`) also clears worn ghosts on the client every tick: a worn item not in
+  the main inventory for 2 s is swapped for the inventory item with its ID, or taken off when no item with that ID is
+  anywhere in the inventory (left alone when it is in a bag); the client's SyncClothing then drops the server's copy.
 - `shared/ZomboidFixesB42_ScriptFixes.lua` + `*_ItemFixesClothing/Weapons/Food.lua`: item and recipe data fixes, one option
   each, applied at `OnLoadMapZones` and re-checked every ten minutes (`ScriptFixes.register(option, apply, revert)`,
   `setParams`, `addTag`/`removeTag`, `newMapperEntry`, `setRecipeCall`, `newFixer`, `onBeforeUse` hooks in

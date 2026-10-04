@@ -35,6 +35,28 @@
     creates a new one with that ID and puts it on. So if the client still listed the
     broken item as worn after the server had dropped it, the server would make a
     fresh, undamaged copy while the broken one lay on the floor.
+
+    That still happens when the server breaks the item itself (a hit that got
+    through, rolled again on the server): vanilla's server-side Unwear sends
+    SyncClothing without it (setWornItem sends one to everyone), but a SyncClothing
+    this client sent a moment earlier, still listing it, can cross it. The server
+    then creates the copy (SyncClothingPacket.process: CreateItem + setID, worn but in
+    no inventory) and echoes its list back, and this client does the same: the item
+    is no longer in its inventory, so it creates one too. For the owner the packet
+    copies no tint or texture (only for remote players), so the copy shows in the
+    script's default look -- a white scarf for a green one -- on the character but
+    not in the inventory, until relog (it is never saved). Its ID is the real item's,
+    which now lies on the floor, and picking that up then fails on the client.
+
+    So every tick a worn item that is not in the main inventory is a ghost. Vanilla
+    keeps every worn item there; ItemContainer.Remove on a client takes an item out
+    without unwearing it. After GHOST_GRACE_MS, in case the item is still on its way:
+    if an item with that ID is in the main inventory, it is worn instead (the copy
+    came from a SyncClothing that overtook the item, which travels on another
+    ordering channel); if no item with that ID is anywhere in the inventory, the
+    ghost is taken off. Either way the client's setWornItem sends SyncClothing, and
+    the server drops its own copy from it. Nothing is deleted on either side: a
+    ghost belongs to no container, and the server's SyncClothing only unwears.
 --]]
 
 if not isClient() then return end
@@ -125,11 +147,77 @@ local function checkPlayer(player, restore)
     end
 end
 
+-- How long a worn item may be missing from the inventory before it counts as a
+-- ghost (see the top of the file).
+local GHOST_GRACE_MS = 2000
+
+-- [player number] = { [item ID] = first time it was seen missing }
+local ghostSince = {}
+
+--- Take off, or swap for the real item, worn items that are not in the main
+-- inventory (see the top of the file).
+local function checkGhosts(player)
+    local wornItems = player:getWornItems()
+    if not wornItems then return end
+
+    local num = player:getPlayerNum()
+    local seen = ghostSince[num] or {}
+    local missing = {}
+    local now = getTimestampMs()
+    local inventory = player:getInventory()
+
+    local due = {}
+    for i = 0, wornItems:size() - 1 do
+        local worn = wornItems:get(i)
+        local item = worn and worn:getItem()
+        if item and item:getContainer() ~= inventory then
+            local id = item:getID()
+            missing[id] = seen[id] or now
+            if now - missing[id] >= GHOST_GRACE_MS then
+                table.insert(due, { item = item, location = worn:getLocation() })
+            end
+        end
+    end
+    ghostSince[num] = missing
+
+    -- Changed after the loop so the worn list is not changed while walking it.
+    local changed = false
+    for _, ghost in ipairs(due) do
+        local id = ghost.item:getID()
+        local real = inventory:getItemWithID(id)
+        local fixed = false
+        if real then
+            player:removeWornItem(ghost.item, false)
+            player:setWornItem(ghost.location, real)
+            print("[ZomboidFixesB42] worn " .. ghost.item:getFullType() .. " (" .. tostring(id)
+                .. ") was a copy, now wearing the one in the inventory")
+            fixed = true
+        elseif not ZomboidFixesB42.findItemById(inventory, id) then
+            player:removeWornItem(ghost.item, false)
+            print("[ZomboidFixesB42] worn " .. ghost.item:getFullType() .. " (" .. tostring(id)
+                .. ") is in no inventory, taken off")
+            fixed = true
+        end
+        -- In a bag: a real item, worn from the wrong place. Left alone.
+        if fixed then
+            missing[id] = nil
+            changed = true
+        end
+    end
+
+    if changed then
+        triggerEvent("OnClothingUpdated", player)
+    end
+end
+
 local function checkLocalPlayers(restore)
     for i = 0, getNumActivePlayers() - 1 do
         local player = getSpecificPlayer(i)
         if player and not player:isDead() then
             checkPlayer(player, restore)
+            if not restore then
+                checkGhosts(player)
+            end
         end
     end
 end
