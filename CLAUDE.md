@@ -101,12 +101,25 @@ or methods exist.
   handler and ignores other commands.
 - Server handlers always check the sender's capability (`player:getRole():hasCapability(Capability.X)`), clamp and
   validate every argument, and log admin actions with `print("[ZomboidFixesB42] ...")`.
-- **Every** feature has its own sandbox option (`page = ZomboidFixesB42`) with a name and a long `_tooltip` in
+- **Every** feature can be switched off by a sandbox option (`page = ZomboidFixesB42`) with a name and a long `_tooltip` in
   `Translate/EN/Sandbox.json`, read at run time as `SandboxVars.ZomboidFixesB42.<Option>` through a file-local `isEnabled()`.
+  Only REALLY closely related fixes share one option, where anyone who wants one wants them all: `ItemDataFixes` (item
+  property fixes), `RecipeFixes` (recipe and repair edits), `AdminTag` (enum 1 vanilla / 2 every cheat / 3 never,
+  `Sandbox_<translation>_option<n>` labels), `BodyStatsEditor` (also the hotbar's body part toggles). Merged tooltips
+  list each fix on its own line (`\\n` in the JSON, as vanilla writes it).
   Client overrides fall back to vanilla when off; server handlers ignore (or refuse with a reply, if the client waits)
   commands when off. Every option defaults to **on** (opt out, not opt in); numeric ones default to a working value,
-  not their "off" value. The few that default off (HideAdminTag, AdminSpawnProtection = 0) are marked
-  "(off by default)" on their line in README/workshop/mod.info; non-obvious numeric defaults are stated there too. Beta ones are titled `[BETA] ...`. README/workshop/mod.info mark only `(beta)`, never "optional".
+  not their "off" value. The few that default off (AdminSpawnProtection = 0) are marked
+  "(off by default)" on their line in README/forum/mod.info; non-obvious numeric defaults are stated there too. Beta =
+  **not yet played in game**, so it may not work properly: titled `[BETA] ...`; README/forum/mod.info mark `(beta)` at the
+  end of the feature's line (forum: in its `[b]` heading), never "optional". Drop the label once it has been played.
+- Renaming or merging an option resets it on existing servers (checked in the 42.21 jar): `GameServer.doMinimumInit`
+  runs `SandboxOptions.loadServerLuaFile` (`readLuaFile`: each known option's `fromTable`, an absent key keeps the
+  default) then `saveServerLuaFile`, which rewrites `<name>_SandboxVars.lua` from the known options only, so old keys
+  vanish and new ones are written at their default; `IsoWorld.init` (not on clients) then reads the save's
+  `map_sand.bin` (`SandboxOptions.load(ByteBuffer)`: name/value pairs through `upgradeOptionName` + `optionByName`),
+  where an unknown name is only logged and skipped. No error, but the old values are gone before any mod Lua runs
+  (`SandboxVars` is rebuilt by `toLua`), so there is no Lua migration; tell server admins in the forum post.
 - `type = string` sandbox options work (text box in the sandbox screens, `CustomStringSandboxOption`, no length limit),
   but their `default` cannot contain a comma: `ScriptParser.readBlock` ends a value at every comma. Lists default to
   semicolons and the code accepts commas too (the value set in game is a quoted Lua string).
@@ -1050,7 +1063,7 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
   (`BodyStats.apply`) and replies with a full snapshot; the window polls every second, batches slider changes every
   200 ms, numbers each change (session + seq per field, stale ones dropped server side) and shows the dragged value
   until acked. Gate: `Capability.CanModifyBodyStats` + target role position <= admin's.
-  Body part conditions (option `BodyPartConditions`, hotbar `players.bodyPart`) are extra fields keyed
+  Body part conditions (option `BodyStatsEditor`, hotbar `players.bodyPart`) are extra fields keyed
   `Part:<BodyPartType>:<condition>` resolved by `BodyStats.getField` but not in `getFields()`, set like vanilla's
   `onHealthCheatCurrentPlayer` (which has no access check) then `syncBodyPart`; value `flip` for another player's
   part, whose body this client cannot read.
@@ -1134,7 +1147,8 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
   `getCell():addLamppost` (radius capped at 20, falloff (1 - d/r)^2, walls block, dropped by `checkLights` outside the
   loaded area, `removeLamppost(light)` = life 0) every 4 tiles through the rects of the rooms near the player
   (`getMetaGrid():getRoomsIntersecting(x, y, w, h, list)`, `RoomDef:getRects()`), client only.
-- `shared/ZomboidFixesB42_ScriptFixes.lua` + `*_ItemFixesClothing/Weapons/Food.lua`: item and recipe data fixes, one option
-  each, applied at `OnLoadMapZones` and re-checked every ten minutes (`ScriptFixes.register(option, apply, revert)`,
+- `shared/ZomboidFixesB42_ScriptFixes.lua` + `*_ItemFixesClothing/Weapons/Food.lua`: item and recipe data fixes, behind
+  `ItemDataFixes` / `RecipeFixes`, applied at `OnLoadMapZones` and re-checked every ten minutes
+  (`ScriptFixes.register(option, name, apply, revert)`, several fixes per option, `name` for the log;
   `setParams`, `addTag`/`removeTag`, `newMapperEntry`, `setRecipeCall`, `newFixer`, `onBeforeUse` hooks in
   ISEatFoodAction / ISDumpContentsAction / ISAddItemInRecipe for per-instance ReplaceOnUse).

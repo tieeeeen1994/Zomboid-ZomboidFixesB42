@@ -2,14 +2,17 @@
 
 Candidate vanilla fixes, to take one at a time. Line numbers are from 42.20.4; the install is now
 **42.21.0** (rev 4a0e9546ec), so for each item first re-check that the bug is still there in 42.21
-(patch notes: theindiestone.com/forums/topic/101693) and follow the usual rules: one sandbox option
-per fix (default on), README / workshop.txt / mod.info lines, Sandbox.json tooltip.
+(patch notes: theindiestone.com/forums/topic/101693) and follow the usual rules: a sandbox option per
+fix (default on; only REALLY closely related fixes share one), README / forum.txt / mod.info lines,
+Sandbox.json tooltip, `[BETA]` until it has been played in game.
 
 ## 0. First: 42.21 regression check
 
-- [ ] Check every existing feature still works on 42.21: the vanilla functions each file wraps still
-      exist with the same signatures (AdminHotbar*, FastForward*/Transfer, then the rest). Drop any fix
-      vanilla made redundant (42.21 fixed reading progress stalls, which overlaps ReadBooks).
+- [x] Check every existing feature still works on 42.21 at the Lua level: done in the 2026-10-05 review
+      (every wrapped vanilla function exists with the same signature, every fixed bug is still in 42.21,
+      none redundant). ReadBooks still needed: 42.21 counts pages from `startPage` and ends early once all
+      are read (`ISReadABook.lua:416-420`), but `complete` still never sets the character's own record.
+- [ ] Play every `[BETA]` feature in game and drop its label (see section 5 for what each needs).
 - [ ] Update the line numbers in CLAUDE.md to 42.21 as they are touched.
 
 ## 0b. In progress
@@ -84,13 +87,15 @@ per fix (default on), README / workshop.txt / mod.info lines, Sandbox.json toolt
 - [ ] Mechanics "XP once per part" limit (`get/addMechanicsItem`) is not saved, lost on reload (97845).
 - [ ] Fish fillets show 205 kcal until dropped (100231).
 
-## 2. Item / recipe data fixes (one option each)
+## 2. Item / recipe data fixes (options `ItemDataFixes` and `RecipeFixes`)
 
 Done in 42.21 through `shared/ZomboidFixesB42_ScriptFixes.lua` (DoParam, tags with their recipe input
 caches, output mapper entries, recipe OnCreate, repair fixers; applied from `OnLoadMapZones`, after
 `PostWorldDictionaryInit`, and re-checked every ten minutes) and `*_ItemFixesClothing/Weapons/Food.lua`.
-None of these has been tried in game yet; the four marked beta rely on editing recipes and repairs at
-run time.
+None of these has been tried in game yet, so both options are beta. Since 3.0.0 they share two options:
+`ItemDataFixes` (item properties) and `RecipeFixes` (recipe and repair edits: smelting, sharpening, forged
+pot, copper saucepan, clay bowls, seed packets, sawn-off repair); the names below are the fixes' names
+in the log.
 
 - [x] Spiked metal thigh armour `ClothingItemExtra` -> the left piece. Option `SpikedThighArmorSide`.
 - [x] Sawn-off double-barrel shotgun repair (beta): added to "Fix DoubleBarrelShotgun" as required item
@@ -131,7 +136,8 @@ run time.
 ## 3. Admin / QoL features
 
 - [ ] **Timed Action Instant ignored by item transfers in MP** (forum 99241): reuse `*_Transfer.lua`'s
-      `createItemTransaction` wrapper for an instant server move. Also Handy + instant build gives a
+      `createItemTransaction` wrapper for an instant server move. Check first whether FastTransfers
+      (`FastTransfers`, the Fast Timed Actions cheat path) already covers this, and close it if so. Also Handy + instant build gives a
       negative server duration (`BuildAction.getDuration` 1 - 50, forum 100841).
 - [ ] **World map admin features check `getAccessLevel() == "admin"`** instead of capabilities
       (`ISWorldMap.lua` ~36, 166, 911, `ISMiniMap.lua` ~130): moderators and custom roles can't see
@@ -154,3 +160,68 @@ Not chosen for now; full list in CLAUDE.md ("Vanilla client-command handlers wit
 check"). Most serious: `player.onHealthCheatCurrentPlayer` lets any client bite / infect any player;
 `object.clearContainerExplore` re-rolls any container's loot; vehicle `fixPart` /
 `setContainerContentAmount`; farming, campfire, tent and trap commands from anywhere.
+
+## 5. Found in the 2026-10-05 feature review (not fixed yet)
+
+Bugs that hurt players:
+- [ ] **DeleteNegativeWeightItems deletes vanilla food.** Food weight scales by hunger / script hunger
+      (`Food.getActualWeight`), and vegetable oil, ranch sauce and flour can end up with positive hunger
+      (evolved recipe code, forum 99705), so their weight goes negative and the feature deletes them. Skip
+      such food (or repair its hunger) instead of deleting it.
+- [ ] **Washing is shortened twice under fast forward**: `ISWashClothing:getDuration` calls
+      `adjustMaxTime` itself (`ISWashClothing.lua:215`), so the server's wrapped `adjustMaxTime` applies the
+      speed twice (speed squared).
+- [ ] Fast forward timed transfers: the server accepts `timedTransfer` even at normal speed
+      (`*_FastForwardTransfer.lua` ~94-114), and the reach check is 8 tiles flat with no height check
+      (`*_Server.lua` ~50-58).
+- [ ] SeedPacketCount also gives 25 seeds for looted packets (they spawn, `Distributions.lua` ~20154).
+      `ISHandcraftAction:performRecipe` records `modData["Base.PumpkinSeed"] = 25` on a crafted packet:
+      give back that amount instead.
+
+Wrong data in the item fixes:
+- [ ] Shin armor: swapping makes the plain Metal Shin Armor (0.85) slower than its spiked version (0.9),
+      while vanilla's pattern is articulated pieces getting a higher value (thigh 0.95 vs 0.9). Raise the
+      articulated shin pieces instead and leave Greave at 0.9; move it from `*_ArmorStats.lua` into
+      ScriptFixes.
+- [ ] ItemWeights pie slice 0.2 overcorrects: per hunger point a vanilla pie slice (0.5 at -30) is already
+      lighter than a cake slice (0.2 at -7). Drop the pie part, keep .44.
+- [ ] FoodNutrition misses CannedLeek Proteins 15.2 (should be 4 x 1.3 = 5.2).
+- [ ] MinorItemFixes' HotDrinkRed part is dead: no recipe, mapper, evolved recipe or loot gives
+      HotDrinkRed in 42.21.
+
+Dead or duplicate code:
+- [ ] ForagingDebugFixes part 4 (pickup) never runs in MP: vanilla `ISForageAction:complete` already calls
+      `forageServer.onPickup` on the server and Java runs `complete` only off a client. Drop
+      `client/*_Foraging.lua` ~211-226 and `server/*_Foraging.lua` ~170-187, and the tooltip line saying
+      vanilla never hands over the items.
+- [ ] NISFShiftRange likely duplicates the `NISF_ShiftRange.lua` that Nick's Inventory Selection Fix
+      (workshop 3782920935) already ships, credited to this fix. Check whether Nick's copy works, then drop
+      ours or document why both are needed.
+
+Smaller issues:
+- [ ] GoMTooltipLineLength defaults to 200, which barely wraps; its tooltip says around 40 reads well.
+- [ ] FirearmRadialNoBlanks: vanilla keeps the blanks so each action keeps its slot, which matters on a
+      joypad; leave them while a joypad drives the menu.
+- [ ] SewersClimbOut: any climb turns the server-wide NoClip anticheat off for up to 15 s, and saving
+      server options in that window writes it off to the ini. Consider default off.
+- [ ] TransferResync: a client can ask for the items of any container within 8 tiles (small info leak).
+- [ ] AdminFullBright: its Admin Powers entry shows even with the option off, and a missing SandboxVars
+      table counts as on (every other option counts it as off).
+- [ ] ItemEditorSync: `server/*_ItemEdit.lua:18` requires a client-folder file; on a dedicated server it
+      may not load, and the setter whitelist then falls back to any `set*` method (still limited to the
+      Edit Item capability). Check the server log for "could not rebuild".
+- [ ] AdminSpawnProtection walks the online players every tick even when set to 0.
+- [ ] `shared/ZomboidFixesB42.lua:16-17` says new fixes default off (they are on); some options read
+      `~= false`, others `== true`: unify.
+
+Beta features: what playing each one should check
+- [ ] Body part toggles (hotbar, under `BodyStatsEditor`): each condition on another player, flip.
+- [ ] AnimalGenderChange: all four branches (world, hutch, trailer, carried animal).
+- [ ] RepairLostEntities: a killed server and a restored backup with rain collectors, drying racks and
+      a bucket on the floor; chunk re-saves while a backup runs.
+- [ ] TransferResync, ReloadAnimTiming, WaterPlantOnce, RemoveBushToolWear, VehicleBatteryDrain,
+      BooksStayRead, NoStairAutoVault, GrabAmount, FirearmRadialNoBlanks, GoMMagazineTooltip, the admin
+      debug fixes (FixDebugAddFluid, ForagingDebugFixes, NoWalkOnSquarePick, ServerOptionsTooltip),
+      AdminSpawnProtection: one session each on a server.
+- [ ] ItemDataFixes and RecipeFixes: each fix in its tooltip, and switching the option off mid-game
+      reverts it (ScriptFixes revert path).

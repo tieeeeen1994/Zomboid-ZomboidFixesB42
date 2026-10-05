@@ -1,8 +1,10 @@
 --[[
     Zomboid Fixes B42.20 -- shared, clothing and armor data fixes
 
-    Plain mistakes in items/clothing.txt (42.21), each behind its own sandbox
-    option; the machinery is in ZomboidFixesB42_ScriptFixes.lua. Items that are
+    Plain mistakes in items/clothing.txt (42.21), behind the ItemDataFixes sandbox
+    option, or RecipeFixes for those that change what a recipe takes; the name each
+    fix is registered under shows in the log. The machinery is in
+    ZomboidFixesB42_ScriptFixes.lua. Items that are
     already loaded keep a copied value (combat speed, condition chance) until they
     are next loaded; see that file.
 
@@ -39,7 +41,7 @@ require "ZomboidFixesB42_ScriptFixes"
 
 local ScriptFixes = ZomboidFixesB42.ScriptFixes
 
-ScriptFixes.register("SpikedThighArmorSide",
+ScriptFixes.register("ItemDataFixes", "SpikedThighArmorSide",
     function()
         ScriptFixes.setParams({
             ["Base.ThighMetalSpike_R"] = { ClothingItemExtra = "Base.ThighMetalSpike_L" },
@@ -55,7 +57,7 @@ ScriptFixes.register("SpikedThighArmorSide",
 
 local SPIKED_PADS = { "Base.Shoulderpad_ArticulatedSpike_L", "Base.Shoulderpad_ArticulatedSpike_R" }
 
-ScriptFixes.register("SpikedShoulderPadSmelting",
+ScriptFixes.register("RecipeFixes", "SpikedShoulderPadSmelting",
     function()
         for _, fullType in ipairs(SPIKED_PADS) do
             ScriptFixes.addTag(fullType, "base:smeltablesteelmedium")
@@ -67,7 +69,7 @@ ScriptFixes.register("SpikedShoulderPadSmelting",
         end
     end)
 
-ScriptFixes.register("KneepadGaiterPairs",
+ScriptFixes.register("ItemDataFixes", "KneepadGaiterPairs",
     function()
         ScriptFixes.setParams({
             ["Base.Kneepad_Left"] = { SpawnWith = "Base.Kneepad_Right" },
@@ -81,7 +83,7 @@ ScriptFixes.register("KneepadGaiterPairs",
         })
     end)
 
-ScriptFixes.register("BowTieWeight",
+ScriptFixes.register("ItemDataFixes", "BowTieWeight",
     function()
         ScriptFixes.setParams({ ["Base.Tie_BowTieFull"] = { Weight = "0.1" } })
     end,
@@ -89,7 +91,7 @@ ScriptFixes.register("BowTieWeight",
         ScriptFixes.setParams({ ["Base.Tie_BowTieFull"] = { Weight = "1.0" } })
     end)
 
-ScriptFixes.register("ChainmailSleeveSpeed",
+ScriptFixes.register("ItemDataFixes", "ChainmailSleeveSpeed",
     function()
         ScriptFixes.setParams({
             ["Base.Chainmail_SleeveFull_R"] = { CombatSpeedModifier = "0.95" },
@@ -103,7 +105,7 @@ ScriptFixes.register("ChainmailSleeveSpeed",
         })
     end)
 
-ScriptFixes.register("TireShoulderPads",
+ScriptFixes.register("ItemDataFixes", "TireShoulderPads",
     function()
         ScriptFixes.setParams({
             ["Base.Shoulderpad_Tire_L"] = { ConditionLowerChanceOneIn = "2", BloodLocation = "UpperArm_L" },

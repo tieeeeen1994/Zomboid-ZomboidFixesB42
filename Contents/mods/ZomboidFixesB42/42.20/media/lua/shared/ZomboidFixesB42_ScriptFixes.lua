@@ -2,8 +2,9 @@
     Zomboid Fixes B42.20 -- shared, item and recipe script fixes (the machinery)
 
     Vanilla ships a number of plain data mistakes in its item, recipe and repair
-    scripts. The ZomboidFixesB42_ItemFixes*.lua files correct them, one sandbox
-    option each; this file holds what they share: turning each fix on and off
+    scripts. The ZomboidFixesB42_ItemFixes*.lua files correct them, behind two
+    sandbox options (ItemDataFixes for item properties, RecipeFixes for recipe and
+    repair edits); this file holds what they share: turning each fix on and off
     with its option, and the helpers that edit the loaded scripts in place. Both
     sides run it, since the client and the server each use their own copy of the
     scripts (the client to show and test a craft, the server to perform it).
@@ -87,10 +88,11 @@ function ScriptFixes.isEnabled(option)
     return vars ~= nil and vars[option] == true
 end
 
---- Registers a fix: `apply` runs when its option is on (at world load or when the
--- option is ticked mid-game), `revert` when a fix already applied is switched off.
-function ScriptFixes.register(option, apply, revert)
-    fixes[#fixes + 1] = { option = option, apply = apply, revert = revert, applied = false }
+--- Registers a fix named `name` (for the log): `apply` runs when its option is on
+-- (at world load or when the option is ticked mid-game), `revert` when a fix
+-- already applied is switched off. Several fixes can share one option.
+function ScriptFixes.register(option, name, apply, revert)
+    fixes[#fixes + 1] = { option = option, name = name, apply = apply, revert = revert, applied = false }
 end
 
 --- Registers `fn(item)`, called just before a food item is eaten, emptied or used in
@@ -234,7 +236,7 @@ end
 local function run(fix, enabled)
     local fn = enabled and fix.apply or fix.revert
     local ok, err = pcall(fn)
-    if not ok then log(fix.option .. " failed: " .. tostring(err)) end
+    if not ok then log(fix.name .. " failed: " .. tostring(err)) end
     -- Marked either way: a fix that errors is not retried every ten minutes.
     fix.applied = enabled
 end

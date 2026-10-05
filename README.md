@@ -1,59 +1,59 @@
 Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly for multiplayer. Install it on both the server and clients. Every fix is on by default and can be turned off in the sandbox options; the few that are off by default say so. Fixes marked beta are new and not fully tested yet.
 
 - Fast Timed Actions makes item transfers quick in multiplayer, like in single player, and a quick transfer the server cannot make is done the normal way instead of not at all.
-- Changing an animal's gender in the animal info window also changes its model and type, and no longer reverts for other players.
-- The foraging debug menu can add, move and refresh icons, and added icons can be picked up.
+- Changing an animal's gender in the animal info window also changes its model and type, and no longer reverts for other players (beta).
+- The foraging debug menu can add, move and refresh icons, and added icons can be picked up (beta).
 - Item editor changes save for items in crates, vehicles, on the floor and in other players' inventories.
-- Debug Add Fluid fills rain collectors and other world containers instead of emptying them.
-- The admin tag shows for every admin panel cheat. It can also be hidden completely (off by default).
-- Metal Shin Armor and Articulated Metal Shin Armor no longer have their run speeds swapped.
+- Debug Add Fluid fills rain collectors and other world containers instead of emptying them (beta).
+- The admin tag shows for every admin panel cheat. It can also be set to never show, or left as vanilla.
+- Metal Shin Armor and Articulated Metal Shin Armor no longer have their run speeds swapped (beta).
 - No fall damage on stairs while Fast Move is on (beta).
 - Items with negative weight are deleted.
 - Clothing wear down rework for multiplayer: zombie attacks that clothing or armor stops wear it down like in single player, so armor with full protection no longer lasts forever; clothing destroyed while worn falls off for everyone and stays destroyed after relogging, with no plain copy of itself left on your character (a white scarf for a green one) (beta).
 - Chickens the game deletes after laying in a full hutch are put back.
 - Hutches and nest boxes get dirty at a quarter of the normal speed. The speed can be changed, or set back to vanilla.
-- Running into a stair railing no longer vaults you over it.
+- Running into a stair railing no longer vaults you over it (beta).
 - Speed controls are back in multiplayer. The game fast forwards once every player votes for it, timed actions (milking, shearing, reading and reloading included), looting and cooking speed up with it, and right-clicking a fast forward button makes your timed actions vote for that speed automatically once you have been busy for a few seconds (5 by default).
 - Guns of Marz attachment tooltips wrap instead of stretching across the screen, at 200 characters a line by default.
-- A Guns of Marz gun's tooltip names the magazine really in it, with its capacity, instead of an earlier one.
+- A Guns of Marz gun's tooltip names the magazine really in it, with its capacity, instead of an earlier one (beta).
 - With Nick's Inventory Selection Fix, shift-click selects the whole range instead of acting like ctrl-click.
-- Grab amount... between Grab one and Grab all takes exactly as many items from a stack as you type, in loot windows and search mode.
-- Empty slices are left out of the firearm radial menu, so it only shows what can be done.
+- Grab amount... between Grab one and Grab all takes exactly as many items from a stack as you type, in loot windows and search mode (beta).
+- Empty slices are left out of the firearm radial menu, so it only shows what can be done (beta).
 - Turbo Game cartridges and batteries go in and come out on multiplayer servers, including in consoles spawned from the item list, the battery charge, best scores and mood effects are kept, best scores belong to the console they were set on, the character no longer walks around while a game is open, and the game closes when a zombie is near or it is too dark.
 - With the Sewers mod, climbing a ladder back up to the street works on servers with the AntiCheatNoClip option on, instead of the server putting you back in the sewer (or logging, kicking or banning you for no-clip) (beta).
-- Admins who join are fully healed and in god mode for a set time, so an admin revived on the server does not die again on load (off by default, set a number of seconds to turn it on).
+- Admins who join are fully healed and in god mode for a set time, so an admin revived on the server does not die again on load (beta, off by default, set a number of seconds to turn it on).
 - Admins and moderators can change any online player's hunger, mood, health, nutrition, weight and other body stats, like the debug menu's Body panel, from a Body button in the Player Stats window, the admin panel or the scoreboard. The changes are made on the server, so they stick and the player sees them.
-- Admins and moderators get a Body part condition shortcut for the admin hotbar: one click turns a bite, scratch, laceration, deep wound, bleeding, glass shards, a lodged bullet, a burn, a fracture, a wound infection or a muscle strain on or off on any body part of any online player, with the same permission checks and admin log as the body stats editor (vanilla's own health cheat has none in multiplayer).
+- Admins and moderators get a Body part condition shortcut for the admin hotbar: one click turns a bite, scratch, laceration, deep wound, bleeding, glass shards, a lodged bullet, a burn, a fracture, a wound infection or a muscle strain on or off on any body part of any online player, with the same permission checks and admin log as the body stats editor (vanilla's own health cheat has none in multiplayer) (beta).
 - Admins and moderators can send and stop the chopper from the right-click Debug menu, and the debug menu's chopper buttons work on servers. Stopping it ends today's chopper event, so it does not fly straight back, and reaches every player, including anyone who still hears a chopper that already left, which vanilla's stop cannot fix (beta).
 - Admins and moderators get an admin hotbar, opened from a new sidebar button under Admin: a floating bar of one-click shortcuts to every admin tool (admin powers, admin panel windows, the Tools and Debug menus, weather and climate, meta events, foraging, player actions). Each shortcut keeps its own settings, such as a target player, a location, an item or a saved climate preset, toggles show whether they are on, a second click closes the window a shortcut opened, one shortcut can run several actions in a row, each after a delay you choose or all at once (for example pick a square, then spawn a horde and make noise there), a picked square can be set to keep picking, so every click on the map runs the shortcut again until right-click or Esc (and that right-click no longer opens the context menu), a shortcut can hold a chosen tile and paint it with the Brush Tool on every click, a shortcut's toggles can each flip on their own, or the first one flips and the others take its new state (or its opposite), so one click turns a set of cheats on or off together, or the first one stays as it is and the others are synced to it, a shortcut can repeat itself every N milliseconds (100 or more), a set number of times, until clicked again or while its button or key is held, and any image in the game can be its icon. Single player gets it with the -debug launch option.
-- Picking a square in the debug Horde Manager or Tile Picker no longer walks your character over to it.
+- Picking a square in the debug Horde Manager or Tile Picker no longer walks your character over to it (beta).
 - Saving the options no longer resets or deletes the mod options, or the Key Bindings tab keys, of mods that are not loaded, and settings an earlier save left glued together are read back instead of reset. Enable Zomboid Fixes in the main menu's Mods list too, since options saved at the main menu are only protected while it is loaded there.
-- Finished skill books stay read after relogging, including books read with the instant timed actions cheat.
+- Finished skill books stay read after relogging, including books read with the instant timed actions cheat (beta).
 - Admins get a Full Bright admin power, next to Always Day in the Admin Powers window and on the admin hotbar: Always Day plus every room around them lit, so interiors are no longer dark. Only the admin sees it (beta).
-- The admin Server Options window no longer leaves an option's description stuck on screen, following the mouse around, after the mouse leaves the window or it is closed.
-- Vehicle batteries no longer drain twice as fast as intended from headlights, the radio, the lightbar, the siren and the heater.
-- Removing a bush or wall vines with a cutting tool costs endurance and arm strain and wears the tool again, a broken tool is swapped for another, and in multiplayer the inventory window refreshes when the server swaps a tool or uses up building materials.
-- Watering a plant in multiplayer no longer gives it twice the water or empties the can twice as fast.
+- The admin Server Options window no longer leaves an option's description stuck on screen, following the mouse around, after the mouse leaves the window or it is closed (beta).
+- Vehicle batteries no longer drain twice as fast as intended from headlights, the radio, the lightbar, the siren and the heater (beta).
+- Removing a bush or wall vines with a cutting tool costs endurance and arm strain and wears the tool again, a broken tool is swapped for another, and in multiplayer the inventory window refreshes when the server swaps a tool or uses up building materials (beta).
+- Watering a plant in multiplayer no longer gives it twice the water or empties the can twice as fast (beta).
 - Other players hear you add ingredients in multiplayer: adding an ingredient to a soup, stew, salad or drink is heard by everyone nearby, not only by the cook (crafting sounds are already shared by the game).
-- Reloading in multiplayer keeps pace with the animation: shells and rounds go in as the hand moves, and a shotgun pump or a rifle magazine swap is no longer cut off half way.
-- Item transfers the server fails without telling the player repair themselves: items only the player's game still shows on the floor or in a container are removed, items the server moved but the player could not see (until relogging) appear, a transfer the server dropped is tried again, and one that did happen ends instead of hanging for up to 20 seconds.
-- Rain collectors, wells, amphoras, drying racks, and buckets, pots and other items that catch rain, no longer break after a server crash, a killed server or a restored backup. Ones already broken are rebuilt, empty, when their area loads, and broken items already picked up are fixed when their owner joins or their vehicle loads.
-- The right spiked metal and spiked scrap metal thigh armor can be moved to the left thigh, like every other thigh armor.
-- Spiked articulated metal shoulder pads can be smelted like the plain ones.
-- The plain left knee pad and the right gaiter spawn with their other half, like every other pair.
-- The full bow tie weighs 0.1 instead of 1.0.
-- Full chainmail sleeves no longer have their combat speed penalties swapped between the right and left arm.
-- The left tire shoulder pad wears out like the right one, and both protect their own upper arm instead of the torso.
+- Reloading in multiplayer keeps pace with the animation: shells and rounds go in as the hand moves, and a shotgun pump or a rifle magazine swap is no longer cut off half way (beta).
+- Item transfers the server fails without telling the player repair themselves: items only the player's game still shows on the floor or in a container are removed, items the server moved but the player could not see (until relogging) appear, a transfer the server dropped is tried again, and one that did happen ends instead of hanging for up to 20 seconds (beta).
+- Rain collectors, wells, amphoras, drying racks, and buckets, pots and other items that catch rain, no longer break after a server crash, a killed server or a restored backup. Ones already broken are rebuilt, empty, when their area loads, and broken items already picked up are fixed when their owner joins or their vehicle loads (beta).
+- The right spiked metal and spiked scrap metal thigh armor can be moved to the left thigh, like every other thigh armor (beta).
+- Spiked articulated metal shoulder pads can be smelted like the plain ones (beta).
+- The plain left knee pad and the right gaiter spawn with their other half, like every other pair (beta).
+- The full bow tie weighs 0.1 instead of 1.0 (beta).
+- Full chainmail sleeves no longer have their combat speed penalties swapped between the right and left arm (beta).
+- The left tire shoulder pad wears out like the right one, and both protect their own upper arm instead of the torso (beta).
 - The sawn-off double barrel shotgun can be repaired, with itself or the full double barrel shotgun (beta).
-- The sawn-off pump shotgun plays its start and stop loading sounds and an unloading sound.
-- The x2 scope fits the pump shotgun and the sawn-off pump shotgun, which have a model and a place for it.
-- The katana and the broken katana can be sharpened like the other long blades.
-- Pasta cooked in a forged cooking pot gives back the forged pot instead of a normal one.
-- Leeks, jars of leeks and grapefruits have real nutrition values instead of absurd carbohydrates and protein.
+- The sawn-off pump shotgun plays its start and stop loading sounds and an unloading sound (beta).
+- The x2 scope fits the pump shotgun and the sawn-off pump shotgun, which have a model and a place for it (beta).
+- The katana and the broken katana can be sharpened like the other long blades (beta).
+- Pasta cooked in a forged cooking pot gives back the forged pot instead of a normal one (beta).
+- Leeks, jars of leeks and grapefruits have real nutrition values instead of absurd carbohydrates and protein (beta).
 - Pasta and rice cooked in a copper saucepan can be split into bowls, giving back the copper saucepan (beta).
 - Splitting a pot into clay bowls gives clay bowls of food, and beans, oatmeal, cereal and cake made with a clay bowl give the clay bowl back (beta).
 - Opening a pumpkin or sunflower seed packet gives the 25 seeds packing it took, instead of 5 (beta).
-- Pie slices weigh 0.2 like cake slices instead of the whole pie's 0.5, and the .44 Magnum box and carton weigh in line with the other ammunition.
-- A red mug of coffee gives its mug back, the Rangers baseball shirt covers the arms, the red baseball cap falls off like the others, the seafood cooler makes cooler sounds, and the metal, copper, gold, silver and tumbler hot drinks and the clay bowl fruit salad have names.
+- Pie slices weigh 0.2 like cake slices instead of the whole pie's 0.5, and the .44 Magnum box and carton weigh in line with the other ammunition (beta).
+- A red mug of coffee gives its mug back, the Rangers baseball shirt covers the arms, the red baseball cap falls off like the others, the seafood cooler makes cooler sounds, and the metal, copper, gold, silver and tumbler hot drinks and the clay bowl fruit salad have names (beta).
 
 Steam Workshop ID 3800148259, mod ID ZomboidFixesB42. Licensed under the GNU GPL v3, see [LICENSE](LICENSE).

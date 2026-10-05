@@ -2,8 +2,10 @@
     Zomboid Fixes B42.20 -- shared, food, cooking recipe and other item data fixes
 
     Mistakes in items/food.txt, recipes_cooking.txt, recipes_baking.txt,
-    recipes_farming.txt and a few other items (42.21), each behind its own sandbox
-    option; the machinery is in ZomboidFixesB42_ScriptFixes.lua.
+    recipes_farming.txt and a few other items (42.21), behind the ItemDataFixes
+    sandbox option, or RecipeFixes for those that change a recipe or what a recipe
+    gives back; the name each fix is registered under shows in the log. The
+    machinery is in ZomboidFixesB42_ScriptFixes.lua.
 
     ForgedPotPasta: WaterPotForgedPasta (pasta cooked in a forged pot) has
     `ReplaceOnUse = Base.Pot`, so eating it gives back a normal cooking pot; the
@@ -71,7 +73,7 @@ local ScriptFixes = ZomboidFixesB42.ScriptFixes
 
 -- ForgedPotPasta --------------------------------------------------------------------
 
-ScriptFixes.register("ForgedPotPasta",
+ScriptFixes.register("RecipeFixes", "ForgedPotPasta",
     function()
         ScriptFixes.setParams({ ["Base.WaterPotForgedPasta"] = { ReplaceOnUse = "Base.PotForged" } })
     end,
@@ -81,14 +83,14 @@ ScriptFixes.register("ForgedPotPasta",
 
 ScriptFixes.onBeforeUse(function(item)
     if item:getFullType() == "Base.WaterPotForgedPasta" and item:getReplaceOnUse() == "Base.Pot"
-            and ScriptFixes.isEnabled("ForgedPotPasta") then
+            and ScriptFixes.isEnabled("RecipeFixes") then
         item:setReplaceOnUse("Base.PotForged")
     end
 end)
 
 -- FoodNutrition ---------------------------------------------------------------------
 
-ScriptFixes.register("FoodNutrition",
+ScriptFixes.register("ItemDataFixes", "FoodNutrition",
     function()
         ScriptFixes.setParams({
             ["Base.Leek"] = { Carbohydrates = "12.6" },
@@ -161,7 +163,7 @@ end
 
 local copperAdded = {}
 
-ScriptFixes.register("CopperSaucepanBowls",
+ScriptFixes.register("RecipeFixes", "CopperSaucepanBowls",
     function()
         copperAdded = {}
         ScriptFixes.addTag("Base.RicePanCopper", "base:canbedividedinbowls")
@@ -222,10 +224,10 @@ local clayRegistered = {}
 local cakeCallSet = {}
 
 local function clayEnabled()
-    return ScriptFixes.isEnabled("ClayBowlPortions")
+    return ScriptFixes.isEnabled("RecipeFixes")
 end
 
-ScriptFixes.register("ClayBowlPortions",
+ScriptFixes.register("RecipeFixes", "ClayBowlPortions",
     function()
         clayAdded = {}
         for _, name in ipairs(SPLIT_RECIPES) do
@@ -306,7 +308,7 @@ local PACKET_SEEDS = {
 local SEEDS_PER_PACKET = 25
 local seedCallSet = {}
 
-ScriptFixes.register("SeedPacketCount",
+ScriptFixes.register("RecipeFixes", "SeedPacketCount",
     function()
         local recipe = ScriptFixes.getRecipe("Base.OpenPacketOfSeeds")
         if recipe and not seedCallSet[recipe] then
@@ -321,7 +323,7 @@ ScriptFixes.register("SeedPacketCount",
 --- OnCreate of OpenPacketOfSeeds: a pumpkin or sunflower packet gives all 25 seeds.
 -- Runs where the craft is performed (the server, or single player).
 function ZomboidFixesB42.OnCreateSeedPacket(data, character)
-    if not character or not ScriptFixes.isEnabled("SeedPacketCount") then return end
+    if not character or not ScriptFixes.isEnabled("RecipeFixes") then return end
     local consumed = data:getAllConsumedItems()
     for i = 0, consumed:size() - 1 do
         local seedType = PACKET_SEEDS[consumed:get(i):getFullType()]
@@ -352,13 +354,13 @@ local function setWeights(slice, box, carton)
     ScriptFixes.setParams(params)
 end
 
-ScriptFixes.register("ItemWeights",
+ScriptFixes.register("ItemDataFixes", "ItemWeights",
     function() setWeights("0.2", "0.48", "4.8") end,
     function() setWeights("0.5", "1.2", "12.0") end)
 
 -- MinorItemFixes --------------------------------------------------------------------
 
-ScriptFixes.register("MinorItemFixes",
+ScriptFixes.register("ItemDataFixes", "MinorItemFixes",
     function()
         ScriptFixes.setParams({
             ["Base.HotDrinkRed"] = { ReplaceOnUse = "Base.Mugl" },
@@ -378,7 +380,7 @@ ScriptFixes.register("MinorItemFixes",
 
 ScriptFixes.onBeforeUse(function(item)
     if item:getFullType() == "Base.HotDrinkRed" and item:getReplaceOnUse() == "Base.MugRed"
-            and ScriptFixes.isEnabled("MinorItemFixes") then
+            and ScriptFixes.isEnabled("ItemDataFixes") then
         item:setReplaceOnUse("Base.Mugl")
     end
 end)

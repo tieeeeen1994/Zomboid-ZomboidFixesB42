@@ -2,8 +2,9 @@
     Zomboid Fixes B42.20 -- shared, weapon data fixes
 
     Plain mistakes in items/weapon.txt, items/weaponpart.txt and fixing.txt (42.21),
-    each behind its own sandbox option; the machinery is in
-    ZomboidFixesB42_ScriptFixes.lua.
+    behind the ItemDataFixes sandbox option, or RecipeFixes for those that change
+    a recipe or a repair; the name each fix is registered under shows in the log.
+    The machinery is in ZomboidFixesB42_ScriptFixes.lua.
 
     SawnOffDoubleBarrelRepair: fixing.txt has a repair for every gun, and the pump
     shotgun and its sawn-off version repair each other ("Fix Shotgun" / "Fix
@@ -41,7 +42,7 @@ local ScriptFixes = ZomboidFixesB42.ScriptFixes
 local SAWN_OFF_DB = "Base.DoubleBarrelShotgunSawnoff"
 local repairState = {}
 
-ScriptFixes.register("SawnOffDoubleBarrelRepair",
+ScriptFixes.register("RecipeFixes", "SawnOffDoubleBarrelRepair",
     function()
         local fixing = ScriptFixes.getFixing("Fix DoubleBarrelShotgun")
         if not fixing or not ScriptFixes.getItem(SAWN_OFF_DB) then return end
@@ -62,7 +63,7 @@ ScriptFixes.register("SawnOffDoubleBarrelRepair",
         repairState = {}
     end)
 
-ScriptFixes.register("SawnOffShotgunSounds",
+ScriptFixes.register("ItemDataFixes", "SawnOffShotgunSounds",
     function()
         ScriptFixes.setParams({ ["Base.ShotgunSawnoff"] = {
             InsertAmmoStartSound = "SawnOffJS2000ShotgunInsertAmmoStart",
@@ -85,7 +86,7 @@ ScriptFixes.register("SawnOffShotgunSounds",
 local X2_SCOPE_MOUNT_ON = "Base.HuntingRifle;Base.VarmintRifle;Base.AssaultRifle;Base.AssaultRifle2;"
     .. "Base.JS14_Rifle;Base.Revolver_Long;Base.TrapperCarbine;Base.MSR7T_Rifle"
 
-ScriptFixes.register("ShotgunScopeMount",
+ScriptFixes.register("ItemDataFixes", "ShotgunScopeMount",
     function()
         ScriptFixes.setParams({ ["Base.x2Scope"] = {
             MountOn = X2_SCOPE_MOUNT_ON .. ";Base.Shotgun;Base.ShotgunSawnoff",
@@ -97,7 +98,7 @@ ScriptFixes.register("ShotgunScopeMount",
 
 local KATANAS = { "Base.Katana", "Base.Katana_Broken" }
 
-ScriptFixes.register("KatanaSharpening",
+ScriptFixes.register("RecipeFixes", "KatanaSharpening",
     function()
         for _, fullType in ipairs(KATANAS) do
             ScriptFixes.addTag(fullType, "base:sharpenable")

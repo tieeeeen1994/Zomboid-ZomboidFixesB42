@@ -11,7 +11,8 @@
 
     Only the two values are exchanged; nothing else is changed. Only the item
     scripts are edited, so both sides must run this. Items that already exist in
-    a save may keep the value they were created with.
+    a save may keep the value they were created with. It is one of the item data
+    fixes (sandbox option ItemDataFixes, with ZomboidFixesB42_ItemFixes*.lua).
 
     The sandbox options are not loaded yet when this file runs. SandboxOptions.load
     comes before GlobalModData.init in IsoWorld.init (a client has them from the
@@ -40,7 +41,7 @@ local applied = false
 
 local function isEnabled()
     local vars = SandboxVars and SandboxVars.ZomboidFixesB42
-    return vars ~= nil and vars.FixShinArmorRunSpeed == true
+    return vars ~= nil and vars.ItemDataFixes == true
 end
 
 local function write(values)

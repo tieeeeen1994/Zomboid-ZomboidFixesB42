@@ -34,8 +34,9 @@
     ExtraInfoPacket replicates, not the admin panel's client-side globals such as
     ISBuildMenu.cheat, which only describe the local player.
 
-    With AdminTagEveryCheat off and HideAdminTag off this does nothing, and the
-    tag is vanilla's own calculation again from the next tick.
+    The AdminTag sandbox option picks the mode: 1 = vanilla (this does nothing, and
+    the tag is vanilla's own calculation again from the next tick), 2 = shown for
+    every cheat, 3 = never shown.
 --]]
 
 ZomboidFixesB42 = ZomboidFixesB42 or {}
@@ -70,14 +71,14 @@ local CHEAT_GETTERS = {
     "isAlwaysDayCheat",
 }
 
-local function hideTagSetting()
-    local vars = SandboxVars and SandboxVars.ZomboidFixesB42
-    return vars ~= nil and vars.HideAdminTag == true
-end
+local MODE_VANILLA = 1
+local MODE_NEVER = 3
 
-local function everyCheatSetting()
+--- The AdminTag sandbox option: 1 vanilla, 2 every cheat, 3 never.
+local function tagMode()
     local vars = SandboxVars and SandboxVars.ZomboidFixesB42
-    return vars ~= nil and vars.AdminTagEveryCheat == true
+    local mode = vars and tonumber(vars.AdminTag)
+    return mode or MODE_VANILLA
 end
 
 local function hasAnyCheat(player)
@@ -117,8 +118,9 @@ local function applyTo(player, hidden)
 end
 
 local function onTick()
-    local hidden = hideTagSetting()
-    if not hidden and not everyCheatSetting() then return end
+    local mode = tagMode()
+    if mode == MODE_VANILLA then return end
+    local hidden = mode == MODE_NEVER
 
     -- Everyone this client knows about. Empty in single player.
     local online = getOnlinePlayers()

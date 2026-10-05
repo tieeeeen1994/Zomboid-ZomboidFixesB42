@@ -190,7 +190,7 @@
     "IGUI_ZomboidFixesB42_AdminHotbar_BodyPartTooltip": "Turns one condition on one body part on or off for a player: a bite, scratch, laceration, deep wound, bleeding, glass shards, a lodged bullet, a burn, a fracture, a wound infection or a muscle strain. A bite also gives the zombie infection, as a real one does, and taking it away cures that part. Another player's state cannot be seen from here, so their shortcut shows '?' and each click flips the condition on the server.",
     "IGUI_ZomboidFixesB42_AdminHotbar_ParamBodyPart": "Body part",
     "IGUI_ZomboidFixesB42_AdminHotbar_ParamBodyCondition": "Condition",
-    "IGUI_ZomboidFixesB42_AdminHotbar_NeedsBodyParts": "Body part conditions are off in the sandbox options.",
+    "IGUI_ZomboidFixesB42_AdminHotbar_NeedsBodyParts": "The body stats editor is off in the sandbox options.",
     "IGUI_ZomboidFixesB42_BodyPart_Bleeding": "Bleeding",
     "IGUI_ZomboidFixesB42_BodyPart_Scratched": "Scratch",
     "IGUI_ZomboidFixesB42_BodyPart_Laceration": "Laceration",

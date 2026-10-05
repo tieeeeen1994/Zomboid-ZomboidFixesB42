@@ -354,7 +354,7 @@ end
     another player's body on an admin's client is reset to full health every update
     (BodyDamage.Update), so the hotbar cannot read it and asks the server to flip it.
     After a change the part is sent to its owner at once with syncBodyPart, as vanilla
-    does. Nothing is changed while the BodyPartConditions sandbox option is off.
+    does. Nothing is changed while the BodyStatsEditor sandbox option is off.
 --]]
 
 BodyStats.FLIP = "flip"
@@ -467,7 +467,7 @@ local partFields = {}
 
 function BodyStats.partsEnabled()
     local vars = SandboxVars and SandboxVars.ZomboidFixesB42
-    return vars ~= nil and vars.BodyPartConditions == true
+    return vars ~= nil and vars.BodyStatsEditor == true
 end
 
 function BodyStats.partKey(partType, conditionKey)
