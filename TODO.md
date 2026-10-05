@@ -14,17 +14,18 @@ per fix (default on), README / workshop.txt / mod.info lines, Sandbox.json toolt
 
 ## 0b. In progress
 
-- [ ] **Zombie attacks wear clothing: victim-side hit registration** (option `ZombieAttacksWearClothing`,
-      beta). Rewritten, not tried in game yet. The old version read the victim's own `OnClothingUpdated`
-      and missed every attack by a zombie another client owns (that client rolls the attack on its copy
-      of the victim). Now the victim's client reports each attack whose `getAttackOutcome()` turns
-      `"success"` (own and remote zombies) and the server rolls the outcome and calls vanilla's
-      `addHoleFromZombieAttacks` + `syncVisuals` (`client/` + `server/ZomboidFixesB42_ZombieAttacksWearClothing.lua`).
-      To check on a server (needs a Workshop upload): reports arrive for zombies another player owns,
-      one per attack (not twice, not missed while the outcome flips fast), armor condition goes down at
-      about the single player rate, breaks drop the item for everyone. Open: a client SyncVisuals (dirt,
-      fall, weapon hit) sent before the server's ItemStats arrives undoes a wear; fake-dead and vehicle
-      attacks are not reported.
+- [ ] **Clothing wear down rework** (option `ClothingWearRework`, beta; replaces `ZombieAttacksWearClothing`
+      and `SyncBrokenClothing`). The victim's client rolls every zombie attack that lands on it (own and other
+      players' zombies) and sends each thump / blocked swing as its own event when the swing ends; the server
+      applies it with vanilla's `addHoleFromZombieAttacks`, syncs once per tick and guards applied swings for
+      5 s against client syncs; broken items and worn ghosts handled as before
+      (`client/` + `server/ZomboidFixesB42_ClothingWear.lua`). Not tried in game yet. To check on a server:
+      events arrive for zombies another player owns, one per swing; own zombies' local fake holes disappear after
+      the server's sync; armor condition goes down at about the single player rate and survives relog; a break
+      drops the item for everyone with no ghost copy; no extra lag in a horde. Open: the wound and the wear are
+      separate rolls (same odds, same average); a fake local hole pushed by a client sync before the server's
+      copy arrives becomes real (vanilla does that too); a condition raise within 5 s of a swing (repair) is
+      taken back; fake-dead and vehicle attacks are not rolled.
 
 ## 1. Small Lua bug fixes
 

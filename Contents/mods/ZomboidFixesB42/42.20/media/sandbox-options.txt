@@ -80,20 +80,12 @@ option ZomboidFixesB42.DeleteNegativeWeightItems
     translation = ZomboidFixesB42_DeleteNegativeWeightItems,
 }
 
-option ZomboidFixesB42.SyncBrokenClothing
+option ZomboidFixesB42.ClothingWearRework
 {
     type = boolean,
     default = true,
     page = ZomboidFixesB42,
-    translation = ZomboidFixesB42_SyncBrokenClothing,
-}
-
-option ZomboidFixesB42.ZombieAttacksWearClothing
-{
-    type = boolean,
-    default = true,
-    page = ZomboidFixesB42,
-    translation = ZomboidFixesB42_ZombieAttacksWearClothing,
+    translation = ZomboidFixesB42_ClothingWearRework,
 }
 
 option ZomboidFixesB42.RescueHutchAnimals

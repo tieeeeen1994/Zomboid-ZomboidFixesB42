@@ -32,13 +32,9 @@ On a server, shells and rounds go in as the hand moves, and a shotgun pump or a 
 Option: [i]Hear Other Players Add Ingredients[/i]
 In vanilla multiplayer, only the cook hears an ingredient going into a soup, stew, salad or drink. Now everyone nearby hears it. Invisible players stay silent. (Crafting sounds are already shared by the game.)
 
-[b]Broken clothing stays broken[/b]
-Option: [i]Sync Broken Clothing[/i]
-Clothing destroyed while worn stays destroyed after relogging. It also no longer leaves a plain copy of itself on your character (a white scarf for a green one) that stops the real one on the floor from being picked up.
-
-[b]Zombie attacks wear down clothing and armor (beta)[/b]
-Option: [i][BETA] Zombie Attacks Wear Down Clothing And Armor[/i]
-In vanilla multiplayer, a zombie attack that your clothing or armor stops does not wear it down, so armor with full protection lasts forever. Now it wears down like in single player.
+[b]Clothing wear down rework (beta)[/b]
+Option: [i][BETA] Clothing Wear Down Rework[/i]
+In vanilla multiplayer, a zombie attack that your clothing or armor stops does not wear it down, so armor with full protection lasts forever, and clothing destroyed while worn drops only on your own screen and comes back on relog. Now your own game rolls every zombie attack that lands on you, from any zombie, and sends each one to the server, which wears your clothing down like in single player. Destroyed clothing falls off for everyone and stays destroyed, and no plain copy of it (a white scarf for a green one) is left on your character. Wounds work as before.
 
 [b]Watering plants uses water once[/b]
 Option: [i]Watering Plants Uses Water Once[/i]

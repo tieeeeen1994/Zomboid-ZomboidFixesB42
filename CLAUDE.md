@@ -48,8 +48,8 @@ or methods exist.
 - On the Windows machine Python is the `py` launcher (`python3` is a Store stub). A real Lua (5.5) for running a mod
   file against mocked Java objects: `py -m pip install --target <scratch>/lupa lupa`, then
   `lupa.LuaRuntime().execute('loadfile([[harness.lua]])([[mod.lua]])')`. Mocks are plain Lua tables with methods
-  (Python objects do not take `obj:method()` calls). `ZombieAttacksWearClothing` was checked that way, against a Lua port of
-  vanilla's attack code.
+  (Python objects do not take `obj:method()` calls). An earlier server-side `ZombieAttacksWearClothing` was checked that
+  way, against a Lua port of vanilla's attack code.
 - The shell is zsh: `$var[...]` is array subscripting, so `"$f[:.]"` inside a grep pattern breaks; use Python for
   such loops.
 
@@ -197,9 +197,21 @@ rolls the whole attack again (`Bite.process`). Condition loss (`BloodClothingTyp
 `getCondLossPerHole`, `CanHaveHoles = false` armor 1 in `ConditionLowerChanceOneIn`) does nothing on a client, so in
 MP blocked hits never wear clothing (100-defense armor never breaks). Defense stays full until condition 0. Lua sees
 each hole attempt as a synchronous `OnClothingUpdated` (from `IsoGameCharacter.addHole`), with no part; the zombie's
-`AttackDidDamage` is true for a thump too. `SyncVisualsPacket` (client `player:syncVisuals()`, reliability 3, ordering 0)
-carries every worn item's holes **and condition** and the server applies them (`setConditionNoSound`); after each hit
-it rolls, the server sends its own copy back the same way (`GameServer.syncVisuals`), overwriting the owner's.
+`AttackDidDamage` is true for a thump too; `setAttackedBy(zombie)` runs right before the roll, so inside that
+`OnClothingUpdated` `player:getAttackedBy()` is the zombie. The server's `Bite.process` re-roll wears the server's copy
+(blocked: `addHoleFromZombieAttacks`; through: `addHole(part, true)`, every layer) and sends ItemStats. In
+`BloodClothingType.addHole` the hit item is the outermost (`getItemVisuals` = worn list order, walked backwards)
+**unbroken** item whose `getBloodClothingType` covers the part with no hole there; a patched part has no hole, and
+hitting it calls `Clothing.removePatch`, which (patch `hasHole`) re-adds the hole and subtracts `conditionGain` with
+`setCondition(c, false)` **on a client too**. `ItemVisual:removeHole(index)` exists; `HumanVisual` has no remove.
+`Clothing.ClothingPatch` fields (tailorLvl, fabricType) have no getters, so a removed patch cannot be rebuilt from Lua.
+`Clothing.setCondition(int)` unwears (and drops) at 0 when `isRemoveOnBroken`; the inherited
+`setCondition(int, boolean doSound)` never does. `Rand.NextBool(n)` = `Next(n) == 0`.
+`SyncVisualsPacket` (client `player:syncVisuals()` sends SyncClothing, SyncVisuals and HumanVisual, all reliability 3,
+ordering 0, as is ItemStats) carries every worn item's holes, patches, dirt, blood **and condition** by position in
+the worn list; the server applies them (`setConditionNoSound`, no unwear) and relays to the other clients, but parses
+nothing if its worn count differs. After each hit it rolls, the server sends its own copy back the same way
+(`GameServer.syncVisuals`), overwriting the owner's.
 Worn lists: `setWornItem` / `removeWornItem` send `SyncClothing` themselves (server: to everyone, with SyncVisuals;
 client: to the server). `SyncClothingPacket.process` (both sides) unwears every worn item not listed and, for a listed one
 neither worn nor in the inventory, `CreateItem(type)` + `setID` and wears it outside any container, copying tint and
@@ -1097,19 +1109,22 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
   send floor hints (`encodeFloorHints`, `findItemOnGroundNear`), log why they decline, and fall back to a vanilla
   transaction for declined items still at the source. Not fixable from Lua: a real floor item the client lost to a
   wrong-index removal (no way to send one world item to one client), and the cross-player Reject of vanilla cancels.
-- `*_ZombieAttacksWearClothing.lua` (client/server, option `ZombieAttacksWearClothing`, beta): the victim's client is
-  the source of the hit. A zombie owned by **another** client rolls the attack on that client's copy of the victim (no
-  Lua event there, only a sound in the victim's `AttackNetworkState`), so the old `OnClothingUpdated` inference missed
-  most attacks in a group. Now the victim's client watches every zombie targeting a local player (own or remote) for
-  `getAttackOutcome()` turning `"success"` (set at the `SetAttackOutcome` anim event in both states), checks vanilla's
-  `triggerPlayerReaction` conditions, and sends `zombieAttackWear {zombie, side, crawling, canBite, attackers}`; the
-  server finds the zombie near the player, rolls part / thump / blocked against `getBodyPartClothingDefense`, calls
-  vanilla's `player:addHoleFromZombieAttacks(part, scratch)` (condition via `setConditionAndSync`, breaks via the
-  server's own Unwear) and `player:syncVisuals()`. A client `SyncVisuals` replaces every worn item's holes and
-  condition on the server, so one sent before the client has the server's ItemStats can undo a wear.
-- `*_BrokenClothing.lua` (option `SyncBrokenClothing`) also clears worn ghosts on the client every tick: a worn item not in
-  the main inventory for 2 s is swapped for the inventory item with its ID, or taken off when no item with that ID is
-  anywhere in the inventory (left alone when it is in a bag); the client's SyncClothing then drops the server's copy.
+- `*_ClothingWear.lua` (client/server, option `ClothingWearRework`, beta; replaced `ZombieAttacksWearClothing` and
+  `SyncBrokenClothing`): queued per-swing events. The victim's client watches every zombie targeting a local player
+  (own or remote) for `getAttackOutcome()` turning `"success"` (set at `SetAttackOutcome`, end of the `start` anim; the
+  `success` anim is not looped, holds `AttackCollisionCheck` and ends with `ZombieBiteDone=true`, then the state is left
+  and the next swing starts at `"start"`), checks vanilla's `triggerPlayerReaction` conditions and rolls part / thump /
+  blocked / through with its own clothing. When the swing ends (`ZombieBiteDone`, outcome leaving `"success"`, or 2 s)
+  it sends `clothingWear {zombie, part, scratch}` for a thump or blocked roll, or with no part when vanilla's local
+  roll of an own zombie changed the clothing (`OnClothingUpdated` with `getAttackedBy()` that zombie). The server applies
+  each event with vanilla's `player:addHoleFromZombieAttacks` (hit layer from its own copy, condition + ItemStats, drop
+  at 0), syncs each changed player once per tick (`syncVisuals`, which also replaces the owner's local fake holes),
+  and for 5 s puts back holes / condition a client SyncVisuals takes away. Breaks the client sees are reported
+  (`brokenClothing`, `removeOnBroken` cleared on the client's worn copies); worn ghosts (a worn item not in the main
+  inventory for 2 s) are swapped for the inventory item with its ID or taken off. `getSurroundingAttackingZombies`
+  counts zombies within 0.9 tiles in AttackState, AttackNetworkState, LungeState or LungeNetworkState. No Lua path
+  sends one zombie's ZombieHitPlayerPacket (`sendHitZombie(player)` is a deprecated debug global that sends one from
+  every zombie the client knows).
 - `client/ZomboidFixesB42_AdminFullBright.lua` (option `AdminFullBright`): an Admin Powers option (`ISAdminPowerUI.AddOption`,
   file named to load before `*_AdminHotbarActions.lua`, which turns every option into a hotbar toggle). Always Day
   (ClimateManager day/ambient values while `isAlwaysDayCheat`) lights only the outdoors; the native lighting lights
