@@ -6,6 +6,16 @@ Candidate vanilla fixes, to take one at a time. Line numbers are from 42.20.4; t
 fix (default on; only REALLY closely related fixes share one), README / forum.txt / mod.info lines,
 Sandbox.json tooltip, `[BETA]` until it has been played in game.
 
+## Identified by the author
+
+- [ ] Some context menu items display tooltips, which absolutely covered the next menu for that context menu. If possible, just remove the tooltip.
+
+- [ ] The body part menu can be accessed by the stats of the player. but the body enu is accessed by needing to ask permission from player to check their body. We also need to add an easy way for admins to check their health as well. Possibly another button next to Body.
+
+- [ ] The Admin Hotbar feature for health and body part toggles does not have the option to fully heal the part.
+
+- [ ] Health body parts menu (even in vanilla) should have an option to heal the part but still contains the poultice data and the bandage data. Right now healing just removes the bandage and poultice data.
+
 ## 0. First: 42.21 regression check
 
 - [x] Check every existing feature still works on 42.21 at the Lua level: done in the 2026-10-05 review
