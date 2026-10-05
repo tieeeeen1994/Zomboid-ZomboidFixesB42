@@ -24,6 +24,14 @@ The Fast Timed Actions cheat makes item transfers and grabbing items off the gro
 Option: [i][BETA] Failed Item Transfers Repair Themselves[/i]
 Sometimes the server fails a transfer without telling you. Now the game checks with the server and fixes what you see: items only your game still shows on the floor or in a container are removed, items the server moved but you could not see (until relogging) appear, a transfer the server dropped is tried again, and one that did happen ends instead of hanging for up to 20 seconds.
 
+[b]Putting items back never cancels the queue (beta)[/b]
+Option: [i][BETA] Putting Items Back Never Cancels The Queue[/i]
+Eating or using something from a bag takes it out first and puts it back afterwards. When the item is gone by then (Eat All, used up), putting it back failed and cancelled everything queued after it, so eating all of one thing and queueing another never ate the second. Now the put-back just ends and the queue carries on.
+
+[b]Every craft click is queued (beta)[/b]
+Option: [i][BETA] Every Craft Click Is Queued[/i]
+The crafting window ignored the Craft button while one of its crafts was running, so clicking Craft several times only crafted the first one or two. Now each click made during a craft is kept and started once the crafts before it are done, with fresh ingredients. Cancelling, picking another recipe or closing the window drops the kept clicks.
+
 [b]Reloads keep pace with the animation (beta)[/b]
 Option: [i][BETA] Reloads Keep Pace With The Animation[/i]
 On a server, shells and rounds go in as the hand moves, and a shotgun pump or a rifle magazine swap is no longer cut off half way.
@@ -43,6 +51,10 @@ Watering a plant in multiplayer no longer gives it twice the water or empties th
 [b]Clearing bushes, rocks and stumps wears the tool (beta)[/b]
 Option: [i][BETA] Clearing Bushes, Rocks And Stumps Wears The Tool[/i]
 Removing a bush or wall vines with a cutting tool costs endurance and arm strain and wears the tool again. Breaking up rocks, ore, flint and limestone boulders and stumps wears the hammer, sledgehammer, pickaxe or other tool used, which never happened before. A broken tool is swapped for another. In multiplayer the inventory window also refreshes when the server swaps a tool or uses up building materials.
+
+[b]Removing a bush clears the whole square (beta)[/b]
+Option: [i][BETA] Removing A Bush Clears The Whole Square[/i]
+Removing a bush clears every bush on its square. It used to end in an error whenever anything else was on the square after the bush (in multiplayer the server rejected the action, though the bush was gone), and could leave a second bush behind.
 
 [b]Finished books stay read (beta)[/b]
 Option: [i][BETA] Finished Books Stay Read[/i]

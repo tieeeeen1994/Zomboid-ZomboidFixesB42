@@ -72,9 +72,12 @@ Sandbox.json tooltip, `[BETA]` until it has been played in game.
       done on cancel), option `WaterPlantOnce`.
 - [ ] **Egg taken from a nest box is invisible.** `animal.removeEggFromNestBox`
       (`server/ClientCommands.lua` ~772) adds the egg without `sendAddItemToContainer`.
-- [ ] **Remove Bush skips neighbouring bushes.** `object.removeBush` (`server/ClientCommands.lua` ~122)
+- [x] **Remove Bush skips neighbouring bushes.** `object.removeBush` (`server/ClientCommands.lua` ~122)
       removes while iterating forward (`i = i - 1` does nothing); `ZombRand(1) == 0` is always true.
       `shovelGround` (~180) errors on a nil `emptyBag`.
+      Done 2026-10-05: the live copy is `ISRemoveBush:complete`; walked backwards in `shared/*_RemoveBushSquare.lua`
+      (RemoveBushWholeSquare). It also threw past the list end whenever the bush was not last. Twigs-always left as
+      is. `object.removeBush` / `shovelGround` have no sender in 42.21 (a tampered client only logs an error).
 - [ ] **Removed make-up comes back in MP.** `ISMakeUpUI.onRemoveMakeUp` (~114) removes it on the
       client only (apply uses `ISApplyMakeUp`).
 - [ ] **Notebook text lost in MP.** `ISInventoryPaneContextMenu.onWriteSomethingClick` (~2713) never
@@ -94,8 +97,12 @@ Sandbox.json tooltip, `[BETA]` until it has been played in game.
 - [ ] Medical-checking another player twice clears their negative statuses (forum 99627).
 - [ ] Scrapping gold jewellery used as a key ring deletes every key on it (forum 101057).
 - [ ] Barricading needs 2 nails but uses 1; runs with no plank left and builds nothing (100019, 100313).
-- [ ] "Eat all" then queueing another eat: the eaten item's auto-return cancels the queue (99717);
+- [x] "Eat all" then queueing another eat: the eaten item's auto-return cancels the queue (99717);
       queued crafts: only 2 run (100495).
+      Done 2026-10-05: put-backs (`allowMissingItems`) no longer forceStop (`client/*_ReturnTransfer.lua`,
+      ReturnKeepsQueue). Crafts: `startHandcraft` ignores clicks while `isCraftActionInProgress()` (set when a
+      craft starts), so only the clicks before the first start queue; kept and replayed once idle
+      (`client/*_CraftQueue.lua`, CraftClickQueue). Not played yet.
 - [ ] Mechanics "XP once per part" limit (`get/addMechanicsItem`) is not saved, lost on reload (97845).
 - [ ] Fish fillets show 205 kcal until dropped (100231).
 

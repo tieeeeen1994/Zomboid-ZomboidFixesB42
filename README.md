@@ -37,10 +37,13 @@ Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly 
 - The world map's admin tools (right-click Teleport Here, grids, all map options) show for moderators and custom roles that may teleport, not only for the admin role (beta).
 - Rooms you have seen in multiplayer stay lit after relogging instead of going dark again (beta).
 - Removing a bush or wall vines with a cutting tool costs endurance and arm strain and wears the tool again, breaking up rocks, ore, boulders and stumps wears the hammer, pickaxe or other tool used, a broken tool is swapped for another, and in multiplayer the inventory window refreshes when the server swaps a tool or uses up building materials (beta).
+- Removing a bush clears every bush on its square and no longer ends in an error when something else is on the square (beta).
 - Watering a plant in multiplayer no longer gives it twice the water or empties the can twice as fast (beta).
 - Other players hear you add ingredients in multiplayer: adding an ingredient to a soup, stew, salad or drink is heard by everyone nearby, not only by the cook (crafting sounds are already shared by the game).
 - Reloading in multiplayer keeps pace with the animation: shells and rounds go in as the hand moves, and a shotgun pump or a rifle magazine swap is no longer cut off half way (beta).
 - Item transfers the server fails without telling the player repair themselves: items only the player's game still shows on the floor or in a container are removed, items the server moved but the player could not see (until relogging) appear, a transfer the server dropped is tried again, and one that did happen ends instead of hanging for up to 20 seconds (beta).
+- Putting an item back in its bag after eating or using it no longer cancels the actions queued after it when the item is gone, as after Eat All (beta).
+- Clicking Craft several times crafts that many times; the crafting window used to ignore clicks while a craft was running (beta).
 - Rain collectors, wells, amphoras, drying racks, and buckets, pots and other items that catch rain, no longer break after a server crash, a killed server or a restored backup. Ones already broken are rebuilt, empty, when their area loads, and broken items already picked up are fixed when their owner joins or their vehicle loads (beta).
 - The right spiked metal and spiked scrap metal thigh armor can be moved to the left thigh, like every other thigh armor (beta).
 - Spiked articulated metal shoulder pads can be smelted like the plain ones (beta).

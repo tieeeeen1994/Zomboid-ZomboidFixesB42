@@ -333,6 +333,14 @@ option ZomboidFixesB42.RemoveBushToolWear
     translation = ZomboidFixesB42_RemoveBushToolWear,
 }
 
+option ZomboidFixesB42.RemoveBushWholeSquare
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_RemoveBushWholeSquare,
+}
+
 option ZomboidFixesB42.WaterPlantOnce
 {
     type = boolean,
@@ -371,6 +379,22 @@ option ZomboidFixesB42.TransferResync
     default = true,
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_TransferResync,
+}
+
+option ZomboidFixesB42.ReturnKeepsQueue
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_ReturnKeepsQueue,
+}
+
+option ZomboidFixesB42.CraftClickQueue
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_CraftClickQueue,
 }
 
 option ZomboidFixesB42.ItemDataFixes

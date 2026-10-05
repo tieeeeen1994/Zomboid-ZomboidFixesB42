@@ -799,6 +799,16 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
 `ISAddFuel:getDuration` (42.21) = 70 + the whole can × 50 while `complete` pours only `min(can, maxFuel - fuel)`;
 `*_GeneratorFuel.lua` times it from what fits. `IsoGenerator.getGeneratorItemType` = generator-tagged item by sprite,
 else `Base.Generator`, so `ISTakeGenerator` always has an item type in 42.21.
+`ISRemoveBush:complete` (42.21) removes `canBeCut` objects in a forward loop: removal is immediate
+(`transmitRemoveItemFromSquare`), so it skips the next object and `get(i)` throws past the end unless the bush was last
+(`*_RemoveBushSquare.lua`). Kahlua accepts `i = i - 1` on a for variable (no effect); Lua 5.4+ refuses to compile it.
+Put-backs (`ISCraftingUI.ReturnItemToContainer`, `setAllowMissingItems(true)`) after eating/crafting from a bag: with
+the item gone, SP `update` still `forceStop`s (src lacks it) and MP gets a Reject → `forceStop`; `ISBaseTimedAction.stop`
+= `resetQueue`, so the whole queue goes (`*_ReturnTransfer.lua`). `ISTimedActionQueue:onCompleted` also resets the
+queue when the next action's `isValidStart` fails (eating: Stuffed moodle level >= 3).
+The crafting window's `startHandcraft` returns while `logic:isCraftActionInProgress()` (true from a craft's start,
+`startCraftAction`, to `stopCraftAction`, which fires `onStopCraft` → the panel's `logic:refresh()`): clicks after the
+first craft starts are dropped (`*_CraftQueue.lua` keeps and replays them).
 `ISPickAxeGroundCoverItem` (rocks, ore, boulders, stumps) keeps its tool in `self.pickAxe` but `complete` wears
 `self.pickaxe` (never set, 42.21 ~146); `*_PickAxeWear.lua` does the wear under the same `RemoveBushToolWear` option.
 
