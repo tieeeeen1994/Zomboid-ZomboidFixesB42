@@ -273,6 +273,22 @@ option ZomboidFixesB42.VehicleBatteryDrain
     translation = ZomboidFixesB42_VehicleBatteryDrain,
 }
 
+option ZomboidFixesB42.GasTankWelding
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_GasTankWelding,
+}
+
+option ZomboidFixesB42.WaterDispenserCheck
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_WaterDispenserCheck,
+}
+
 option ZomboidFixesB42.RemoveBushToolWear
 {
     type = boolean,

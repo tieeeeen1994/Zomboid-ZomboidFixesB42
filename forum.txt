@@ -40,9 +40,9 @@ In vanilla multiplayer, a zombie attack that your clothing or armor stops does n
 Option: [i][BETA] Watering Plants Uses Water Once[/i]
 Watering a plant in multiplayer no longer gives it twice the water or empties the can twice as fast.
 
-[b]Removing bushes wears the tool (beta)[/b]
-Option: [i][BETA] Removing Bushes Wears The Tool[/i]
-Removing a bush or wall vines with a cutting tool costs endurance and arm strain and wears the tool again, and a broken tool is swapped for another. In multiplayer the inventory window also refreshes when the server swaps a tool or uses up building materials.
+[b]Clearing bushes, rocks and stumps wears the tool (beta)[/b]
+Option: [i][BETA] Clearing Bushes, Rocks And Stumps Wears The Tool[/i]
+Removing a bush or wall vines with a cutting tool costs endurance and arm strain and wears the tool again. Breaking up rocks, ore, flint and limestone boulders and stumps wears the hammer, sledgehammer, pickaxe or other tool used, which never happened before. A broken tool is swapped for another. In multiplayer the inventory window also refreshes when the server swaps a tool or uses up building materials.
 
 [b]Finished books stay read (beta)[/b]
 Option: [i][BETA] Finished Books Stay Read[/i]
@@ -126,6 +126,14 @@ No fall damage on stairs while Fast Move is on.
 [b]Vehicle battery drain fix (beta)[/b]
 Option: [i][BETA] Vehicle Battery Drain Fix[/i]
 Vehicle batteries no longer drain twice as fast as intended from headlights, the radio, the lightbar, the siren and the heater.
+
+[b]Gas tank welding fix (beta)[/b]
+Option: [i][BETA] Gas Tank Welding Fix[/i]
+Welding a gas tank that is still on a vehicle finishes the repair. The game stopped with an error right after using up the blowtorch and the sheet metal, so the materials were gone and, in multiplayer, the tank still looked broken until the vehicle was loaded again.
+
+[b]Water dispenser bottle duplication fix (beta)[/b]
+Option: [i][BETA] Water Dispenser Bottle Duplication Fix[/i]
+Taking the bottle off an office water dispenser twice in a row, or two players taking it at once, no longer gives a second full bottle and a second dispenser on the same tile, and putting a bottle on from a bag no longer leaves the full bottle in the bag.
 
 [b]No auto vault over stair railings (beta)[/b]
 Option: [i][BETA] No Auto Vault Over Stair Railings[/i]

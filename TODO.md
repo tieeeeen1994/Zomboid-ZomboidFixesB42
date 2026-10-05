@@ -23,7 +23,8 @@ Sandbox.json tooltip, `[BETA]` until it has been played in game.
       none redundant). ReadBooks still needed: 42.21 counts pages from `startPage` and ends early once all
       are read (`ISReadABook.lua:416-420`), but `complete` still never sets the character's own record.
 - [ ] Play every `[BETA]` feature in game and drop its label (see section 5 for what each needs).
-- [ ] Update the line numbers in CLAUDE.md to 42.21 as they are touched.
+- [x] Update the line numbers in CLAUDE.md to 42.21: done 2026-10-05 (every `~N` re-checked against a fresh
+      Vineflower decompile of the 42.21.0 jar and the 42.21.0 Lua). The line numbers in this file are still 42.20.4's.
 
 ## 0b. In progress
 
@@ -46,22 +47,29 @@ Sandbox.json tooltip, `[BETA]` until it has been played in game.
       (`server/Vehicles/Vehicles.lua` ~1306) adds `delta` twice: `max(charge + delta, 0)` then
       `min(charge + delta, 1)`. Engine charging does not go through it. Done: `*_VehicleBattery.lua`,
       option `VehicleBatteryDrain`.
-- [ ] **Health panel cheats on another player hit the admin.** `ISHealthPanel.onCheatOtherPlayer`
-      (`client/XpSystem/ISUI/ISHealthPanel.lua` ~330) sends `id = player:getOnlineID()` (the admin)
-      instead of `otherPlayer`. Also `healthFull` / `healthFullBody` (`server/ClientCommands.lua`
-      ~547-558) use `player` instead of `otherPlayer`, and `healthFullBody` syncs only one body part.
-- [ ] **Welding an installed gas tank loses the materials.** `ISFixVehiclePartAction.lua` ~41 reads an
+- [x] ~~Health panel cheats on another player hit the admin.~~ Not a bug (re-checked 2026-10-05 on 42.21): in
+      `ISHealthPanel` `player` is the patient and `otherPlayer` the doctor, so `onCheatOtherPlayer` sends the
+      patient's id from the doctor, and the patient's own client applies it (flow in CLAUDE.md, "Health panel").
+      `healthFull` / `healthFullBody` reading `player` only matter for a client sending
+      `onHealthCheatCurrentPlayer` with someone else's id (section 4); `healthFullBody` syncing one part heals
+      itself within 2 s (PlayerDamage).
+- [x] **Welding an installed gas tank loses the materials.** `ISFixVehiclePartAction.lua` ~41 reads an
       undefined `part`, so `complete()` errors after the sheet metal and torch are used and the action
-      is rejected. Fix: `self.vehiclePart:getContainerContentAmount()`.
+      is rejected (still in 42.21; only "Fix Gas Tank Welding" reaches that line). Done:
+      `server/*_GasTankWelding.lua`, option `GasTankWelding`.
 - [x] **Client-only `checkWeapon` called on the server.** 42.21 moved it to the shared
       `ItemUtils.checkWeapon` (sledgehammer destroy fixed by vanilla; ground cover's call is dead code).
       Left: `ISRemoveBush` never has its tool on the server (set in client `start()`) nor fires "Chop"
       with a tool in single player, so bushes never wore the tool; `'ui' 'dirtyUI'` never reached the
       client's `DirtyUI`. Done: `*_RemoveBush.lua`, option `RemoveBushToolWear`.
-- [ ] **Pickaxing ground cover never wears the pickaxe.** `ISPickAxeGroundCoverItem.lua` ~146:
-      `self.pickaxe` is never assigned.
-- [ ] **Water dispenser bottle duplication.** `ISAddTakeDispenserBottle.lua` ~6 compares with an
-      undefined `bottle` (always true) and `complete()` does not re-check.
+- [x] **Pickaxing ground cover never wears the pickaxe.** `ISPickAxeGroundCoverItem.lua` ~146:
+      `self.pickaxe` is never assigned (still in 42.21). Done: `server/*_PickAxeWear.lua`, merged into
+      option `RemoveBushToolWear` (key kept so servers keep their setting; shown as "Clearing Bushes, Rocks
+      And Stumps Wears The Tool"), which also answers the `dirtyUI` refresh after a broken tool is swapped.
+- [x] **Water dispenser bottle duplication.** `ISAddTakeDispenserBottle.lua` ~6 compares with an
+      undefined `bottle` (always true) and `complete()` does not re-check (still in 42.21; also a bottle
+      put on from a bag stays there, `Remove` on the main inventory only). Done:
+      `shared/*_WaterDispenser.lua`, option `WaterDispenserCheck`.
 - [x] **Composter "Get compost" submenu broken.** `client/ContextMenuCode.lua` ~92 used
       `predicateNotFull` / `predicateEmptySandbag`, locals of `ISWorldObjectContextMenu.lua`. Fixed by
       vanilla in 42.21: the code moved to `ISWorldObjectContextMenu.handleCompost` (~355), where those
@@ -230,7 +238,7 @@ Beta features: what playing each one should check
 - [ ] RepairLostEntities: a killed server and a restored backup with rain collectors, drying racks and
       a bucket on the floor; chunk re-saves while a backup runs.
 - [ ] TransferResync, ReloadAnimTiming, WaterPlantOnce, RemoveBushToolWear, VehicleBatteryDrain,
-      BooksStayRead, NoStairAutoVault, GrabAmount, FirearmRadialNoBlanks, GoMMagazineTooltip, the admin
+      GasTankWelding, WaterDispenserCheck, BooksStayRead, NoStairAutoVault, GrabAmount, FirearmRadialNoBlanks, GoMMagazineTooltip, the admin
       debug fixes (FixDebugAddFluid, ForagingDebugFixes, NoWalkOnSquarePick, ServerOptionsTooltip),
       AdminSpawnProtection: one session each on a server.
 - [ ] ItemDataFixes and RecipeFixes: each fix in its tooltip, and switching the option off mid-game

@@ -32,7 +32,9 @@ Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly 
 - Admins get a Full Bright admin power, next to Always Day in the Admin Powers window and on the admin hotbar: Always Day plus every room around them lit, so interiors are no longer dark. Only the admin sees it (beta).
 - The admin Server Options window no longer leaves an option's description stuck on screen, following the mouse around, after the mouse leaves the window or it is closed (beta).
 - Vehicle batteries no longer drain twice as fast as intended from headlights, the radio, the lightbar, the siren and the heater (beta).
-- Removing a bush or wall vines with a cutting tool costs endurance and arm strain and wears the tool again, a broken tool is swapped for another, and in multiplayer the inventory window refreshes when the server swaps a tool or uses up building materials (beta).
+- Welding a gas tank that is still on a vehicle finishes the repair instead of using up the materials for nothing (beta).
+- Water dispenser bottles can no longer be duplicated by taking the bottle twice or putting one on from a bag (beta).
+- Removing a bush or wall vines with a cutting tool costs endurance and arm strain and wears the tool again, breaking up rocks, ore, boulders and stumps wears the hammer, pickaxe or other tool used, a broken tool is swapped for another, and in multiplayer the inventory window refreshes when the server swaps a tool or uses up building materials (beta).
 - Watering a plant in multiplayer no longer gives it twice the water or empties the can twice as fast (beta).
 - Other players hear you add ingredients in multiplayer: adding an ingredient to a soup, stew, salad or drink is heard by everyone nearby, not only by the cook (crafting sounds are already shared by the game).
 - Reloading in multiplayer keeps pace with the animation: shells and rounds go in as the hand moves, and a shotgun pump or a rifle magazine swap is no longer cut off half way (beta).

@@ -1,10 +1,10 @@
 # Zomboid Fixes B42.20 — working notes
 
-Engine findings for Project Zomboid Build 42.20 (game version 42.20.4, revision b0bbce05d5),
-recorded so they never have to be re-derived. Line numbers refer to the Vineflower
-decompile described below and to the vanilla Lua of 42.20.4; they shift between builds.
-42.21 went Stable around 2026-09-28 (notes: theindiestone.com/forums/topic/101693); re-check line numbers and
-whether a fix is still needed once the local install updates.
+Engine findings for Project Zomboid Build 42, recorded so they never have to be re-derived. The local install is
+42.21.0 (revision 4a0e9546ec, Stable since about 2026-09-28; notes: theindiestone.com/forums/topic/101693), first
+written against 42.20.4 (revision b0bbce05d5). Line numbers refer to the Vineflower decompile described below and to
+the vanilla Lua of **42.21.0** (all re-checked 2026-10-05); they shift between builds. A heading or note marked
+(42.20) holds findings first made on 42.20 whose behaviour has not been re-traced in 42.21 (its line numbers have).
 
 ## Paths
 
@@ -81,7 +81,7 @@ or methods exist.
 - Server load from Lua: `getServerFPS()` is a constant 10; `getAverageFPS` / `getCPUTime` read `GameWindow` (client
   loop). `getPerformanceLocal()` (`PerformanceStatistic`) has `avg-update-period`, `max-update-period`, `min-update-period`
   (ms per server update), `fps`, memory counters, but the table is refilled only every `MultiplayerStatisticsPeriod`
-  seconds (server option, default 1, 0 = never; `StatisticManager.update` from `GameServer` ~1146). Timing `OnTick` intervals with
+  seconds (server option, default 1, 0 = never; `StatisticManager.update` from `GameServer` ~1176). Timing `OnTick` intervals with
   `getTimestampMs()` yourself always works (~100 ms per server update when healthy).
 - Files: `getFileWriter(name, createIfNull, append)` / `getFileReader(name, createIfNull)` (nil if missing) read and
   write `Zomboid/Lua/<name>`. Server identity on a client: `getServerIP()`, `getServerPort()` ("" in single player);
@@ -153,7 +153,7 @@ or methods exist.
 - `INetworkPacket.send(IsoPlayer, type, ...)` on the server goes to that player's own connection only;
   `INetworkPacket.send(type, ...)` on a client goes to the server.
 - `GameServer.sendAddItemToContainer` / `sendAddItemsToContainer` / `sendRemoveItem(s)FromContainer` /
-  `sendReplaceItemInContainer` (~2448): a container whose `getCharacter()` is a player (the main inventory, or any bag
+  `sendReplaceItemInContainer` (~2476): a container whose `getCharacter()` is a player (the main inventory, or any bag
   nested in it) goes to **that player only**; otherwise to clients near the container's parent object or world item.
   So the server can move an item from one player's inventory into another's with `DoRemoveItem` +
   `sendRemoveItemFromContainer` and `AddItem` + `sendAddItemToContainer` (TienGiveItemMP does).
@@ -196,13 +196,13 @@ PlayerEffects = sleeping-tablet/beta/depress/pain effects. PlayerXp (`XP.save`) 
 **and perk levels** — so trait and skill-level changes made on the server reach the owner within a second too.
 NOT carried by anything: `BodyDamage.isInfected` (general flag), `isIsFakeInfected`, `isIsOnFire` — server-only state.
 
-The client does not simulate its own body: `BodyDamage.Update` (~2097) returns immediately on a client for the local
+The client does not simulate its own body: `BodyDamage.Update` (~2101) returns immediately on a client for the local
 alive player, and for **remote** players it calls `RestoreToFullHealth()` every update. So another player's
 stats/body/nutrition on an admin's client are fake (full health, default stats). **The vanilla Player Stats
 ("Check Stats") window is therefore not accurate for other players** (weight etc. are stale/default). Anything that
 shows another player's live values must ask the server.
 
-Zombie attacks on players and clothing wear (42.21): `BodyDamage.AddRandomDamageFromZombie` (~1251) runs on the client
+Zombie attacks on players and clothing wear (42.21): `BodyDamage.AddRandomDamageFromZombie` (~1252) runs on the client
 that owns the zombie (`AttackState` "AttackCollisionCheck"; remote zombies run `AttackNetworkState`). Its outcomes:
 thump (`Rand.Next(100) <= baseChance`, no wound) and blocked (`Rand.Next(100) < getBodyPartClothingDefense`) call
 `addHoleFromZombieAttacks` and send nothing; only a wound that gets through sends `ZombieHitPlayerPacket`, and the server
@@ -250,11 +250,13 @@ round and at least `getAmmoPerShoot()` rounds; for a gun with `HaveChamber = fal
 `rackBullet` gives one round back. Whether it is queued depends on that sync having arrived.
 `sendClientCommand(player, ...)` in single player goes to `SinglePlayerClient` (OnClientCommand fires), but
 `sendServerCommand` does nothing outside a server — so a request/reply feature needs its own single-player path.
+On a client `sendClientCommand(player, ...)` sends nothing unless `player:isLocalPlayer()` (`LuaManager` ~9023); the
+packet carries only `player.playerIndex`, and the server resolves it against the sender's own connection.
 Server-side Lua has no `getPlayerFromUsername` (it is client-only, `GameClient.instance`); walk `getOnlinePlayers()`.
 `getPlayerByOnlineID` works on both. `writeLog(loggerName, text)` writes to the server's `<date>_<logger>.txt`
 (`/addxp` etc. use the "admin" logger).
 
-### Stat sync functions available to Lua (`zombie/Lua/LuaManager.java` ~11840)
+### Stat sync functions available to Lua (`zombie/Lua/LuaManager.java` ~11965)
 
 - `syncBodyPart(bodyPart, mask)` — server only, sends BodyPartSync to the part's owner.
 - `syncPlayerStats(player, mask)` — server only, sends SyncPlayerStatsPacket to that player (requires `isExistInTheWorld()`).
@@ -280,14 +282,14 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
   (`level / 5 - 1`). Change the level instead: `setPerkLevelDebug(Perks.Fitness, l)` + `getXp():setXPToLevel(Perks.Fitness, l)`,
   then fire `LevelPerk` so `XpUpdate.levelPerk` swaps Unfit/Out of Shape/Fit/Athletic. `XP.AddXP` is unreliable for
   admins: it does nothing while asleep, and for Fitness when `Nutrition.canAddFitnessXp()` is false (weight trouble).
-- **Pain**: `BodyDamage.Update` (~2340) sets it to the body parts' pain minus painReduction whenever it is above that
+- **Pain**: `BodyDamage.Update` (~2350) sets it to the body parts' pain minus painReduction whenever it is above that
   (it only creeps up slowly when below). Vanilla's panel says "pain and sickness cannot be adjusted manually".
 - **Sickness**: nothing writes it any more (only read by the thermoregulator and moodles) — a set sticks.
-- **Temperature**: `Thermoregulator.updateHeatDeltas` (~843) lerps the core temperature halfway to the stat each update,
+- **Temperature**: `Thermoregulator.updateHeatDeltas` (~844) lerps the core temperature halfway to the stat each update,
   then writes the stat back — a set converges and then drifts naturally.
-- **Wetness**: `BodyDamage.UpdateWetness` (~780) sets stat and every body part to `avg(parts) + (stat - avg) * 0.1`,
+- **Wetness**: `BodyDamage.UpdateWetness` (~787) sets stat and every body part to `avg(parts) + (stat - avg) * 0.1`,
   so setting only the stat loses 90% immediately. Set every body part's wetness too.
-- **Discomfort**: lerped slowly towards a target from clothing/bed/moodles (~3195); a set sticks and drifts.
+- **Discomfort**: lerped slowly towards a target from clothing/bed/moodles (~3221); a set sticks and drifts.
 - **ZombieInfection**: while `BodyDamage.isInfected()`, recomputed as
   `(hoursSurvived - infectionTime) / infectionMortalityDuration * 100` (mortality 1 = instant 100, 7 = never).
   Move `infectionTime` to change it; it must stay >= 0 (`GameTime.checkHours` treats negative as "now").
@@ -368,7 +370,7 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
   (skipped with `Error: Dupe item ID` if the client already has that ID there; a bag destination is found by the bag's ID,
   `can't find inventory container` if not), then Done. A client whose object list on that square differs from the
   server's removes the wrong object or none, which is one way ghost floor items are born.
-- Transaction globals from Lua (`LuaManager$GlobalObject` ~9650): `isItemTransactionDone(id)` / `isItemTransactionRejected(id)`
+- Transaction globals from Lua (`LuaManager$GlobalObject` ~12240): `isItemTransactionDone(id)` / `isItemTransactionRejected(id)`
   are `allMatch` over the client's entries with that id, so **both are true for an id no longer in the list** (timed out,
   or removed): both = gone, rejected only = Reject packet, done only = Done packet, neither = waiting. Id 0 reads done and
   rejected. `getItemTransactionDuration(id)` = ms / 20 in integer division, so it is 0 both before the Accept and for an
@@ -407,11 +409,16 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
   `v / useDelta`; `getCurrentUsesFloat() = uses * useDelta`. Car batteries have `UseDelta = 0.00001`, so a 2.5-use
   change rounds to 2 or 3 — carry the remainder when drains are small.
 - Every battery drain goes through `VehicleUtils.chargeBattery(vehicle, delta)` (`server/Vehicles/Vehicles.lua`
-  ~1306 in 42.21): headlights (each lit headlight part) / radio / lightbar / siren -0.000025 a minute with the engine
+  ~1306): headlights (each lit headlight part) / radio / lightbar / siren -0.000025 a minute with the engine
   off, heater -0.000035 while running. Vanilla adds `delta` twice (fixed by `*_VehicleBattery.lua`). Engine charging
   (+0.001 a minute) is in `Vehicles.Update.Battery` and does not use it. Charge reaches clients through
   `vehicle:transmitPartUsedDelta(part)`, sent when `VehicleUtils.compareFloats(old, new, 2)` (2 decimals, or
   crossing 0 / 1).
+- `VehiclePart.setCondition` (42.21) sends nothing (it sets the item's condition and the damage overlay); a server
+  change reaches clients with `vehicle:transmitPartItem(part)` / `transmitPartCondition`. `setContainerContentAmount(v)`
+  clamps to the item's (or script's) max capacity, not the condition-reduced `getContainerCapacity()`, and writes
+  `modData.contentAmount` + the item's capacity. Repairing an installed part = `ISFixVehiclePartAction` (shared, server
+  `complete`); its 42.21 `complete` errors on gas tanks (`*_GasTankWelding.lua`).
 
 ### Animals, hutches and animal zones in multiplayer
 
@@ -542,7 +549,7 @@ vehicle stories and road foraging use. Vanilla, Raven Creek and NagaCity ship on
 
 ## Roles and capabilities
 
-`zombie/characters/Capability.java` is the full list. Default roles (`zombie/characters/Roles.java` ~358–490):
+`zombie/characters/Capability.java` is the full list. Default roles (`zombie/characters/Roles.java` ~356–485):
 `admin` has every capability; `moderator` has every one except UseMovablesCheat, SaveWorld, QuitWorld,
 ChangeAndReloadServerOptions, ReloadLuaFiles, BypassLuaChecksum, RolesWrite, ConnectWithDebug; `gm` and `observer`
 have hand-picked lists (observer: god/invisible/noclip himself, CanSeePlayersStats, UseDebugContextMenu, ...).
@@ -578,6 +585,15 @@ Body-stat editing belongs to `Capability.CanModifyBodyStats` (admin and moderato
   `player` is a plain table with `username`.
 - `ISPlayerStatsUI:render()` positions every button every frame (Manage Inventory at the bottom of the right column);
   `updateButtons()` is called from render.
+- Health panel (`client/XpSystem/ISUI/ISHealthPanel.lua`, 42.21): `self.character` is the **patient**, `self.otherPlayer`
+  the doctor (nil when looking at yourself). The Cheat submenu (~1830-1860) calls `ISHealthPanel.onCheat(bodyPart, action,
+  patient, doctor)`; for another player `onCheatOtherPlayer` (~329) sends `player.onHealthCheat {id = patient}` from the
+  doctor, the server (`ClientCommands.lua` ~474, `UseHealthCheat`) forwards it to the patient's client
+  (`ISHealthPanel.onHealthCheat` server command, ~1964), which runs `onCheatCurrentPlayer` on `getPlayer()` and sends
+  `player.onHealthCheatCurrentPlayer {id = own}` itself (~481, unchecked). So the patient's own client must be online and
+  do the last hop, and in that handler `player` and the target are always the same player when it comes from the UI
+  (`healthFull` / `healthFullBody` / `fatique` read `player`). It ends with `syncBodyPart` of the clicked part only;
+  `healthFullBody`'s other parts reach the owner with the next PlayerDamage (2 s).
 
 ## The whole admin surface (inventory for the admin hotbar)
 
@@ -669,13 +685,13 @@ Spawn Survivor Horde, vehicle Jump / Landmine. Without the
 `server/ClientCommands.lua`: `object.addFireOnSquare`, `object.addSmokeOnSquare`, `object.addExplosionOnSquare`
 (the Brush Tool's fire control), `event.thunder` (Trigger Thunder window), `player.setWeight`, `object.addFluidDebug`,
 `deadBody.addBody`, and most other `object.*`, `fireplace/bbq.setFuel`, `hutch.dirt/nestBoxDirt`, `animal.rename`.
-Worst: `player.onHealthCheatCurrentPlayer` (~451) toggles bite/infection/fractures/burns on **any** player by
+Worst: `player.onHealthCheatCurrentPlayer` (~481) toggles bite/infection/fractures/burns on **any** player by
 `args.id` (remote kill); `player.onVehicleSleep` / `onDropHeavyItem` act on any player by id;
 `object.clearContainerExplore` re-rolls any container's loot; `object.setWaterAmount` (no max, no vanilla caller),
 `addWaterContainer` / `removeFluidContainer`; `stove.setOvenParamsAndToggle` (any stove, any temperature);
 `object.emptyTrash`; `map.setKnownInSquares` (no clamp, reveals the whole map). `server/Vehicles/VehicleCommands.lua`:
 `fixPart`, `setContainerContentAmount`, `crash`, `setHSV/setSkinIndex`, door/window/tire/key/trailer commands all act on
-any vehicle anywhere. `vehicle.remove` **is** guarded, in Java: `GameServer.receiveClientCommand` (~2335) only passes it
+any vehicle anywhere. `vehicle.remove` **is** guarded, in Java: `GameServer.receiveClientCommand` (~2379) only passes it
 to Lua for `Core.debug`, `Capability.GeneralCheats` or `isDismantleAllowed()`; every other command is only logged.
 Global object systems (farming, campfire, traps, feeding troughs) reach Lua through
 `SGlobalObjectNetwork.receiveClientCommand` with no Java check: `farmingCommands` `cheat`/`kill`/`destroy`/`harvest`
@@ -707,7 +723,10 @@ animal, not invisible unless the role has `SeesInvisiblePlayers`; greyed out ("g
 named with `getDisguisedDisplayName()`. `ISTradingUI` shows "too far away" on the same 2-tile rule.
 Server-side timed actions: `NetTimedAction` only calls `new`, `getDuration`, `adjustMaxTime`, `serverStart`,
 `serverStop`, `animEvent`, `complete`, `isUsingTimeout` — never `isValid`, `update` or `perform`. A Lua error in
-`complete()` makes `ActionManager` send Reject (the changes made before the error stay). Client-only globals
+`complete()` makes `ActionManager` send Reject (the changes made before the error stay); so does `complete()`
+returning false (`NetTimedAction.perform` = `protectedCallBoolean`), the clean way for a server re-check to refuse.
+`ItemContainer.Remove(item)` / `contains(item)` look at that one container only (`containsRecursive` for the
+tree), so `character:getInventory():Remove(item)` silently keeps an item that is in a bag. Client-only globals
 called from a shared action's `complete`/`animEvent` error on a server (42.20's `ISWorldObjectContextMenu.checkWeapon`;
 42.21 moved it to the shared `ItemUtils.checkWeapon`). The server's table is `Type.new(...)` called with the client
 table's values of `new`'s **parameter names** (`NetTimedAction.set` reads the prototype's locvars), so anything the
@@ -726,6 +745,8 @@ Actions whose client `update` does the work (`ISWaterPlantAction`: per-use `wate
 `complete` does it again from `new`'s full arguments double it in MP (`*_WaterPlant.lua`).
 `sendServerCommand(p, 'ui', 'dirtyUI')` (ItemUtils, ISBuildUtil, ISMultiStageBuild, GraveHelper) never
 matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lua` answers it.
+`ISPickAxeGroundCoverItem` (rocks, ore, boulders, stumps) keeps its tool in `self.pickAxe` but `complete` wears
+`self.pickaxe` (never set, 42.21 ~146); `*_PickAxeWear.lua` does the wear under the same `RemoveBushToolWear` option.
 
 ### Single player vs a server (what breaks, what to call instead)
 
@@ -875,7 +896,7 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
 - Context menu internals (`ISUI/ISContextMenu.lua`): an option is a pooled table `{ name, target, onSelect,
   param1..param10, subOption, notAvailable, isDisabled, checkMark, iconTexture, itemForTexture, toolTip }` (pool reused
   with `table.wipe`, so copy what you keep); a click runs `ISContextMenu.globalPlayerContext = player`, `closeAll()`,
-  then `onSelect(target, param1..param10)` (~65). Submenus are numbered instances of the player's root menu
+  then `onSelect(target, param1..param10)` (~70). Submenus are numbered instances of the player's root menu
   (`getNew` → `instanceMap`, `addSubMenu` stores the number in `option.subOption`, `menu:getSubMenu(n)`). The tick of
   `setOptionChecked` is drawn where the option's icon goes. Building a menu and calling `closeAll()` in the same frame
   should never show it (UI draws later in the frame; not yet confirmed in game), so an item's menu can be built just to
@@ -895,7 +916,7 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
 - `ISScrollingListBox`: `addItem(text, item)`, `clear()`, `items[i].item`, `selected`, `itemheight`, `font`,
   `setOnMouseDownFunction(target, fn)` / `setOnMouseDoubleClick(target, fn)` → `fn(target, items[selected].item)`;
   replace `doDrawItem(y, item, alt)` (called as `list:doDrawItem`) and return the next y.
-- Grab menus (42.21): loot windows `ISInventoryPaneContextMenu.doGrabMenu(context, items, player)` (~4204, called at
+- Grab menus (42.21): loot windows `ISInventoryPaneContextMenu.doGrabMenu(context, items, player)` (~4206, called at
   ~626) adds Grab one / half / all to the root menu when a stack has >= 2 items (`#k.items > 2`, first is a dummy);
   handlers take `(items, player)` and flatten with `ISInventoryPane.getActualItems`, `onGrabItems` walks once and queues
   one transfer per item (corpses → `ISGrabCorpseItem`). Search mode icons: `ISBaseIcon:doGrabSubMenu(context,
@@ -945,11 +966,11 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
   `addPlayerHomingPoint(chr, x, y, r, g, b, a)` (search mode icons, tutorial) = `arrow_triangle` (32x32) near the player,
   turning (lerped) to point at the target. `addGridSquareMarker(square, r, g, b, doAlpha, radius)` = `circle_center` +
   `circle_only_highlight` ellipse on the floor (+ `setScaleCircleTexture`); the 10-argument form takes the two texture
-  names first. A grid square marker is a floor sprite (`IsoSpriteInstance.render` in `IsoCell` ~1065, before shadows and
+  names first. A grid square marker is a floor sprite (`IsoSpriteInstance.render` in `IsoCell` ~1059, before shadows and
   characters), drawn only while its z equals the player's; its texture is fixed at creation
   (`media/textures/highlights/<name>.png`, width scaled to 64 × tileScale per tile size unit, so mods can add their own
   there) and `setPos(x, y, z)` takes **ints** (snaps per tile).
-- Drawing on the floor from Lua: **not possible with the B42 renderer.** Only the legacy `IsoCell` render path (~1092)
+- Drawing on the floor from Lua: **not possible with the B42 renderer.** Only the legacy `IsoCell` render path (~1086)
   fires `Events.OnPostFloorLayerDraw(z)` (and OnPostFloorSquareDraw / OnPostTileDraw / OnPostWallSquareDraw /
   OnPostCharactersSquareDraw); the default 42.x renderer, `zombie/iso/fboRenderChunk/FBORenderCell`, fires no Lua
   event at all (confirmed in game: an arrow drawn from OnPostFloorLayerDraw never showed). FBORenderCell does render
@@ -966,7 +987,7 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
   outline a hovered button's container; a mod writing another colour on the same object every frame makes it flicker,
   so step aside while it is shown. `ISInventoryPage.OnObjectHighlighted(playerNum, object, true|false)` registers an
   object in `ObjectsHighlightedElsewhere`, which the page then never un-highlights. Characters also have `setOutlineHighlight(playerNum, b)` / `setOutlineHighlightCol(playerNum, r, g, b, a)`.
-- Stairs (IsoGridSquare ~2546-2670, ~10248): a staircase is three squares on the **lower** z, typed `IsoObjectType`
+- Stairs (IsoGridSquare ~2532-2677, ~10232): a staircase is three squares on the **lower** z, typed `IsoObjectType`
   stairsBN/MN/TN (north-facing: T at the smallest y, B at T.y + 2, climbed towards -y) or stairsBW/MW/TW (T at the smallest
   x, climbed towards -x); the top leads onto z + 1 at the square beyond T. `square:getStairs()` (the type, or MAX),
   `HasStairs()`, `HasStairsNorth/West()`, `HasStairTop()`, `HasStairsBelow()`, `getStairsDirection()` (N, W or nil),
@@ -986,7 +1007,7 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
   "Arrow size (%)") goes to `Translator.reportMissingArgumentsFromPastAbuse`, whose log line is built with
   `String.format` → `UnknownFormatConversionException: Conversion = ')'` at MainOptions.lua:3025, and the whole Mods
   options page fails to build (at the main menu and again on every Lua reload).
-- Enum sandbox option value labels: `Sandbox_<valueTranslation or translation>_option<n>` (`SandboxOptions` ~1651).
+- Enum sandbox option value labels: `Sandbox_<valueTranslation or translation>_option<n>` (`SandboxOptions` ~1650).
 - `getFileWriter(name, create, append)` creates missing folders (`mkdirs`) and only accepts .ini/.cfg/.txt/.log/.json;
   `..` is refused (`hasRelativePath`); both read and write under `<cachedir>/Lua`. On a dedicated server that is the
   server's cache folder.
@@ -1026,13 +1047,13 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
   `IsoDirections.fromAngle(dx, dy)` (8-way, `atan2(dy, dx)`) / `cardinalFromAngle(dx, dy)` (4-way), `dx()`/`dy()`,
   `toString()` = "N", "NE"... Vanilla shows them untranslated (`ISAnimalTracksUI` prints `getDir():toString()`); no
   direction-name strings exist in Translate/EN. A world offset (dx, dy) appears on screen along (dx - dy, (dx + dy) / 2).
-- Containers are filled on first view: `ISInventoryPage` (~1106, `checkExplored` ~1511), `ISObjectClickHandler` (~309) and
+- Containers are filled on first view: `ISInventoryPage` (~1108, `checkExplored` ~1511), `ISObjectClickHandler` (~309) and
   `ISOpenContainerTimedAction` call `ItemPicker.fillContainer` (SP) or `container:requestServerItemsForContainer()` (MP)
   when `not container:isExplored()`, then `setExplored(true)`. The loot window's Floor is a per-player
   `ItemContainer.new("floor")` rebuilt in `refreshBackpacks` (~1637) from `getWorldObjects()` of the 3x3 squares around
   the player that `canReachTo` and `SafeHouse.isSafehouseAllowLoot` allow; a floor bag adds its own container button.
   Square visibility: `square:isCanSee(playerNum)`, `isCouldSee(playerNum)`, `isSeen(playerNum)` read the per-player
-  lighting flags `bCanSee` / `bCouldSee` / `bSeen` (IsoGridSquare ~9170-9370; vanilla click handlers gate on `isSeen(0)`,
+  lighting flags `bCanSee` / `bCouldSee` / `bSeen` (IsoGridSquare ~9156-9356; vanilla click handlers gate on `isSeen(0)`,
   cursors on `isCouldSee`). Exact meaning not traced further.
 - Drag and drop inside a panel: on `onMouseDown` remember the mouse, in `onMouseMove` and `onMouseMoveOutside` (both
   keep arriving while the button is pressed) start the drag past a few pixels with `self:setCapture(true)`, finish in
