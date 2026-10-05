@@ -1103,6 +1103,14 @@ first craft starts are dropped (`*_CraftQueue.lua` keeps and replays them).
   (`getPlayerLoot(0):setNewContainer(c)`, then un-collapse: `isCollapsed = false`, `clearMaxDrawHeight()`,
   `collapseCounter = -30`). `ISOpenContainerTimedAction` is no longer queued by vanilla. Select a container in the window
   with `page:setForceSelectedContainer(c, ms)` + `page:selectButtonForContainer(c)`.
+- Locks (42.21): an `IsoThumpable` stores only `lockedByPadlock` + `keyId` and `lockedByCode` (the code), **no owner**
+  (`ISPadlockAction` sets the flag and key ID, hands out the keys, writes no modData). `isLockedToCharacter(chr)` =
+  code > 0 (everyone, until the lock is removed by entering it), or padlock without a key of that ID; false on a
+  **client** for a role with `CanOpenLockedDoors` (not on the server). A locked crate keeps its loot button (lock icon,
+  no click) and `checkExplored` runs on it, so its contents are on the client; `update` (~511), `selectContainer` and
+  `selectButtonForContainer` keep the pane off it, but `setForceSelectedContainer` does not check (one frame until
+  `update`). Neither `ISInventoryTransferAction` nor `TransactionManager` checks locks: a transfer queued from Lua
+  empties a locked crate.
 - Every other UI that lists nearby items (handcraft, build, recipe tooltips, health, radials) takes
   `ISInventoryPaneContextMenu.getContainers(character)` = every loot button's container (except locked thumpables).
 - Container locator helpers: `container:getContainingItem()` (a bag; `bag:getWorldItem()` when on the floor),
