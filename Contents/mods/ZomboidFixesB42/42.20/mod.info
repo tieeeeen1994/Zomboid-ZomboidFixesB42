@@ -64,4 +64,4 @@ description=- Pumpkin and sunflower seed packets you made give back all 25 seeds
 description=- .44 Magnum boxes weigh what they should (beta).
 description=- Small item fixes: the Rangers baseball shirt covers the arms, the red baseball cap stays on like the others, the seafood cooler has sounds, and a few items get their missing names (beta).
 description=Must be installed on both the server and clients. Every fix is on by default and can be turned off in the sandbox options; the few that are off by default say so.
-modversion=3.0.3
+modversion=3.0.4
