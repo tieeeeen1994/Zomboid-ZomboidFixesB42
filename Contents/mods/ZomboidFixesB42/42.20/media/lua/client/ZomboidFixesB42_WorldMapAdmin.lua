@@ -30,7 +30,7 @@ require "ISUI/Maps/ISMiniMap"
 
 local function isEnabled()
     local vars = SandboxVars and SandboxVars.ZomboidFixesB42
-    return not vars or vars.MapAdminCapabilities ~= false
+    return vars ~= nil and vars.MapAdminCapabilities == true
 end
 
 local function hasMapAdminTools()

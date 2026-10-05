@@ -159,14 +159,6 @@ option ZomboidFixesB42.GoMMagazineTooltip
     translation = ZomboidFixesB42_GoMMagazineTooltip,
 }
 
-option ZomboidFixesB42.NISFShiftRange
-{
-    type = boolean,
-    default = true,
-    page = ZomboidFixesB42,
-    translation = ZomboidFixesB42_NISFShiftRange,
-}
-
 option ZomboidFixesB42.GrabAmount
 {
     type = boolean,
@@ -189,14 +181,6 @@ option ZomboidFixesB42.TurboGameMultiplayer
     default = true,
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_TurboGameMultiplayer,
-}
-
-option ZomboidFixesB42.SewersClimbOut
-{
-    type = boolean,
-    default = true,
-    page = ZomboidFixesB42,
-    translation = ZomboidFixesB42_SewersClimbOut,
 }
 
 option ZomboidFixesB42.AdminSpawnProtection
@@ -241,6 +225,26 @@ option ZomboidFixesB42.AdminFullBright
     translation = ZomboidFixesB42_AdminFullBright,
 }
 
+option ZomboidFixesB42.AdminFullBrightSpacing
+{
+    type = integer,
+    min = 1,
+    max = 20,
+    default = 8,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_AdminFullBrightSpacing,
+}
+
+option ZomboidFixesB42.AdminFullBrightRadius
+{
+    type = integer,
+    min = 1,
+    max = 20,
+    default = 20,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_AdminFullBrightRadius,
+}
+
 option ZomboidFixesB42.NoWalkOnSquarePick
 {
     type = boolean,
@@ -279,6 +283,14 @@ option ZomboidFixesB42.GasTankWelding
     default = true,
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_GasTankWelding,
+}
+
+option ZomboidFixesB42.GeneratorRefuelTime
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_GeneratorRefuelTime,
 }
 
 option ZomboidFixesB42.WaterDispenserCheck

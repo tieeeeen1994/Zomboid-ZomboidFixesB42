@@ -29,7 +29,7 @@ if not isClient() then return end
 
 local function isEnabled()
     local vars = SandboxVars and SandboxVars.ZomboidFixesB42
-    return not vars or vars.RememberSeenRooms ~= false
+    return vars ~= nil and vars.RememberSeenRooms == true
 end
 
 local POLL_MS = 2000        -- how often explored rooms near the player are recorded

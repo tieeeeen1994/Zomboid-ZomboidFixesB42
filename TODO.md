@@ -8,13 +8,20 @@ Sandbox.json tooltip, `[BETA]` until it has been played in game.
 
 ## Identified by the author
 
-- [ ] Some context menu items display tooltips, which absolutely covered the next menu for that context menu. If possible, just remove the tooltip.
+- [x] Some context menu items display tooltips, which absolutely covered the next menu for that context menu. If possible, just remove the tooltip.
+      Done 2026-10-05 (changed to): this mod's menu tooltips go left of the menu and are drawn behind
+      the open menus (`client/*_MenuTooltips.lua`, `ZomboidFixesB42.sideTooltip`); vanilla's untouched.
 
-- [ ] The body part menu can be accessed by the stats of the player. but the body enu is accessed by needing to ask permission from player to check their body. We also need to add an easy way for admins to check their health as well. Possibly another button next to Body.
+- [x] The body part menu can be accessed by the stats of the player. but the body enu is accessed by needing to ask permission from player to check their body. We also need to add an easy way for admins to check their health as well. Possibly another button next to Body.
+      Done 2026-10-05: Health button next to Body in Player Stats (`client/*_HealthCheck.lua`, CanMedicalCheat,
+      player must be loaded on the admin's client), under BodyStatsEditor. Not played yet.
 
-- [ ] The Admin Hotbar feature for health and body part toggles does not have the option to fully heal the part.
+- [x] The Admin Hotbar feature for health and body part toggles does not have the option to fully heal the part.
+      Done 2026-10-05: body part condition "Healed (treatment kept)". Not played yet.
 
-- [ ] Health body parts menu (even in vanilla) should have an option to heal the part but still contains the poultice data and the bandage data. Right now healing just removes the bandage and poultice data.
+- [x] Health body parts menu (even in vanilla) should have an option to heal the part but still contains the poultice data and the bandage data. Right now healing just removes the bandage and poultice data.
+      Done 2026-10-05: Cheat menu gets Full Health, Keep Treatment (part) and (Body), through the body stats
+      set command; bandage, poultices, splint and stitches stay (stitches left fully healed). Not played yet.
 
 ## 0. First: 42.21 regression check
 
@@ -80,8 +87,10 @@ Sandbox.json tooltip, `[BETA]` until it has been played in game.
 - [ ] Cosmetic typos: `ISColorPicker.lua` ~151 / `ISColorPickerHSB.lua` ~275 pass a nil global
       `mouseUp`; `ISPlayerStatsManageInvUI.lua` ~215 `playerUsername` vs `self.playerUsername`;
       `ISFarmingMenu.lua` ~141 undefined `currentPlant`.
-- [ ] Generators: pickup action completes but gives no item (`ISTakeGenerator.lua` ~43, `instanceItem`
+- [x] Generators: pickup action completes but gives no item (`ISTakeGenerator.lua` ~43, `instanceItem`
       nil; forum 101307); add-fuel time ignores the amount (101661).
+      Done 2026-10-05: refuel timed from the fuel that fits (`shared/*_GeneratorFuel.lua`, GeneratorRefuelTime).
+      Pickup needs nothing on 42.21: `IsoGenerator.getGeneratorItemType` falls back to Base.Generator.
 - [ ] Medical-checking another player twice clears their negative statuses (forum 99627).
 - [ ] Scrapping gold jewellery used as a key ring deletes every key on it (forum 101057).
 - [ ] Barricading needs 2 nails but uses 1; runs with no plank left and builds nothing (100019, 100313).
@@ -220,25 +229,40 @@ Dead or duplicate code:
       (`LuaTimedActionNew.complete`). Done: client override, server `CMD_FORAGE_PICKUP` handler and constant,
       and the tooltip sentence removed. Debug icons stay pickable through part 1 (server registration), which
       is what made them pickable in the author's test.
-- [ ] NISFShiftRange likely duplicates the `NISF_ShiftRange.lua` that Nick's Inventory Selection Fix
+- [x] NISFShiftRange likely duplicates the `NISF_ShiftRange.lua` that Nick's Inventory Selection Fix
       (workshop 3782920935) already ships, credited to this fix. Check whether Nick's copy works, then drop
       ours or document why both are needed.
+      Removed 2026-10-05: Nick's 1.0.1 ships the same code; it only seemed broken because a local 1.0.0
+      copy in ~/Zomboid/Workshop (no NISF_ShiftRange.lua) took precedence over the subscribed one.
 
 Smaller issues:
-- [ ] GoMTooltipLineLength defaults to 200, which barely wraps; its tooltip says around 40 reads well.
-- [ ] FirearmRadialNoBlanks: vanilla keeps the blanks so each action keeps its slot, which matters on a
+- [x] GoMTooltipLineLength defaults to 200, which barely wraps; its tooltip says around 40 reads well.
+      Done 2026-10-05: 200 stays (fits any screen, tooltip not too tall); the tooltip now says so.
+- [x] FirearmRadialNoBlanks: vanilla keeps the blanks so each action keeps its slot, which matters on a
       joypad; leave them while a joypad drives the menu.
-- [ ] SewersClimbOut: any climb turns the server-wide NoClip anticheat off for up to 15 s, and saving
+      Not doing (2026-10-05): every mod that changes the radial menu leaves no blanks, and blanks only
+      make the menu more confusing, joypad included.
+- [x] SewersClimbOut: any climb turns the server-wide NoClip anticheat off for up to 15 s, and saving
       server options in that window writes it off to the ini. Consider default off.
-- [ ] TransferResync: a client can ask for the items of any container within 8 tiles (small info leak).
-- [ ] AdminFullBright: its Admin Powers entry shows even with the option off, and a missing SandboxVars
+      Removed 2026-10-05: setting AntiCheatNoClip to disabled does the same without the risk.
+- [x] TransferResync: a client can ask for the items of any container within 8 tiles (small info leak).
+      Not a leak (2026-10-05): chunk data already carries every container's items (`IsoObject.save`), and
+      vanilla's RequestItemsForContainer fills any unexplored container with no distance check at all.
+- [x] AdminFullBright: its Admin Powers entry shows even with the option off, and a missing SandboxVars
       table counts as on (every other option counts it as off).
-- [ ] ItemEditorSync: `server/*_ItemEdit.lua:18` requires a client-folder file; on a dedicated server it
+      Done 2026-10-05: left out of the Admin Powers window and greyed out on the hotbar while off;
+      a missing SandboxVars table now counts as off.
+- [x] ItemEditorSync: `server/*_ItemEdit.lua:18` requires a client-folder file; on a dedicated server it
       may not load, and the setter whitelist then falls back to any `set*` method (still limited to the
       Edit Item capability). Check the server log for "could not rebuild".
-- [ ] AdminSpawnProtection walks the online players every tick even when set to 0.
-- [ ] `shared/ZomboidFixesB42.lua:16-17` says new fixes default off (they are on); some options read
+      Left as is (2026-10-05): it does fail there (no fonts, see the file header), but the fallback stops
+      nothing an Edit Item holder could not do anyway.
+- [x] AdminSpawnProtection walks the online players every tick even when set to 0.
+      Done 2026-10-05: skipped while 0; the first tick after it is turned on only records who is online.
+- [x] `shared/ZomboidFixesB42.lua:16-17` says new fixes default off (they are on); some options read
       `~= false`, others `== true`: unify.
+      Done 2026-10-05: every option reads `vars ~= nil and vars.X == true` (off until known to be on);
+      comment fixed.
 
 Beta features: what playing each one should check
 - [ ] FastTransfers' new grab path (not beta itself, the option was played before the grabs were added): with

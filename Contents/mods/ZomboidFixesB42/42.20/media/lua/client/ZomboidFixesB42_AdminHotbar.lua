@@ -2408,11 +2408,11 @@ function Bar:fillActionMenu(context, onPick)
                 local ok, reason = Hotbar.availability(action, admin)
                 if not ok then
                     item.notAvailable = true
-                    local tooltip = ISWorldObjectContextMenu.addToolTip()
+                    local tooltip = ZomboidFixesB42.sideTooltip(ISWorldObjectContextMenu.addToolTip())
                     tooltip.description = reason or ""
                     item.toolTip = tooltip
                 elseif action.tooltip then
-                    local tooltip = ISWorldObjectContextMenu.addToolTip()
+                    local tooltip = ZomboidFixesB42.sideTooltip(ISWorldObjectContextMenu.addToolTip())
                     tooltip.description = action.tooltip
                     item.toolTip = tooltip
                 end
@@ -2541,7 +2541,7 @@ function Bar:addStepMenu(context, slot)
     local addMenu = ISContextMenu:getNew(context)
     context:addSubMenu(addOption, addMenu)
     self:fillActionMenu(addMenu, function(actionId) Hotbar.addStep(slot, actionId) end)
-    local tooltip = ISWorldObjectContextMenu.addToolTip()
+    local tooltip = ZomboidFixesB42.sideTooltip(ISWorldObjectContextMenu.addToolTip())
     tooltip.description = txt("AddStepTooltip")
     addOption.toolTip = tooltip
 

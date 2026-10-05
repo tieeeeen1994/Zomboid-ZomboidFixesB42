@@ -35,7 +35,7 @@ require "TimedActions/ISAddTakeDispenserBottle"
 
 local function isEnabled()
     local vars = SandboxVars and SandboxVars.ZomboidFixesB42
-    return not vars or vars.WaterDispenserCheck ~= false
+    return vars ~= nil and vars.WaterDispenserCheck == true
 end
 
 --- True while the action still matches the dispenser and the inventory.

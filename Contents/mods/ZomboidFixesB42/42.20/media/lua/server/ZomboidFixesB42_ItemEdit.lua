@@ -11,6 +11,14 @@
     descriptor tables and never touches the item -- so running it against a bare
     probe object yields exactly the set of fields the editor can offer, without
     duplicating the list.
+
+    On a dedicated server that fails: require finds client files (GameServer adds
+    media/lua/client to the search paths, only checksumming it), but the server never
+    loads fonts (TextManager.Init runs from the client window, IngameState or the
+    server GUI), so ISItemEditPanel.lua's top-level getTextManager():getFontHeight
+    throws before initElements is defined. The fallback below is then in use, which
+    is left that way on purpose: the command is gated on Capability.EditItem, whose
+    holders can already change any item.
 --]]
 
 if isClient() then return end

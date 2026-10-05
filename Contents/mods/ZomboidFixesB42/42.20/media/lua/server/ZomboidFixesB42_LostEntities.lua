@@ -85,7 +85,7 @@ local Jobs = ZomboidFixesB42.Jobs
 
 local function isEnabled()
     local vars = SandboxVars and SandboxVars.ZomboidFixesB42
-    return not vars or vars.RepairLostEntities ~= false
+    return vars ~= nil and vars.RepairLostEntities == true
 end
 
 local function log(text)

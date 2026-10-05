@@ -83,7 +83,7 @@ local tickCounter = 0
 
 local function isEnabled()
     local vars = SandboxVars and SandboxVars.ZomboidFixesB42
-    return not vars or vars.DeleteNegativeWeightItems ~= false
+    return vars ~= nil and vars.DeleteNegativeWeightItems == true
 end
 
 --- A stable per-player key. On a server the online ID, which is unique even for

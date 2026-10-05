@@ -374,6 +374,50 @@ local function removeStiffness(player, part)
     player:getFitness():removeStiffnessValue(BodyPartType.ToString(part:getType()))
 end
 
+--- No injury left on the part and its health full.
+local function isHealed(part)
+    return part:getHealth() >= 100
+        and part:getBleedingTime() <= 0 and part:getScratchTime() <= 0
+        and not part:isCut() and part:getCutTime() <= 0 and part:getDeepWoundTime() <= 0
+        and not part:bitten() and not part:IsInfected() and not part:haveGlass() and not part:haveBullet()
+        and part:getBurnTime() <= 0 and part:getFractureTime() <= 0
+        and not part:isInfectedWound() and part:getStiffness() <= 0
+end
+
+--- Vanilla's Full Health (BodyPart.RestoreToFullHealth) also takes off the bandage,
+-- the poultices (plantain, comfrey, garlic), the splint and the stitches. This
+-- clears every injury the same way and leaves the treatment on. Stitches never come
+-- out by themselves (stitchTime only grows to 50), and pulling them out before 40
+-- reopens the wound (BodyPart.setStitched(false)), so they are left fully healed.
+-- An alcohol-soaked bandage stays one: nothing here touches the bandage.
+local function healKeepingTreatment(part, player)
+    -- The bullet first: taking it out makes a deep wound, cleared below.
+    if part:haveBullet() then part:setHaveBullet(false, 0) end
+    part:setHaveGlass(false)
+    part:setBleedingTime(0)
+    part:setBleeding(false)
+    part:setScratched(false, true)
+    part:setScratchTime(0)
+    part:setCut(false)
+    part:setCutTime(0)
+    part:setDeepWoundTime(0)
+    part:setDeepWounded(false)
+    part:SetBitten(false)
+    part:setBiteTime(0)
+    part:SetInfected(false)
+    part:SetFakeInfected(false)
+    part:setBurnTime(0)
+    part:setNeedBurnWash(false)
+    part:setLastTimeBurnWash(0)
+    part:setFractureTime(0)
+    part:setInfectedWound(false)
+    part:setWoundInfectionLevel(0)
+    part:setAdditionalPain(0)
+    if part:getStiffness() > 0 then removeStiffness(player, part) end
+    if part:stitched() then part:setStitchTime(50) end
+    part:SetHealth(100)
+end
+
 -- get(part) and set(part, on, player), after server/ClientCommands.lua
 -- Commands.player.onHealthCheatCurrentPlayer.
 BodyStats.PART_CONDITIONS = {
@@ -457,7 +501,15 @@ BodyStats.PART_CONDITIONS = {
         set = function(part, on, player)
             if on then part:setStiffness(100) else removeStiffness(player, part) end
         end },
+    -- On = healed. Turning it off does nothing: there is no injury to give back.
+    { key = "Healed", title = "IGUI_ZomboidFixesB42_BodyPart_Healed",
+        get = function(part) return isHealed(part) end,
+        set = function(part, on, player)
+            if on then healKeepingTreatment(part, player) end
+        end },
 }
+
+BodyStats.HEALED = "Healed"
 
 local partTypeSet = {}
 for _, name in ipairs(BodyStats.PART_TYPES) do partTypeSet[name] = true end

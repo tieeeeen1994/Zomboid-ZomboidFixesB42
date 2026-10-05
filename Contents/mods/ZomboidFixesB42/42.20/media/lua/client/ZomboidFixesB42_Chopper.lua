@@ -52,7 +52,7 @@ ZomboidFixesB42.Chopper = { isEnabled = isEnabled, canUse = canUse, send = send 
 
 local function addOption(menu, player, textKey, tooltipKey, action)
     local option = menu:addOption(getText(textKey), player, send, action)
-    local tooltip = ISWorldObjectContextMenu.addToolTip()
+    local tooltip = ZomboidFixesB42.sideTooltip(ISWorldObjectContextMenu.addToolTip())
     tooltip.description = getText(tooltipKey)
     option.toolTip = tooltip
     return option

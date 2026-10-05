@@ -49,7 +49,7 @@ require "TimedActions/ISRemoveBush"
 
 local function isEnabled()
     local vars = SandboxVars and SandboxVars.ZomboidFixesB42
-    return not vars or vars.RemoveBushToolWear ~= false
+    return vars ~= nil and vars.RemoveBushToolWear == true
 end
 
 --- The action's tool, if it is still a working weapon in the primary hand.

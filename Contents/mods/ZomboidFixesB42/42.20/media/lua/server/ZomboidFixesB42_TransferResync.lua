@@ -41,7 +41,11 @@
         copies (ghosts) and decide whether the transfer is over or worth retrying.
 
     Nothing here moves or creates an item. Every container looked at is one the
-    client could open anyway (in reach), and the player's own inventory.
+    client could open anyway (in reach), and the player's own inventory. Answering
+    for any container within MAX_REACH reveals nothing: the chunk data every client
+    gets already holds each object's containers with their items (IsoObject.save),
+    and vanilla's RequestItemsForContainer fills any unexplored container a client
+    names, with no distance check at all.
 --]]
 
 if isClient() then return end

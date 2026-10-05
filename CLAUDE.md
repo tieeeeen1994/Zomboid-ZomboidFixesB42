@@ -38,7 +38,9 @@ or methods exist.
   -adminpassword`) or `zombie.gameStates.MainScreenState` (client, also needs `-XstartOnFirstThread`; `-nosteam` and
   `-cachedir=` work there too). Without Steam, mods are only searched in `<cachedir>/mods` (`ZomboidFileSystem`: the
   `~/Zomboid/Workshop` staging folders are scanned only in Steam mode), so symlink `<mod>/Contents/mods/<id>` there.
-  A server's first run writes the full `Server/<name>.ini` around a partial one (`Mods=` accepts `id;id`, backslashes
+  With Steam, mod ids resolve in `ZomboidFileSystem` order `workshop,steam,mods` (`-modfolders` changes it),
+  first folder wins (`setModIdToDir` = `putIfAbsent`): a stale `~/Zomboid/Workshop` copy of someone else's mod
+  hides the subscribed update, on joining a server too. A server's first run writes the full `Server/<name>.ini` around a partial one (`Mods=` accepts `id;id`, backslashes
   are stripped) plus `<name>_SandboxVars.lua`.
 
 - No Lua interpreter. Syntax-check with luaparser: `pip3 install --target <scratch>/py luaparser`, then
@@ -102,7 +104,8 @@ or methods exist.
 - Server handlers always check the sender's capability (`player:getRole():hasCapability(Capability.X)`), clamp and
   validate every argument, and log admin actions with `print("[ZomboidFixesB42] ...")`.
 - **Every** feature can be switched off by a sandbox option (`page = ZomboidFixesB42`) with a name and a long `_tooltip` in
-  `Translate/EN/Sandbox.json`, read at run time as `SandboxVars.ZomboidFixesB42.<Option>` through a file-local `isEnabled()`.
+  `Translate/EN/Sandbox.json`, read at run time as `SandboxVars.ZomboidFixesB42.<Option>` through a file-local `isEnabled()`
+  (`vars ~= nil and vars.<Option> == true`: off until the option is known to be on, never `~= false`).
   Only REALLY closely related fixes share one option, where anyone who wants one wants them all: `ItemDataFixes` (item
   property fixes), `RecipeFixes` (recipe and repair edits), `AdminTag` (enum 1 vanilla / 2 every cheat / 3 never,
   `Sandbox_<translation>_option<n>` labels), `BodyStatsEditor` (also the hotbar's body part toggles). Merged tooltips
@@ -149,7 +152,9 @@ or methods exist.
   `react` runs whatever the policy: `GameServer.sendTeleport` back to `releventPos`, packet dropped. Admins
   (`CantBeKickedByAnticheat`) are bounced without any log line. Only `sendTeleport` sets the 500 ms exemption, and
   no Lua path reaches it; `AntiCheat.isEnabled` reads the option live (`getServerOptions():getOptionByName(...)`
-  `:setValue(4)`). `*_SewersClimbOut.lua` holds it off per climb. Speed is skipped for teleport-capable roles.
+  `:setValue(4)`). So Sewers Under Every Town's climb up a ladder (client `setZ` one level up) is bounced back into
+  the sewer unless `AntiCheatNoClip` is disabled; a fix holding the option off per climb was dropped (2026-10-05) in
+  favour of disabling it. Speed is skipped for teleport-capable roles.
 - `INetworkPacket.send(IsoPlayer, type, ...)` on the server goes to that player's own connection only;
   `INetworkPacket.send(type, ...)` on a client goes to the server.
 - `GameServer.sendAddItemToContainer` / `sendAddItemsToContainer` / `sendRemoveItem(s)FromContainer` /
@@ -590,6 +595,9 @@ Body-stat editing belongs to `Capability.CanModifyBodyStats` (admin and moderato
   (`ISWorldObjectContextMenu.onCheckStats`). Edit buttons need `CanModifyPlayerStatsInThePlayerStatsUI`.
 - Vanilla `server/ClientCommands.lua` `Commands.player.setWeight` sets another player's weight by online ID with **no
   access check at all** (any client can call it).
+- A dedicated server can `require` a client file (`GameServer` adds `media/lua/client` to `LuaManager.paths`, loading
+  it with `onlyChecksum`), but has no fonts (`TextManager.Init` only from the client window, `IngameState` or
+  `ServerGUI`): `getTextManager():getFontHeight` throws, so most UI files error at their top-level `FONT_HGT_*` line.
 - All of `media/lua/client` loads without `-debug`, including `DebugUIs/` (ISDebugUtils, ISDebugSubPanelBase,
   ISSliderPanel in `RadioCom/ISUIRadio/`), so debug UI building blocks can be reused in normal windows.
 - `ISSliderPanel:setCurrentValue(v, ignoreOnChange)` rounds to the step, clamps, and fires `onValueChange(target, v, slider)`
@@ -617,6 +625,14 @@ Body-stat editing belongs to `Capability.CanModifyBodyStats` (admin and moderato
   do the last hop, and in that handler `player` and the target are always the same player when it comes from the UI
   (`healthFull` / `healthFullBody` / `fatique` read `player`). It ends with `syncBodyPart` of the clicked part only;
   `healthFullBody`'s other parts reach the owner with the next PlayerDamage (2 s).
+  Another player's real body on a client: `doctor:startReceivingBodyDamageUpdates(patient)` (BodyDamageUpdatePacket,
+  LoginOnServer only, no consent check) makes the server's `BodyDamageSync` stream deltas every 0.5 s into the
+  client's `patient:getBodyDamageRemote()`; the client resolves the patient by PlayerID, so only for a player it has
+  loaded. The Medical Check yes/no dialog is Lua only (`requestMedicalCheck` → `ReceiveMedicalCheckRequest`).
+  `BodyPart.RestoreToFullHealth` (Full Health) also clears the bandage, poultices, splint and stitches; stitches never
+  come out by themselves (stitchTime stops at 50) and `setStitched(false)` below 40 reopens the deep wound.
+  `alcoholicBandage` has no getter. Context menu tooltips are placed by `ISToolTip:adjustPositionToAvoidOverlap`,
+  right of the menu first (where the submenu opens); `*_MenuTooltips.lua` moves this mod's to the left, behind.
 
 ## The whole admin surface (inventory for the admin hotbar)
 
@@ -780,6 +796,9 @@ Actions whose client `update` does the work (`ISWaterPlantAction`: per-use `wate
 `complete` does it again from `new`'s full arguments double it in MP (`*_WaterPlant.lua`).
 `sendServerCommand(p, 'ui', 'dirtyUI')` (ItemUtils, ISBuildUtil, ISMultiStageBuild, GraveHelper) never
 matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lua` answers it.
+`ISAddFuel:getDuration` (42.21) = 70 + the whole can × 50 while `complete` pours only `min(can, maxFuel - fuel)`;
+`*_GeneratorFuel.lua` times it from what fits. `IsoGenerator.getGeneratorItemType` = generator-tagged item by sprite,
+else `Base.Generator`, so `ISTakeGenerator` always has an item type in 42.21.
 `ISPickAxeGroundCoverItem` (rocks, ore, boulders, stumps) keeps its tool in `self.pickAxe` but `complete` wears
 `self.pickaxe` (never set, 42.21 ~146); `*_PickAxeWear.lua` does the wear under the same `RemoveBushToolWear` option.
 
@@ -1084,7 +1103,9 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
   direction-name strings exist in Translate/EN. A world offset (dx, dy) appears on screen along (dx - dy, (dx + dy) / 2).
 - Containers are filled on first view: `ISInventoryPage` (~1108, `checkExplored` ~1511), `ISObjectClickHandler` (~309) and
   `ISOpenContainerTimedAction` call `ItemPicker.fillContainer` (SP) or `container:requestServerItemsForContainer()` (MP)
-  when `not container:isExplored()`, then `setExplored(true)`. The loot window's Floor is a per-player
+  when `not container:isExplored()`, then `setExplored(true)`. `RequestItemsForContainerPacket.processServer` has no
+  distance check (any unexplored container), and `IsoObject.save` writes its containers' items into the chunk data
+  clients get, so a client already holds every explored container's contents in its loaded chunks. The loot window's Floor is a per-player
   `ItemContainer.new("floor")` rebuilt in `refreshBackpacks` (~1637) from `getWorldObjects()` of the 3x3 squares around
   the player that `canReachTo` and `SafeHouse.isSafehouseAllowLoot` allow; a floor bag adds its own container button.
   Square visibility: `square:isCanSee(playerNum)`, `isCouldSee(playerNum)`, `isSeen(playerNum)` read the per-player
@@ -1210,7 +1231,8 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
   debug-only (`BooleanDebugOption.getValue` = default without `-debug`), `IsoRoomLight` is not exposed, and per-square
   lighting is overwritten natively and cached in the chunk renders. So it adds `IsoLightSource`s with
   `getCell():addLamppost` (radius capped at 20, falloff (1 - d/r)^2, walls block, dropped by `checkLights` outside the
-  loaded area, `removeLamppost(light)` = life 0) every 4 tiles through the rects of the rooms near the player
+  loaded area, `removeLamppost(light)` = life 0; each square is lit on its own, so a short radius shows as steps across
+  a two-tile object) every `AdminFullBrightSpacing` tiles (radius `AdminFullBrightRadius`) through the rects of the rooms near the player
   (`getMetaGrid():getRoomsIntersecting(x, y, w, h, list)`, `RoomDef:getRects()`), client only.
 - `shared/ZomboidFixesB42_ScriptFixes.lua` + `*_ItemFixesClothing/Weapons/Food.lua`: item and recipe data fixes, behind
   `ItemDataFixes` / `RecipeFixes`, applied at `OnLoadMapZones` and re-checked every ten minutes

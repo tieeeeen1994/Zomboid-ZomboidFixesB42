@@ -21,7 +21,7 @@ if not isClient() then return end
 
 local function isEnabled()
     local vars = SandboxVars and SandboxVars.ZomboidFixesB42
-    return not vars or vars.RemoveBushToolWear ~= false
+    return vars ~= nil and vars.RemoveBushToolWear == true
 end
 
 local function onServerCommand(module, command, args)

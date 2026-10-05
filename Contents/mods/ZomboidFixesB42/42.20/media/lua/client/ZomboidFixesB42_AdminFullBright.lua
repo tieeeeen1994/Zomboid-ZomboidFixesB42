@@ -22,10 +22,14 @@
     the next update. Lights live on this client only, nothing is sent.
 
     So Full Bright turns Always Day on for the outdoors and puts a white light every
-    SPACING tiles through each rectangle of every room (RoomDef rects, from
-    IsoMetaGrid.getRoomsIntersecting) within RANGE tiles of the player, on squares that
-    are loaded. The set is rebuilt when the player has moved MOVE_TILES or changed
-    floor, and every REFRESH_MS, which also puts back lights the engine dropped.
+    few tiles (sandbox AdminFullBrightSpacing) through each rectangle of every room
+    (RoomDef rects, from IsoMetaGrid.getRoomsIntersecting) within RANGE tiles of the
+    player, on squares that are loaded, each reaching AdminFullBrightRadius tiles. The
+    native lighting lights each square on its own, so a short reach shows as steps
+    between neighbouring squares (one half of a two-tile table darker than the other);
+    a longer reach or closer lights even it out. The set is rebuilt when the player has
+    moved MOVE_TILES or changed floor, and every REFRESH_MS, which also puts back
+    lights the engine dropped and follows a change of either option.
     Always Day keeps its own tick: while Full Bright is on, the Always Day option
     reads and saves the admin's own choice, and that choice is put back when Full
     Bright goes off. In multiplayer Full Bright is off after a restart; in single
@@ -37,6 +41,9 @@
 
     Gate: the Admin Powers rule (single player: -debug; multiplayer: an admin power
     role with Capability.ClimateManager, Always Day's capability), checked every tick.
+    With the sandbox option off, the option is left out of the Admin Powers window
+    (ISAdminPowerUI adds every OptionList entry the role allows, so its addOption* are
+    wrapped) and the hotbar greys its toggle out (option.zfixEnabled).
     Loads before ZomboidFixesB42_AdminHotbarActions.lua, which makes a hotbar toggle
     of every Admin Powers option it finds.
 --]]
@@ -46,10 +53,13 @@ require "ISUI/AdminPanel/ISAdminPowerUI"
 local OPTION_ID = "ZomboidFixesB42_FullBright"
 -- How far from the player, in tiles, rooms are lit.
 local RANGE = 45
--- Tiles between two lights in a room.
-local SPACING = 4
--- Each light's radius, in tiles (the engine caps it at 20).
-local RADIUS = 8
+-- Tiles between two lights in a room, and each light's radius in tiles (the engine
+-- caps it at 20), when the sandbox options are missing. Walls stop each light at its
+-- room, so the cost is mostly the number of lights: 8 gives most house rooms one, and
+-- the full radius keeps that one light's far corners lit.
+local DEFAULT_SPACING = 8
+local DEFAULT_RADIUS = 20
+local MAX_RADIUS = 20
 -- The lights are rebuilt after this many tiles of movement...
 local MOVE_TILES = 4
 -- ...or this often.
@@ -57,7 +67,22 @@ local REFRESH_MS = 3000
 
 local function isEnabled()
     local vars = SandboxVars and SandboxVars.ZomboidFixesB42
-    return not vars or vars.AdminFullBright ~= false
+    return vars ~= nil and vars.AdminFullBright == true
+end
+
+local function intOption(name, default, min, max)
+    local vars = SandboxVars and SandboxVars.ZomboidFixesB42
+    local value = vars and tonumber(vars[name])
+    if not value then return default end
+    return math.max(min, math.min(max, math.floor(value)))
+end
+
+local function spacing()
+    return intOption("AdminFullBrightSpacing", DEFAULT_SPACING, 1, 20)
+end
+
+local function radius()
+    return intOption("AdminFullBrightRadius", DEFAULT_RADIUS, 1, MAX_RADIUS)
 end
 
 local function isAllowed(player)
@@ -73,8 +98,9 @@ local active = false
 local ownAlwaysDay = false
 -- ["x,y,z"] = IsoLightSource
 local lights = {}
--- The cell the lights were added to.
+-- The cell the lights were added to, and their radius.
 local lightsCell = nil
+local lightsRadius = nil
 local lastX, lastY, lastZ, lastRefresh = nil, nil, nil, 0
 
 local function clearLights()
@@ -96,6 +122,16 @@ local function refresh(player)
         lights = {}
         lightsCell = cell
     end
+    -- A light's radius is fixed once added, so a new radius means new lights.
+    local r = radius()
+    if r ~= lightsRadius then
+        for _, light in pairs(lights) do
+            cell:removeLamppost(light)
+        end
+        lights = {}
+        lightsRadius = r
+    end
+    local step = spacing()
     local px, py, pz = math.floor(player:getX()), math.floor(player:getY()), math.floor(player:getZ())
     lastX, lastY, lastZ, lastRefresh = px, py, pz, getTimestampMs()
 
@@ -109,8 +145,8 @@ local function refresh(player)
         for j = 0, rects:size() - 1 do
             local rect = rects:get(j)
             local rx, ry, w, h = rect:getX(), rect:getY(), rect:getW(), rect:getH()
-            local nx = math.max(1, math.ceil(w / SPACING))
-            local ny = math.max(1, math.ceil(h / SPACING))
+            local nx = math.max(1, math.ceil(w / step))
+            local ny = math.max(1, math.ceil(h / step))
             for ix = 0, nx - 1 do
                 local x = rx + math.floor((ix + 0.5) * w / nx)
                 for iy = 0, ny - 1 do
@@ -137,7 +173,7 @@ local function refresh(player)
     for key, pos in pairs(wanted) do
         local light = lights[key]
         if not light or not list:contains(light) then
-            light = IsoLightSource.new(pos[1], pos[2], pos[3], 1, 1, 1, RADIUS)
+            light = IsoLightSource.new(pos[1], pos[2], pos[3], 1, 1, 1, r)
             cell:addLamppost(light)
             lights[key] = light
         end
@@ -170,6 +206,20 @@ local option = ISAdminPowerUI.AddOption(OPTION_ID, "right", Capability.ClimateMa
         setActive(player, selected == true)
     end
 )
+
+if option then
+    option.zfixEnabled = isEnabled
+
+    -- The window is built from OptionList whenever it opens; the sandbox option is
+    -- only known in game, so it is left out there rather than never registered.
+    for _, name in ipairs({ "addOptionLeft", "addOptionRight" }) do
+        local vanilla = ISAdminPowerUI[name]
+        ISAdminPowerUI[name] = function(self, opt, ...)
+            if opt == option and not isEnabled() then return end
+            return vanilla(self, opt, ...)
+        end
+    end
+end
 
 -- While Full Bright holds Always Day on, the Always Day option shows and keeps the
 -- admin's own setting.

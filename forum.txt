@@ -75,11 +75,11 @@ Single player gets the hotbar with the -debug launch option.
 
 [b]Body stats editor[/b]
 Option: [i]Body Stats Editor For Admins[/i]
-Admins and moderators can change any online player's hunger, mood, health, nutrition, weight and other body stats, like the debug menu's Body panel, from a Body button in the Player Stats window, the admin panel or the scoreboard. The changes are made on the server, so they stick and the player sees them.
+Admins and moderators can change any online player's hunger, mood, health, nutrition, weight and other body stats, like the debug menu's Body panel, from a Body button in the Player Stats window, the admin panel or the scoreboard. The changes are made on the server, so they stick and the player sees them. A Health button next to Body (new, beta) opens the player's health window straight away, without asking them for a medical check.
 
 [b]Body part conditions (beta)[/b]
 Option: [i]Body Stats Editor For Admins[/i]
-A Body part condition shortcut for the admin hotbar: one click turns a bite, scratch, laceration, deep wound, bleeding, glass shards, a lodged bullet, a burn, a fracture, a wound infection or a muscle strain on or off on any body part of any online player. It has the same permission checks and admin log as the body stats editor (vanilla's own health cheat has none in multiplayer).
+A Body part condition shortcut for the admin hotbar: one click turns a bite, scratch, laceration, deep wound, bleeding, glass shards, a lodged bullet, a burn, a fracture, a wound infection or a muscle strain on or off on any body part of any online player, or heals the part. It has the same permission checks and admin log as the body stats editor (vanilla's own health cheat has none in multiplayer). The health window's Cheat menu also gets Full Health, Keep Treatment for a part or the whole body: every injury healed, while bandages, poultices, splints and stitches stay on (vanilla's Full Health takes them off).
 
 [b]Admin chopper controls (beta)[/b]
 Option: [i][BETA] Admin Chopper Controls[/i]
@@ -95,6 +95,7 @@ The admin tag over an admin's head shows for every admin panel cheat, not only s
 
 [b]Full Bright admin power (beta)[/b]
 Option: [i][BETA] Full Bright Admin Power[/i]
+Options: [i]Full Bright Light Spacing[/i] (8 tiles by default), [i]Full Bright Light Radius[/i] (20 tiles by default, the most the game allows)
 Always Day only lights the outdoors, so rooms stay dark inside. Full Bright, next to Always Day in the Admin Powers window and on the admin hotbar, turns Always Day on and lights every room around the admin as well. Only the admin sees it; nothing changes for anyone else.
 
 [b]Item editor changes save everywhere[/b]
@@ -130,6 +131,10 @@ Vehicle batteries no longer drain twice as fast as intended from headlights, the
 [b]Gas tank welding fix (beta)[/b]
 Option: [i][BETA] Gas Tank Welding Fix[/i]
 Welding a gas tank that is still on a vehicle finishes the repair. The game stopped with an error right after using up the blowtorch and the sheet metal, so the materials were gone and, in multiplayer, the tank still looked broken until the vehicle was loaded again.
+
+[b]Generator refuel time fix (beta)[/b]
+Option: [i][BETA] Generator Refuel Time Fix[/i]
+Adding fuel to a generator takes as long as the fuel that actually goes in. It used to take as long as emptying the whole can, so topping up a nearly full generator from a full can took as long as filling an empty one.
 
 [b]Water dispenser bottle duplication fix (beta)[/b]
 Option: [i][BETA] Water Dispenser Bottle Duplication Fix[/i]
@@ -261,14 +266,7 @@ Guns of Marz attachment tooltips wrap instead of stretching across the screen.
 Option: [i][BETA] Guns of Marz Magazine Tooltip[/i]
 A Guns of Marz gun's tooltip names the magazine really in it, with its capacity, instead of an earlier one.
 
-[b]Nick's Inventory Selection Fix shift range[/b]
-Option: [i]Nick's Inventory Selection Fix Shift Range[/i]
-With Nick's Inventory Selection Fix, shift-click selects the whole range instead of acting like ctrl-click.
-
 [b]Turbo Game in multiplayer[/b]
 Option: [i]Turbo Game In Multiplayer[/i]
 Turbo Game cartridges and batteries go in and come out on multiplayer servers, including in consoles spawned from the item list. The battery charge, best scores and mood effects are kept, and best scores belong to the console they were set on. Your character no longer walks around while a game is open, and the game closes when a zombie is near or it is too dark.
 
-[b]Sewers: climbing out in multiplayer (beta)[/b]
-Option: [i][BETA] Sewers: Climbing Out In Multiplayer[/i]
-With Sewers Under Every Town, climbing a ladder back up to the street works on servers with the AntiCheatNoClip option on. Without it the server treats the climb as no-clip and puts you straight back in the sewer (and logs, kicks or bans players who are not admins, as the option says). For the moment of each climb out, normally a fraction of a second, the server's no-clip check is switched off, then set back.

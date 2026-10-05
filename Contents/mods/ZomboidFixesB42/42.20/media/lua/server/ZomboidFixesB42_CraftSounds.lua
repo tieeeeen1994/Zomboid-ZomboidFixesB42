@@ -43,7 +43,7 @@ local RATE_LIMIT = 12
 
 local function isEnabled()
     local vars = SandboxVars and SandboxVars.ZomboidFixesB42
-    return not vars or vars.CraftSoundsMP ~= false
+    return vars ~= nil and vars.CraftSoundsMP == true
 end
 
 -- Every sound adding an ingredient can play, built once on first use (scripts are

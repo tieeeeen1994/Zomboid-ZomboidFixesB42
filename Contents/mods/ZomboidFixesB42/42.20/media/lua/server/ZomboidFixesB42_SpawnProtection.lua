@@ -30,10 +30,11 @@ local ALL_BODY_PART_FIELDS = 0xFFFFFFFFFFF
 -- setting the rest is harmless.
 local ALL_STATS = 0x7FFFFFFF
 
--- Usernames online as of the last tick, to notice who has just joined. Kept even
--- while the option is off, so turning it on mid-session does not treat everyone
--- already playing as new.
-local online = {}
+-- Usernames online as of the last tick, to notice who has just joined; nil while
+-- the option is off, so the list is not walked for nothing. The first tick after it
+-- is turned on only records who is online, so everyone already playing is not
+-- treated as new.
+local online = nil
 -- Healed players whose stats still have to be sent once they exist in the world.
 local unsynced = {}
 
@@ -78,6 +79,11 @@ end
 
 local function onTick()
     local enabled = protectionSeconds() > 0
+    -- Players healed just before it was turned off still get their stats sent.
+    if not enabled and #unsynced == 0 then
+        online = nil
+        return
+    end
     local list = getOnlinePlayers()
     local current = {}
 
@@ -87,14 +93,14 @@ local function onTick()
             local name = player and player:getUsername()
             if name then
                 current[name] = true
-                if enabled and not online[name] and isAdmin(player) then
+                if enabled and online and not online[name] and isAdmin(player) then
                     restore(player)
                 end
             end
         end
     end
 
-    online = current
+    online = enabled and current or nil
     if #unsynced > 0 then syncPending(current) end
 end
 

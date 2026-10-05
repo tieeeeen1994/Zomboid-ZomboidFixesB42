@@ -476,7 +476,7 @@ local function onFillInventoryObjectContextMenu(playerNum, context, items)
                 local reason = play and cannotPlayReason(player)
                 if reason then
                     play.notAvailable = true
-                    play.toolTip = ISInventoryPaneContextMenu.addToolTip()
+                    play.toolTip = ZomboidFixesB42.sideTooltip(ISInventoryPaneContextMenu.addToolTip())
                     play.toolTip.description = getText(reason)
                 end
                 if play and play.onSelect then

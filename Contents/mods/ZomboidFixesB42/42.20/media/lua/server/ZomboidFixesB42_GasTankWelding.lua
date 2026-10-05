@@ -30,7 +30,7 @@ require "TimedActions/ISFixVehiclePartAction"
 
 local function isEnabled()
     local vars = SandboxVars and SandboxVars.ZomboidFixesB42
-    return not vars or vars.GasTankWelding ~= false
+    return vars ~= nil and vars.GasTankWelding == true
 end
 
 local vanillaComplete = ISFixVehiclePartAction.complete

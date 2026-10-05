@@ -34,7 +34,7 @@ require "Vehicles/Vehicles"
 
 local function isEnabled()
     local vars = SandboxVars and SandboxVars.ZomboidFixesB42
-    return not vars or vars.VehicleBatteryDrain ~= false
+    return vars ~= nil and vars.VehicleBatteryDrain == true
 end
 
 -- Battery item ID -> the fraction of a use the last change rounded away. Never

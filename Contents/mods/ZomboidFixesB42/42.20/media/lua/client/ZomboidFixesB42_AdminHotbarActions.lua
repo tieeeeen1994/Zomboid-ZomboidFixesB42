@@ -247,6 +247,8 @@ for _, option in ipairs(ISAdminPowerUI.OptionList or {}) do
         tooltip = power.tooltip,
         icon = POWER_ICONS[power.id] or "sym:Star",
         available = function(admin)
+            -- A power this mod adds can be switched off in the sandbox options.
+            if power.zfixEnabled and not power.zfixEnabled() then return false, txt("PowerOff") end
             -- Admin Powers' own rule: isDebugEnabled() (single player) or the role.
             if not isClient() then return true end
             local role = admin:getRole()

@@ -41,7 +41,7 @@ local WATCH_MS = 250
 
 local function isEnabled()
     local vars = SandboxVars and SandboxVars.ZomboidFixesB42
-    return not vars or vars.CraftSoundsMP ~= false
+    return vars ~= nil and vars.CraftSoundsMP == true
 end
 
 -- Sending -------------------------------------------------------------------------

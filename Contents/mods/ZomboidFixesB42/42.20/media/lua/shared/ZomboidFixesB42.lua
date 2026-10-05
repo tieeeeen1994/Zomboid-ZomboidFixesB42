@@ -13,11 +13,14 @@
         Server files start with `if isClient() then return end` (or `if not
         isServer()` when single player has nothing to do), and client files that
         only matter on a server with `if not isClient() then return end`.
-      - Every new fix gets a sandbox option on the ZomboidFixesB42 page, off by
+      - Every new fix gets a sandbox option on the ZomboidFixesB42 page, on by
         default, read as SandboxVars.ZomboidFixesB42.<Option>, with its name and
         a long tooltip in Translate/EN/Sandbox.json ("[BETA] ..." for beta ones).
-        UI text goes in Translate/EN/IG_UI.json as IGUI_ZomboidFixesB42_*.
-      - Every feature has a line in README.md, workshop.txt and mod.info, and the
+        A fix only acts once the option is known to be on
+        (`vars ~= nil and vars.<Option> == true`), never while the sandbox
+        options are not there yet. UI text goes in Translate/EN/IG_UI.json as
+        IGUI_ZomboidFixesB42_*.
+      - Every feature has a line in README.md, forum.txt and mod.info, and the
         three are kept in step.
       - Server handlers check the sender's capability
         (player:getRole():hasCapability(Capability.X)), check and clamp every

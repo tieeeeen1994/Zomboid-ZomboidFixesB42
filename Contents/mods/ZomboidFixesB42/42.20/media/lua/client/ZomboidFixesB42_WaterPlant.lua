@@ -28,7 +28,7 @@ require "Farming/TimedActions/ISWaterPlantAction"
 
 local function isEnabled()
     local vars = SandboxVars and SandboxVars.ZomboidFixesB42
-    return not vars or vars.WaterPlantOnce ~= false
+    return vars ~= nil and vars.WaterPlantOnce == true
 end
 
 local vanillaUpdate = ISWaterPlantAction.update
