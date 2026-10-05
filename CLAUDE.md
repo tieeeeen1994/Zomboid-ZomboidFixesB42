@@ -1226,7 +1226,7 @@ first craft starts are dropped (`*_CraftQueue.lua` keeps and replays them).
   send floor hints (`encodeFloorHints`, `findItemOnGroundNear`), log why they decline, and fall back to a vanilla
   transaction for declined items still at the source. Not fixable from Lua: a real floor item the client lost to a
   wrong-index removal (no way to send one world item to one client), and the cross-player Reject of vanilla cancels.
-- `*_ClothingWear.lua` (client/server, option `ClothingWearRework`, beta; replaced `ZombieAttacksWearClothing` and
+- `*_ClothingWear.lua` (client/server, option `ClothingWearRework`, played on a server 2026-10-06; replaced `ZombieAttacksWearClothing` and
   `SyncBrokenClothing`): queued per-swing events. The victim's client watches every zombie targeting a local player
   (own or remote) for `getAttackOutcome()` turning `"success"` (set at `SetAttackOutcome`, end of the `start` anim; the
   `success` anim is not looped, holds `AttackCollisionCheck` and ends with `ZombieBiteDone=true`, then the state is left

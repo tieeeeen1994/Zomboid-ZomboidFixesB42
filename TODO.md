@@ -272,14 +272,16 @@ Smaller issues:
       comment fixed.
 
 Beta features: what playing each one should check
-- [ ] FastTransfers' new grab path (not beta itself, the option was played before the grabs were added): with
+- [x] FastTransfers' new grab path (not beta itself, the option was played before the grabs were added): with
       Timed Action Instant on a server, right-click Grab one item, Grab all of a pile of nails (batches of 20),
       search mode icons, and a build cursor picking up planks; items arrive at once, actions queued after the
       grab (eat, equip) still run, nothing is left as a floor ghost.
-- [ ] ClothingWearRework, on a server: events arrive for zombies another player owns, one per swing; own
+      Confirmed working by the author 2026-10-06.
+- [x] ClothingWearRework, on a server: events arrive for zombies another player owns, one per swing; own
       zombies' local fake holes disappear after the server's sync; armor condition goes down at about the
       single player rate and survives relog; a break drops the item for everyone with no ghost copy; no extra
       lag in a horde.
+      Confirmed working by the author 2026-10-06; beta label dropped.
 - [ ] Body part toggles (hotbar, under `BodyStatsEditor`): each condition on another player, flip.
 - [ ] AnimalGenderChange: all four branches (world, hutch, trailer, carried animal).
 - [ ] RepairLostEntities: a killed server and a restored backup with rain collectors, drying racks and
@@ -290,5 +292,6 @@ Beta features: what playing each one should check
       FirearmRadialNoBlanks, GoMMagazineTooltip, the admin
       debug fixes (FixDebugAddFluid, ForagingDebugFixes, NoWalkOnSquarePick, ServerOptionsTooltip),
       AdminSpawnProtection: one session each on a server.
-- [ ] ItemDataFixes and RecipeFixes: each fix in its tooltip, and switching the option off mid-game
+- [x] ItemDataFixes and RecipeFixes: each fix in its tooltip, and switching the option off mid-game
       reverts it (ScriptFixes revert path).
+      Confirmed working by the author 2026-10-06; beta labels dropped.

@@ -6,10 +6,10 @@ Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly 
 - Item editor changes save for items in crates, vehicles, on the floor and in other players' inventories.
 - Debug Add Fluid fills rain collectors and other world containers instead of emptying them (beta).
 - The admin tag shows for every admin panel cheat. It can also be set to never show, or left as vanilla.
-- Shin armor run speeds follow the same pattern as thigh armor: articulated is faster than plain metal, spiked slower (beta).
+- Shin armor run speeds follow the same pattern as thigh armor: articulated is faster than plain metal, spiked slower.
 - No fall damage on stairs while Fast Move is on (beta).
 - Items with negative weight are deleted.
-- Clothing wear down rework for multiplayer: zombie attacks that clothing or armor stops wear it down like in single player, so armor with full protection no longer lasts forever; clothing destroyed while worn falls off for everyone and stays destroyed after relogging, with no plain copy of itself left on your character (a white scarf for a green one) (beta).
+- Clothing wear down rework for multiplayer: zombie attacks that clothing or armor stops wear it down like in single player, so armor with full protection no longer lasts forever; clothing destroyed while worn falls off for everyone and stays destroyed after relogging, with no plain copy of itself left on your character (a white scarf for a green one).
 - Chickens the game deletes after laying in a full hutch are put back.
 - Hutches and nest boxes get dirty at a quarter of the normal speed. The speed can be changed, or set back to vanilla.
 - Running into a stair railing no longer vaults you over it (beta).
@@ -45,22 +45,22 @@ Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly 
 - Putting an item back in its bag after eating or using it no longer cancels the actions queued after it when the item is gone, as after Eat All (beta).
 - Clicking Craft several times crafts that many times; the crafting window used to ignore clicks while a craft was running (beta).
 - Rain collectors, wells, amphoras, drying racks, and buckets, pots and other items that catch rain, no longer break after a server crash, a killed server or a restored backup. Ones already broken are rebuilt, empty, when their area loads, and broken items already picked up are fixed when their owner joins or their vehicle loads (beta).
-- The right spiked metal and spiked scrap metal thigh armor can be moved to the left thigh, like every other thigh armor (beta).
-- Spiked articulated metal shoulder pads can be smelted like the plain ones (beta).
-- The plain left knee pad and the right gaiter spawn with their other half, like every other pair (beta).
-- The full bow tie weighs 0.1 instead of 1.0 (beta).
-- Full chainmail sleeves no longer have their combat speed penalties swapped between the right and left arm (beta).
-- The left tire shoulder pad wears out like the right one, and both protect their own upper arm instead of the torso (beta).
-- The sawn-off double barrel shotgun can be repaired, with itself or the full double barrel shotgun (beta).
-- The sawn-off pump shotgun plays its start and stop loading sounds and an unloading sound (beta).
-- The x2 scope fits the pump shotgun and the sawn-off pump shotgun, which have a model and a place for it (beta).
-- The katana and the broken katana can be sharpened like the other long blades (beta).
-- Pasta cooked in a forged cooking pot gives back the forged pot instead of a normal one (beta).
-- Leeks, jars of leeks and grapefruits have real nutrition values instead of absurd carbohydrates and protein (beta).
-- Pasta and rice cooked in a copper saucepan can be split into bowls, giving back the copper saucepan (beta).
-- Splitting a pot into clay bowls gives clay bowls of food, and beans, oatmeal, cereal and cake made with a clay bowl give the clay bowl back (beta).
-- Opening a pumpkin or sunflower seed packet you made gives back the 25 seeds packing it took, instead of 5; found packets still give 5 (beta).
-- The .44 Magnum box and carton weigh in line with the other ammunition (beta).
-- The Rangers baseball shirt covers the arms, the red baseball cap falls off like the others, the seafood cooler makes cooler sounds, and the metal, copper, gold, silver and tumbler hot drinks and the clay bowl fruit salad have names (beta).
+- The right spiked metal and spiked scrap metal thigh armor can be moved to the left thigh, like every other thigh armor.
+- Spiked articulated metal shoulder pads can be smelted like the plain ones.
+- The plain left knee pad and the right gaiter spawn with their other half, like every other pair.
+- The full bow tie weighs 0.1 instead of 1.0.
+- Full chainmail sleeves no longer have their combat speed penalties swapped between the right and left arm.
+- The left tire shoulder pad wears out like the right one, and both protect their own upper arm instead of the torso.
+- The sawn-off double barrel shotgun can be repaired, with itself or the full double barrel shotgun.
+- The sawn-off pump shotgun plays its start and stop loading sounds and an unloading sound.
+- The x2 scope fits the pump shotgun and the sawn-off pump shotgun, which have a model and a place for it.
+- The katana and the broken katana can be sharpened like the other long blades.
+- Pasta cooked in a forged cooking pot gives back the forged pot instead of a normal one.
+- Leeks, jars of leeks and grapefruits have real nutrition values instead of absurd carbohydrates and protein.
+- Pasta and rice cooked in a copper saucepan can be split into bowls, giving back the copper saucepan.
+- Splitting a pot into clay bowls gives clay bowls of food, and beans, oatmeal, cereal and cake made with a clay bowl give the clay bowl back.
+- Opening a pumpkin or sunflower seed packet you made gives back the 25 seeds packing it took, instead of 5; found packets still give 5.
+- The .44 Magnum box and carton weigh in line with the other ammunition.
+- The Rangers baseball shirt covers the arms, the red baseball cap falls off like the others, the seafood cooler makes cooler sounds, and the metal, copper, gold, silver and tumbler hot drinks and the clay bowl fruit salad have names.
 
 Steam Workshop ID 3800148259, mod ID ZomboidFixesB42. Licensed under the GNU GPL v3, see [LICENSE](LICENSE).

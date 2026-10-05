@@ -2,7 +2,7 @@
 
 A set of fixes for Build 42.20, mostly for multiplayer. Install it on both the server and the clients.
 
-Every fix can be turned off on the [b]Zomboid Fixes[/b] page of the sandbox settings, and is on by default unless it says otherwise. Each one below names its option; the item and recipe fixes share two options. If you are updating from a version before 3.0.0, check [i]Admin Tag[/i], [i][BETA] Item Data Fixes[/i] and [i][BETA] Recipe And Repair Fixes[/i]: they replace older options and start at their default. Fixes marked [b](beta)[/b] are new and not fully tested yet.
+Every fix can be turned off on the [b]Zomboid Fixes[/b] page of the sandbox settings, and is on by default unless it says otherwise. Each one below names its option; the item and recipe fixes share two options. If you are updating from a version before 3.0.0, check [i]Admin Tag[/i], [i]Item Data Fixes[/i] and [i]Recipe And Repair Fixes[/i]: they replace older options and start at their default. Fixes marked [b](beta)[/b] are new and not fully tested yet.
 
 Found a problem? Post it in this thread and say which fix, whether it was single player or a server, and what you did.
 
@@ -40,8 +40,8 @@ On a server, shells and rounds go in as the hand moves, and a shotgun pump or a 
 Option: [i]Hear Other Players Add Ingredients[/i]
 In vanilla multiplayer, only the cook hears an ingredient going into a soup, stew, salad or drink. Now everyone nearby hears it. Invisible players stay silent. (Crafting sounds are already shared by the game.)
 
-[b]Clothing wear down rework (beta)[/b]
-Option: [i][BETA] Clothing Wear Down Rework[/i]
+[b]Clothing wear down rework[/b]
+Option: [i]Clothing Wear Down Rework[/i]
 In vanilla multiplayer, a zombie attack that your clothing or armor stops does not wear it down, so armor with full protection lasts forever, and clothing destroyed while worn drops only on your own screen and comes back on relog. Now your own game rolls every zombie attack that lands on you, from any zombie, and sends each one to the server, which wears your clothing down like in single player. Destroyed clothing falls off for everyone and stays destroyed, and no plain copy of it (a white scarf for a green one) is left on your character. Wounds work as before.
 
 [b]Watering plants uses water once (beta)[/b]
@@ -193,78 +193,78 @@ Empty slices are left out of the firearm radial menu, so it only shows what can 
 Saving the options no longer resets or deletes the mod options, or the Key Bindings tab keys, of mods that are not loaded, and settings an earlier save left glued together are read back instead of reset. Enable Zomboid Fixes in the main menu's Mods list too, since options saved at the main menu are only protected while it is loaded there.
 
 [h2]Items and recipes[/h2]
-Two options cover all of these: [i][BETA] Item Data Fixes[/i] for item properties, and [i][BETA] Recipe And Repair Fixes[/i] for recipes and repairs.
+Two options cover all of these: [i]Item Data Fixes[/i] for item properties, and [i]Recipe And Repair Fixes[/i] for recipes and repairs.
 
-[b]Metal shin armor run speed (beta)[/b]
-Option: [i][BETA] Item Data Fixes[/i]
+[b]Metal shin armor run speed[/b]
+Option: [i]Item Data Fixes[/i]
 Shin armor run speeds follow the same pattern as thigh armor. Articulated Metal Shin Armor runs at 0.95 (was 0.85, slower than plain metal), Spiked Articulated Metal Shin Armor at 0.90 (was 0.80), and spiked metal and spiked scrap metal shin armor at 0.85 (was 0.90, no cost for the spikes). Plain metal and scrap metal shin armor stay at 0.90.
 
-[b]Chainmail sleeve combat speed (beta)[/b]
-Option: [i][BETA] Item Data Fixes[/i]
+[b]Chainmail sleeve combat speed[/b]
+Option: [i]Item Data Fixes[/i]
 Full chainmail sleeves no longer have their combat speed penalties swapped between the right and left arm.
 
-[b]Tire shoulder pads (beta)[/b]
-Option: [i][BETA] Item Data Fixes[/i]
+[b]Tire shoulder pads[/b]
+Option: [i]Item Data Fixes[/i]
 The left tire shoulder pad wears out like the right one, and both protect their own upper arm instead of the torso.
 
-[b]Spiked thigh armor can change side (beta)[/b]
-Option: [i][BETA] Item Data Fixes[/i]
+[b]Spiked thigh armor can change side[/b]
+Option: [i]Item Data Fixes[/i]
 The right spiked metal and spiked scrap metal thigh armor can be moved to the left thigh, like every other thigh armor.
 
-[b]Spiked shoulder pads can be smelted (beta)[/b]
-Option: [i][BETA] Recipe And Repair Fixes[/i]
+[b]Spiked shoulder pads can be smelted[/b]
+Option: [i]Recipe And Repair Fixes[/i]
 Spiked articulated metal shoulder pads can be smelted like the plain ones.
 
-[b]Knee pads and gaiters spawn in pairs (beta)[/b]
-Option: [i][BETA] Item Data Fixes[/i]
+[b]Knee pads and gaiters spawn in pairs[/b]
+Option: [i]Item Data Fixes[/i]
 The plain left knee pad and the right gaiter spawn with their other half, like every other pair.
 
-[b]Bow tie weight (beta)[/b]
-Option: [i][BETA] Item Data Fixes[/i]
+[b]Bow tie weight[/b]
+Option: [i]Item Data Fixes[/i]
 The full bow tie weighs 0.1 instead of 1.0.
 
-[b]Sawn-off double barrel shotgun repair (beta)[/b]
-Option: [i][BETA] Recipe And Repair Fixes[/i]
+[b]Sawn-off double barrel shotgun repair[/b]
+Option: [i]Recipe And Repair Fixes[/i]
 The sawn-off double barrel shotgun can be repaired, with itself or the full double barrel shotgun.
 
-[b]Sawn-off shotgun loading sounds (beta)[/b]
-Option: [i][BETA] Item Data Fixes[/i]
+[b]Sawn-off shotgun loading sounds[/b]
+Option: [i]Item Data Fixes[/i]
 The sawn-off pump shotgun plays its start and stop loading sounds and an unloading sound.
 
-[b]Pump shotguns take the x2 scope (beta)[/b]
-Option: [i][BETA] Item Data Fixes[/i]
+[b]Pump shotguns take the x2 scope[/b]
+Option: [i]Item Data Fixes[/i]
 The x2 scope fits the pump shotgun and the sawn-off pump shotgun, which have a model and a place for it.
 
-[b]Katana can be sharpened (beta)[/b]
-Option: [i][BETA] Recipe And Repair Fixes[/i]
+[b]Katana can be sharpened[/b]
+Option: [i]Recipe And Repair Fixes[/i]
 The katana and the broken katana can be sharpened like the other long blades.
 
-[b]Forged pot pasta (beta)[/b]
-Option: [i][BETA] Recipe And Repair Fixes[/i]
+[b]Forged pot pasta[/b]
+Option: [i]Recipe And Repair Fixes[/i]
 Pasta cooked in a forged cooking pot gives back the forged pot instead of a normal one.
 
-[b]Copper saucepan bowls (beta)[/b]
-Option: [i][BETA] Recipe And Repair Fixes[/i]
+[b]Copper saucepan bowls[/b]
+Option: [i]Recipe And Repair Fixes[/i]
 Pasta and rice cooked in a copper saucepan can be split into bowls, giving back the copper saucepan.
 
-[b]Clay bowls stay clay bowls (beta)[/b]
-Option: [i][BETA] Recipe And Repair Fixes[/i]
+[b]Clay bowls stay clay bowls[/b]
+Option: [i]Recipe And Repair Fixes[/i]
 Splitting a pot into clay bowls gives clay bowls of food, and beans, oatmeal, cereal and cake made with a clay bowl give the clay bowl back.
 
-[b]Pumpkin and sunflower seed packets (beta)[/b]
-Option: [i][BETA] Recipe And Repair Fixes[/i]
+[b]Pumpkin and sunflower seed packets[/b]
+Option: [i]Recipe And Repair Fixes[/i]
 Opening a pumpkin or sunflower seed packet you made gives back the 25 seeds packing it took, instead of 5. Packets found as loot still give 5, as in vanilla.
 
-[b]Leek and grapefruit nutrition (beta)[/b]
-Option: [i][BETA] Item Data Fixes[/i]
+[b]Leek and grapefruit nutrition[/b]
+Option: [i]Item Data Fixes[/i]
 Leeks, jars of leeks and grapefruits have real nutrition values instead of absurd carbohydrates and protein.
 
-[b].44 box weights (beta)[/b]
-Option: [i][BETA] Item Data Fixes[/i]
+[b].44 box weights[/b]
+Option: [i]Item Data Fixes[/i]
 The .44 Magnum box and carton weigh in line with the other ammunition.
 
-[b]Minor item fixes (beta)[/b]
-Option: [i][BETA] Item Data Fixes[/i]
+[b]Minor item fixes[/b]
+Option: [i]Item Data Fixes[/i]
 The Rangers baseball shirt covers the arms, the red baseball cap falls off like the others, the seafood cooler makes cooler sounds, and the metal, copper, gold, silver and tumbler hot drinks and the clay bowl fruit salad have names.
 
 [h2]Fixes for other mods[/h2]
