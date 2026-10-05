@@ -180,7 +180,7 @@ Two options cover all of these: [i][BETA] Item Data Fixes[/i] for item propertie
 
 [b]Metal shin armor run speed (beta)[/b]
 Option: [i][BETA] Item Data Fixes[/i]
-Metal Shin Armor and Articulated Metal Shin Armor no longer have their run speeds swapped.
+Shin armor run speeds follow the same pattern as thigh armor. Articulated Metal Shin Armor runs at 0.95 (was 0.85, slower than plain metal), Spiked Articulated Metal Shin Armor at 0.90 (was 0.80), and spiked metal and spiked scrap metal shin armor at 0.85 (was 0.90, no cost for the spikes). Plain metal and scrap metal shin armor stay at 0.90.
 
 [b]Chainmail sleeve combat speed (beta)[/b]
 Option: [i][BETA] Item Data Fixes[/i]
@@ -242,13 +242,13 @@ Opening a pumpkin or sunflower seed packet you made gives back the 25 seeds pack
 Option: [i][BETA] Item Data Fixes[/i]
 Leeks, jars of leeks and grapefruits have real nutrition values instead of absurd carbohydrates and protein.
 
-[b]Pie slice and .44 box weights (beta)[/b]
+[b].44 box weights (beta)[/b]
 Option: [i][BETA] Item Data Fixes[/i]
-Pie slices weigh 0.2 like cake slices instead of the whole pie's 0.5, and the .44 Magnum box and carton weigh in line with the other ammunition.
+The .44 Magnum box and carton weigh in line with the other ammunition.
 
 [b]Minor item fixes (beta)[/b]
 Option: [i][BETA] Item Data Fixes[/i]
-A red mug of coffee gives its mug back, the Rangers baseball shirt covers the arms, the red baseball cap falls off like the others, the seafood cooler makes cooler sounds, and the metal, copper, gold, silver and tumbler hot drinks and the clay bowl fruit salad have names.
+The Rangers baseball shirt covers the arms, the red baseball cap falls off like the others, the seafood cooler makes cooler sounds, and the metal, copper, gold, silver and tumbler hot drinks and the clay bowl fruit salad have names.
 
 [h2]Fixes for other mods[/h2]
 These only do something when that mod is installed.

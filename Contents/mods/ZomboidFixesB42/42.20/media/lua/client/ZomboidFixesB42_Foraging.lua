@@ -39,24 +39,22 @@
        drop ours and ask again. Fresh icons still need search mode to appear, but
        that is true of the single player path too.
 
-    4. Nothing ever asks the server to hand over the items. forageServer.onPickup
-       exists and is correct but has no caller: there is no pickup packet among the
-       four forage packet types, ForageSpotPacket only triggers the XP event, and the
-       isServer() branch of ISForageAction:complete() cannot run on a dedicated
-       server because timed action queues are client-side. On a multiplayer client
-       complete() simply returns true and adds nothing -- the itemDataList the icon
-       assembles and passes in is never read again.
+    Picking an icon up needs nothing here: ISForageAction has a complete(), so the
+    server runs the action (NetTimedAction) and its complete() calls
+    forageServer.onPickup, which grants the items for any icon in
+    forageServer.byId[user]. That is why registering the debug icons (1) is what
+    makes them pickable. (An earlier part 4 replaced complete() on the client to send
+    its own pickup command; Java never calls complete() on a multiplayer client,
+    LuaTimedActionNew.complete, so it never ran, and it was removed.)
 --]]
 
 require "Foraging/ISSearchManager"
-require "Foraging/ISForageAction"
 
 ZomboidFixesB42 = ZomboidFixesB42 or {}
 
 local vanillaCreateSpecificIcon = ISSearchManager.createSpecificIcon
 local vanillaRefreshZoneIcons = ISSearchManager.refreshZoneIcons
 local vanillaMoveAllZoneIconsToSquare = ISSearchManager.moveAllZoneIconsToSquare
-local vanillaComplete = ISForageAction.complete
 
 local function isEnabled()
     local vars = SandboxVars and SandboxVars.ZomboidFixesB42
@@ -207,20 +205,3 @@ local function onServerCommand(module, command, args)
 end
 
 Events.OnServerCommand.Add(onServerCommand)
-
--- 4. PICKING UP ------------------------------------------------------------
-
-function ISForageAction:complete()
-    if not isClient() or not isEnabled() then
-        return vanillaComplete(self)
-    end
-
-    -- Only the server can grant the items, and only it knows whether this icon is
-    -- real. Reporting success either way matches what vanilla does here.
-    sendClientCommand(self.character, ZomboidFixesB42.MODULE, ZomboidFixesB42.CMD_FORAGE_PICKUP, {
-        icon = tostring(self.iconID),
-        container = ZomboidFixesB42.encodeContainer(self.targetContainer, self.character) or "",
-    })
-
-    return true
-end

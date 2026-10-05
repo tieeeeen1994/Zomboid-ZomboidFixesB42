@@ -6,7 +6,7 @@ Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly 
 - Item editor changes save for items in crates, vehicles, on the floor and in other players' inventories.
 - Debug Add Fluid fills rain collectors and other world containers instead of emptying them (beta).
 - The admin tag shows for every admin panel cheat. It can also be set to never show, or left as vanilla.
-- Metal Shin Armor and Articulated Metal Shin Armor no longer have their run speeds swapped (beta).
+- Shin armor run speeds follow the same pattern as thigh armor: articulated is faster than plain metal, spiked slower (beta).
 - No fall damage on stairs while Fast Move is on (beta).
 - Items with negative weight are deleted.
 - Clothing wear down rework for multiplayer: zombie attacks that clothing or armor stops wear it down like in single player, so armor with full protection no longer lasts forever; clothing destroyed while worn falls off for everyone and stays destroyed after relogging, with no plain copy of itself left on your character (a white scarf for a green one) (beta).
@@ -58,7 +58,7 @@ Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly 
 - Pasta and rice cooked in a copper saucepan can be split into bowls, giving back the copper saucepan (beta).
 - Splitting a pot into clay bowls gives clay bowls of food, and beans, oatmeal, cereal and cake made with a clay bowl give the clay bowl back (beta).
 - Opening a pumpkin or sunflower seed packet you made gives back the 25 seeds packing it took, instead of 5; found packets still give 5 (beta).
-- Pie slices weigh 0.2 like cake slices instead of the whole pie's 0.5, and the .44 Magnum box and carton weigh in line with the other ammunition (beta).
-- A red mug of coffee gives its mug back, the Rangers baseball shirt covers the arms, the red baseball cap falls off like the others, the seafood cooler makes cooler sounds, and the metal, copper, gold, silver and tumbler hot drinks and the clay bowl fruit salad have names (beta).
+- The .44 Magnum box and carton weigh in line with the other ammunition (beta).
+- The Rangers baseball shirt covers the arms, the red baseball cap falls off like the others, the seafood cooler makes cooler sounds, and the metal, copper, gold, silver and tumbler hot drinks and the clay bowl fruit salad have names (beta).
 
 Steam Workshop ID 3800148259, mod ID ZomboidFixesB42. Licensed under the GNU GPL v3, see [LICENSE](LICENSE).

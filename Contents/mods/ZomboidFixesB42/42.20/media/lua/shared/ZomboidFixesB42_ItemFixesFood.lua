@@ -14,8 +14,9 @@
     loaded are also corrected just before they are eaten or emptied.
 
     FoodNutrition: Leek has 140 g of carbohydrates for 54 kcal (a real leek of the
-    same kcal has 12.6 g; lipids and proteins already match), and CannedLeek, four
-    leeks' worth, carries 560. Grapefruit has 15 kcal with 101 g carbohydrates,
+    same kcal has 12.6 g; lipids and proteins already match), and CannedLeek and
+    CannedLeek_Open, four leeks' worth (calories, hunger and lipids are exactly 4x),
+    carry 560, and 15.2 g proteins for 4 x 1.3 = 5.2. Grapefruit has 15 kcal with 101 g carbohydrates,
     3.8 g lipids and 17.6 g proteins; it now has a 300 g grapefruit's values. Food
     saves its nutrition, so only food created from now on changes.
 
@@ -52,17 +53,14 @@
     told apart from one found as loot (Distributions.lua ~20154, ProceduralDistributions
     ~14802), which has no record and keeps vanilla's 5.
 
-    ItemWeights: every pie slice (Pie is the cherry slice, PieApple...) weighs 0.5,
-    as much as the raw whole pie it is cut from (PieWholeRaw 0.5 plus its
-    ingredients); cake slices weigh 0.2, and so do pie slices now. A slice's weight
-    still grows with how filling it is (Food.getActualWeight scales the script
-    weight by hunger / script hunger), which is also why bowls from a very filling
-    pot weigh a lot; that is engine code. The .44 Magnum box holds 20 rounds of
-    0.03 (0.6) but weighs 1.2; every other box weighs 75-100% of its rounds and
-    every carton ten boxes, so it is 0.48 and its carton 4.8.
+    ItemWeights: the .44 Magnum box holds 20 rounds of 0.03 (0.6) but weighs 1.2;
+    every other box weighs 75-100% of its rounds and every carton ten boxes, so it
+    is 0.48 and its carton 4.8. (Pie slices were set to 0.2 here at first: a slice
+    weighs 0.5 at hunger -30, which per hunger point is already lighter than a 0.2
+    cake slice at -7, so that was dropped. A slice's weight grows with how filling
+    it is, Food.getActualWeight, which is engine code.)
 
-    MinorItemFixes: HotDrinkRed gives back `Base.MugRed`, which does not exist
-    (red mugs are Base.Mugl, a mug with several colours); the Rangers baseball shirt
+    MinorItemFixes: the Rangers baseball shirt
     covers UpperBody while the other two baseball shirts cover Shirt (arms too);
     the red baseball cap falls off at 80 while the other 69 caps use 60; the
     seafood cooler has no open, close or put-in sounds (the other coolers use
@@ -98,14 +96,16 @@ ScriptFixes.register("ItemDataFixes", "FoodNutrition",
     function()
         ScriptFixes.setParams({
             ["Base.Leek"] = { Carbohydrates = "12.6" },
-            ["Base.CannedLeek"] = { Carbohydrates = "50.4" },
+            ["Base.CannedLeek"] = { Carbohydrates = "50.4", Proteins = "5.2" },
+            ["Base.CannedLeek_Open"] = { Carbohydrates = "50.4", Proteins = "5.2" },
             ["Base.Grapefruit"] = { Calories = "126.0", Carbohydrates = "32.1", Lipids = "0.42", Proteins = "2.31" },
         })
     end,
     function()
         ScriptFixes.setParams({
             ["Base.Leek"] = { Carbohydrates = "140.0" },
-            ["Base.CannedLeek"] = { Carbohydrates = "560.0" },
+            ["Base.CannedLeek"] = { Carbohydrates = "560.0", Proteins = "15.2" },
+            ["Base.CannedLeek_Open"] = { Carbohydrates = "560.0", Proteins = "15.2" },
             ["Base.Grapefruit"] = { Calories = "15.0", Carbohydrates = "101.11", Lipids = "3.78", Proteins = "17.56" },
         })
     end)
@@ -351,28 +351,22 @@ end
 
 -- ItemWeights -----------------------------------------------------------------------
 
-local PIE_SLICES = { "Base.Pie", "Base.PieApple", "Base.PieBlueberry", "Base.PieKeyLime",
-    "Base.PieLemonMeringue", "Base.PiePumpkin" }
-
-local function setWeights(slice, box, carton)
-    local params = {
+local function setWeights(box, carton)
+    ScriptFixes.setParams({
         ["Base.Bullets44Box"] = { Weight = box },
         ["Base.Bullets44Carton"] = { Weight = carton },
-    }
-    for _, fullType in ipairs(PIE_SLICES) do params[fullType] = { Weight = slice } end
-    ScriptFixes.setParams(params)
+    })
 end
 
 ScriptFixes.register("ItemDataFixes", "ItemWeights",
-    function() setWeights("0.2", "0.48", "4.8") end,
-    function() setWeights("0.5", "1.2", "12.0") end)
+    function() setWeights("0.48", "4.8") end,
+    function() setWeights("1.2", "12.0") end)
 
 -- MinorItemFixes --------------------------------------------------------------------
 
 ScriptFixes.register("ItemDataFixes", "MinorItemFixes",
     function()
         ScriptFixes.setParams({
-            ["Base.HotDrinkRed"] = { ReplaceOnUse = "Base.Mugl" },
             ["Base.Shirt_Baseball_Rangers"] = { BloodLocation = "Shirt" },
             ["Base.Hat_BaseballCapRed"] = { ChanceToFall = "60" },
             ["Base.Cooler_Seafood"] = { OpenSound = "OpenCooler", CloseSound = "CloseCooler", PutInSound = "StoreItemCooler" },
@@ -380,16 +374,8 @@ ScriptFixes.register("ItemDataFixes", "MinorItemFixes",
     end,
     function()
         ScriptFixes.setParams({
-            ["Base.HotDrinkRed"] = { ReplaceOnUse = "Base.MugRed" },
             ["Base.Shirt_Baseball_Rangers"] = { BloodLocation = "UpperBody" },
             ["Base.Hat_BaseballCapRed"] = { ChanceToFall = "80" },
             ["Base.Cooler_Seafood"] = { OpenSound = "", CloseSound = "", PutInSound = "" },
         })
     end)
-
-ScriptFixes.onBeforeUse(function(item)
-    if item:getFullType() == "Base.HotDrinkRed" and item:getReplaceOnUse() == "Base.MugRed"
-            and ScriptFixes.isEnabled("ItemDataFixes") then
-        item:setReplaceOnUse("Base.Mugl")
-    end
-end)

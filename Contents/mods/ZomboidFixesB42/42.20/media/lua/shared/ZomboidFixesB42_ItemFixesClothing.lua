@@ -8,6 +8,19 @@
     already loaded keep a copied value (combat speed, condition chance) until they
     are next loaded; see that file.
 
+    ShinArmorSpeed: the metal leg armor run speeds follow one pattern on the thigh
+    (metal and scrap 0.9, spiked -0.05, articulated +0.05: 0.9 / 0.85 / 0.95), and
+    the shoulders likewise make articulated the faster piece, but the shin pieces
+    break it: spiked metal and spiked scrap shin armor cost nothing (0.9), the
+    articulated shin armor is slower than the plain one (0.85) and its spiked
+    version 0.8. The shin pieces that break the pattern get the thigh's values:
+
+                                          vanilla   fixed
+      Metal / Scrap Metal Shin Armor        0.90    0.90 (unchanged)
+      Spiked (Scrap) Metal Shin Armor       0.90    0.85
+      Articulated Metal Shin Armor          0.85    0.95
+      Spiked Articulated Metal Shin Armor   0.80    0.90
+
     SpikedThighArmorSide: the right spiked metal and spiked scrap metal thigh
     armor have `ClothingItemExtra = Base.ThighMetalSpike_R` / `ThighScrapMetalSpike_R`,
     i.e. themselves, so their "Left Thigh" option (ClothingItemExtraOption) puts the
@@ -40,6 +53,30 @@
 require "ZomboidFixesB42_ScriptFixes"
 
 local ScriptFixes = ZomboidFixesB42.ScriptFixes
+
+local SHIN_SPEEDS = {
+    -- full type = { fixed, vanilla }
+    ["Base.GreaveSpike_Left"] = { "0.85", "0.9" },
+    ["Base.GreaveSpike_Right"] = { "0.85", "0.9" },
+    ["Base.GreaveSpikeScrap_Left"] = { "0.85", "0.9" },
+    ["Base.GreaveSpikeScrap_Right"] = { "0.85", "0.9" },
+    ["Base.ShinKneeGuard_L_Metal"] = { "0.95", "0.85" },
+    ["Base.ShinKneeGuard_R_Metal"] = { "0.95", "0.85" },
+    ["Base.ShinKneeGuardSpike_L_Metal"] = { "0.9", "0.8" },
+    ["Base.ShinKneeGuardSpike_R_Metal"] = { "0.9", "0.8" },
+}
+
+local function setShinSpeeds(index)
+    local params = {}
+    for fullType, values in pairs(SHIN_SPEEDS) do
+        params[fullType] = { RunSpeedModifier = values[index] }
+    end
+    ScriptFixes.setParams(params)
+end
+
+ScriptFixes.register("ItemDataFixes", "ShinArmorSpeed",
+    function() setShinSpeeds(1) end,
+    function() setShinSpeeds(2) end)
 
 ScriptFixes.register("ItemDataFixes", "SpikedThighArmorSide",
     function()

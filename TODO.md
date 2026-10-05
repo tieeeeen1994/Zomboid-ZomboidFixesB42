@@ -125,13 +125,13 @@ in the log.
       [pot, ClayBowl] / [pot, Bowl] entries in front; beans/oatmeal/cereal use vanilla's
       `modData["Base.ClayBowl"]` record to return the clay bowl; PlaceCakeInBakingPan gets an OnCreate.
       Option `ClayBowlPortions`.
-- [x] Pumpkin / sunflower seed packets (beta): opening gives 25 (OnCreate), since input amounts cannot
-      be changed from Lua. Option `SeedPacketCount`.
-- [x] Weights: pie slices 0.2, .44 box 0.48 / carton 4.8. Option `ItemWeights`. Not done (engine, not
+- [x] Pumpkin / sunflower seed packets (beta): opening a packet the player made gives 25 (OnCreate, from
+      performRecipe's modData record), since input amounts cannot be changed from Lua. Option `SeedPacketCount`.
+- [x] Weights: .44 box 0.48 / carton 4.8 (pie slices 0.2 dropped later, see section 5). Option `ItemWeights`. Not done (engine, not
       data): pasta bowl ~6 kg (100315) and the heavy slices of a very filling pie both come from
       `Food.getActualWeight` scaling the script weight by hunger / script hunger; vegetable oil hunger
       turning positive (99705) is evolved recipe code (also ranch sauce, flour).
-- [x] Minor: HotDrinkRed -> Base.Mugl, Rangers shirt BloodLocation Shirt, red cap ChanceToFall 60,
+- [x] Minor: (HotDrinkRed -> Base.Mugl, dropped later: nothing makes it), Rangers shirt BloodLocation Shirt, red cap ChanceToFall 60,
       Cooler_Seafood sounds; names in `Translate/EN/ItemName.json` (always on). Option `MinorItemFixes`.
       Not done: Cooler_Seafood `CanHaveHoles` (only read for Clothing); crafted face shemaghs (maybe
       deliberate).
@@ -203,21 +203,23 @@ Bugs that hurt players:
       give back that amount instead. Done: only packets with that record get the missing seeds (capped at 25).
 
 Wrong data in the item fixes:
-- [ ] Shin armor: swapping makes the plain Metal Shin Armor (0.85) slower than its spiked version (0.9),
-      while vanilla's pattern is articulated pieces getting a higher value (thigh 0.95 vs 0.9). Raise the
-      articulated shin pieces instead and leave Greave at 0.9; move it from `*_ArmorStats.lua` into
-      ScriptFixes.
-- [ ] ItemWeights pie slice 0.2 overcorrects: per hunger point a vanilla pie slice (0.5 at -30) is already
-      lighter than a cake slice (0.2 at -7). Drop the pie part, keep .44.
-- [ ] FoodNutrition misses CannedLeek Proteins 15.2 (should be 4 x 1.3 = 5.2).
-- [ ] MinorItemFixes' HotDrinkRed part is dead: no recipe, mapper, evolved recipe or loot gives
-      HotDrinkRed in 42.21.
+- [x] Shin armor run speeds broke the family pattern. Done (author: "normalize the pattern on the offending
+      parts"): `ShinArmorSpeed` in `*_ItemFixesClothing.lua` gives the shin pieces the thigh's pattern
+      (spiked -0.05, articulated +0.05): spiked (scrap) metal 0.85, articulated 0.95, spiked articulated
+      0.90; plain metal and scrap stay 0.90. The old swap (`*_ArmorStats.lua`) is removed.
+- [x] ItemWeights pie slice 0.2 overcorrects: per hunger point a vanilla pie slice (0.5 at -30) is already
+      lighter than a cake slice (0.2 at -7). Done: pie part dropped, .44 kept.
+- [x] FoodNutrition misses CannedLeek Proteins 15.2 (should be 4 x 1.3 = 5.2). Done, and CannedLeek_Open
+      (the opened jar, same values) was missing from the fix entirely; both get carbs 50.4, proteins 5.2.
+- [x] MinorItemFixes' HotDrinkRed part is dead: no recipe, mapper, evolved recipe or loot gives
+      HotDrinkRed in 42.21. Done: removed (params and the onBeforeUse hook).
 
 Dead or duplicate code:
-- [ ] ForagingDebugFixes part 4 (pickup) never runs in MP: vanilla `ISForageAction:complete` already calls
-      `forageServer.onPickup` on the server and Java runs `complete` only off a client. Drop
-      `client/*_Foraging.lua` ~211-226 and `server/*_Foraging.lua` ~170-187, and the tooltip line saying
-      vanilla never hands over the items.
+- [x] ForagingDebugFixes part 4 (pickup) never runs in MP: vanilla `ISForageAction:complete` already calls
+      `forageServer.onPickup` on the server and Java runs `complete` only off a client
+      (`LuaTimedActionNew.complete`). Done: client override, server `CMD_FORAGE_PICKUP` handler and constant,
+      and the tooltip sentence removed. Debug icons stay pickable through part 1 (server registration), which
+      is what made them pickable in the author's test.
 - [ ] NISFShiftRange likely duplicates the `NISF_ShiftRange.lua` that Nick's Inventory Selection Fix
       (workshop 3782920935) already ships, credited to this fix. Check whether Nick's copy works, then drop
       ours or document why both are needed.

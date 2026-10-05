@@ -765,7 +765,9 @@ called from a shared action's `complete`/`animEvent` error on a server (42.20's 
 table's values of `new`'s **parameter names** (`NetTimedAction.set` reads the prototype's locvars), so anything the
 client sets in `new` under another name or in `start()` (`ISRemoveBush.weapon`) is missing there; set it in `serverStart`
 (`ISChopTreeAction.axe` does). Single player runs `start`, the real anim events and `complete` (Java
-`LuaTimedActionNew.complete` when not a client). Anim events with no `m_EventName` (the RemoveBushAxe/Knife/LongBlade
+`LuaTimedActionNew.complete` when not a client), so overriding a shared action's `complete` on an MP client does
+nothing; vanilla `ISForageAction:complete` grants forage items on the server (`forageServer.onPickup`, icons in
+`forageServer.byId[user]` only). Anim events with no `m_EventName` (the RemoveBushAxe/Knife/LongBlade
 xmls) never reach `animEvent`.
 Server hand changes sync themselves: `setPrimaryHandItem`/`setSecondaryHandItem` set `handItemShouldSendToClients` and
 `IsoGameCharacter.preupdate` sends `EquipPacket` to the owner, whose client sends it back for the server to relay to

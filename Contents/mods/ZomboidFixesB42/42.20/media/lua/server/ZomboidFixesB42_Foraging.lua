@@ -2,7 +2,8 @@
     Zomboid Fixes B42.20 -- server, foraging
 
     Registers the foraging debug tools' icons in the real, server-side forage pool,
-    and performs the pickup that vanilla never gets round to calling.
+    and moves and refreshes them there. Picking them up is vanilla's: the server runs
+    ISForageAction:complete, which calls forageServer.onPickup.
 
     Icon creation is client-led on purpose. Icons handed down through
     sendForagePool are only queued into the client's iconStack, and the function
@@ -16,9 +17,8 @@
     Everything else leans on forageServer's own state and validation rather than
     reimplementing it: records go into the same pools/byId tables that
     forageServer.generatePool fills, refreshing uses forageSystem.debugRefreshZone
-    and forageServer.dropZonePool, and pickup goes through forageServer.onPickup,
-    which already checks the icon was issued to this player and that they are close
-    enough to it.
+    and forageServer.dropZonePool, and vanilla's pickup (forageServer.onPickup)
+    checks the icon was issued to this player and that they are close enough to it.
 --]]
 
 -- Not just "not a client": this depends on forageServer, which forageServer.lua
@@ -167,30 +167,10 @@ local function onMoveForageIcons(player, args)
     end
 end
 
-local function onForagePickup(player, args)
-    if not player then return end
-
-    local iconID = args.icon
-    if type(iconID) ~= "string" or iconID == "" then return end
-
-    -- An unresolvable container is not a failure: onPickup falls back to the
-    -- player's own inventory, which is what vanilla would have used.
-    local container
-    if type(args.container) == "string" and args.container ~= "" then
-        container = ZomboidFixesB42.decodeContainer(args.container, player)
-    end
-
-    -- onPickup checks the icon was issued to this player and that they are within
-    -- forageServer.maxPickupDistance, then grants the items, applies the fatigue
-    -- and endurance penalties and decrements the zone.
-    forageServer.onPickup(player, iconID, container)
-end
-
 local handlers = {
     [ZomboidFixesB42.CMD_FORAGE_DEBUG_ICON] = onCreateForageIcon,
     [ZomboidFixesB42.CMD_FORAGE_REFRESH_ZONE] = onRefreshForageZone,
     [ZomboidFixesB42.CMD_FORAGE_MOVE_ICONS] = onMoveForageIcons,
-    [ZomboidFixesB42.CMD_FORAGE_PICKUP] = onForagePickup,
 }
 
 local function isEnabled()
