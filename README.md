@@ -1,6 +1,6 @@
 Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly for multiplayer. Install it on both the server and clients. Every fix is on by default and can be turned off in the sandbox options; the few that are off by default say so. Fixes marked beta are new and not fully tested yet.
 
-- Fast Timed Actions makes item transfers quick in multiplayer, like in single player, and a quick transfer the server cannot make is done the normal way instead of not at all.
+- Fast Timed Actions makes item transfers and grabbing items off the ground quick in multiplayer, like in single player, and a quick transfer the server cannot make is done the normal way instead of not at all.
 - Changing an animal's gender in the animal info window also changes its model and type, and no longer reverts for other players (beta).
 - The foraging debug menu can add, move and refresh icons, and added icons can be picked up (beta).
 - Item editor changes save for items in crates, vehicles, on the floor and in other players' inventories.
@@ -34,6 +34,9 @@ Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly 
 - Vehicle batteries no longer drain twice as fast as intended from headlights, the radio, the lightbar, the siren and the heater (beta).
 - Welding a gas tank that is still on a vehicle finishes the repair instead of using up the materials for nothing (beta).
 - Water dispenser bottles can no longer be duplicated by taking the bottle twice or putting one on from a bag (beta).
+- Admins with Timed Action Instant and the Handy trait build instantly in multiplayer instead of waiting half an hour per build (beta).
+- The world map's admin tools (right-click Teleport Here, grids, all map options) show for moderators and custom roles that may teleport, not only for the admin role (beta).
+- Rooms you have seen in multiplayer stay lit after relogging instead of going dark again (beta).
 - Removing a bush or wall vines with a cutting tool costs endurance and arm strain and wears the tool again, breaking up rocks, ore, boulders and stumps wears the hammer, pickaxe or other tool used, a broken tool is swapped for another, and in multiplayer the inventory window refreshes when the server swaps a tool or uses up building materials (beta).
 - Watering a plant in multiplayer no longer gives it twice the water or empties the can twice as fast (beta).
 - Other players hear you add ingredients in multiplayer: adding an ingredient to a soup, stew, salad or drink is heard by everyone nearby, not only by the cook (crafting sounds are already shared by the game).
@@ -54,7 +57,7 @@ Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly 
 - Leeks, jars of leeks and grapefruits have real nutrition values instead of absurd carbohydrates and protein (beta).
 - Pasta and rice cooked in a copper saucepan can be split into bowls, giving back the copper saucepan (beta).
 - Splitting a pot into clay bowls gives clay bowls of food, and beans, oatmeal, cereal and cake made with a clay bowl give the clay bowl back (beta).
-- Opening a pumpkin or sunflower seed packet gives the 25 seeds packing it took, instead of 5 (beta).
+- Opening a pumpkin or sunflower seed packet you made gives back the 25 seeds packing it took, instead of 5; found packets still give 5 (beta).
 - Pie slices weigh 0.2 like cake slices instead of the whole pie's 0.5, and the .44 Magnum box and carton weigh in line with the other ammunition (beta).
 - A red mug of coffee gives its mug back, the Rangers baseball shirt covers the arms, the red baseball cap falls off like the others, the seafood cooler makes cooler sounds, and the metal, copper, gold, silver and tumbler hot drinks and the clay bowl fruit salad have names (beta).
 

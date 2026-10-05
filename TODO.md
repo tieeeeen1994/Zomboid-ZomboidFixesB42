@@ -26,21 +26,6 @@ Sandbox.json tooltip, `[BETA]` until it has been played in game.
 - [x] Update the line numbers in CLAUDE.md to 42.21: done 2026-10-05 (every `~N` re-checked against a fresh
       Vineflower decompile of the 42.21.0 jar and the 42.21.0 Lua). The line numbers in this file are still 42.20.4's.
 
-## 0b. In progress
-
-- [ ] **Clothing wear down rework** (option `ClothingWearRework`, beta; replaces `ZombieAttacksWearClothing`
-      and `SyncBrokenClothing`). The victim's client rolls every zombie attack that lands on it (own and other
-      players' zombies) and sends each thump / blocked swing as its own event when the swing ends; the server
-      applies it with vanilla's `addHoleFromZombieAttacks`, syncs once per tick and guards applied swings for
-      5 s against client syncs; broken items and worn ghosts handled as before
-      (`client/` + `server/ZomboidFixesB42_ClothingWear.lua`). Not tried in game yet. To check on a server:
-      events arrive for zombies another player owns, one per swing; own zombies' local fake holes disappear after
-      the server's sync; armor condition goes down at about the single player rate and survives relog; a break
-      drops the item for everyone with no ghost copy; no extra lag in a horde. Open: the wound and the wear are
-      separate rolls (same odds, same average); a fake local hole pushed by a client sync before the server's
-      copy arrives becomes real (vanilla does that too); a condition raise within 5 s of a swing (repair) is
-      taken back; fake-dead and vehicle attacks are not rolled.
-
 ## 1. Small Lua bug fixes
 
 - [x] **Vehicle batteries drain at double speed.** `VehicleUtils.chargeBattery`
@@ -153,24 +138,42 @@ in the log.
 
 ## 3. Admin / QoL features
 
-- [ ] **Timed Action Instant ignored by item transfers in MP** (forum 99241): reuse `*_Transfer.lua`'s
-      `createItemTransaction` wrapper for an instant server move. Check first whether FastTransfers
-      (`FastTransfers`, the Fast Timed Actions cheat path) already covers this, and close it if so. Also Handy + instant build gives a
-      negative server duration (`BuildAction.getDuration` 1 - 50, forum 100841).
-- [ ] **World map admin features check `getAccessLevel() == "admin"`** instead of capabilities
-      (`ISWorldMap.lua` ~36, 166, 911, `ISMiniMap.lua` ~130): moderators and custom roles can't see
-      players or teleport (100607). Mind `getAccessLevel()` NPEs in single player.
+- [x] **Timed Action Instant ignored by item transfers in MP** (forum 99241): already covered by
+      `FastTransfers` (`*_Transfer.lua`, every `ISInventoryTransferAction`, loot window floor included; Java
+      `Transaction.getDuration` never reads the cheat). Handy + instant build (forum 100841): Java
+      `BuildAction.getDuration` gives (1 - 50) x 20 ms, a negative duration becomes 30 min
+      (`AnimEventEmulator.getDurationMax`). Done: `server/*_InstantBuildHandy.lua`, option `InstantBuildHandy`
+      (Handy held off instant players while the server builds the object, back at the next OnTick).
+- [x] World "Grab" (`ISGrabItemAction`, world context menu and forage icons) still waits the server's
+      transaction time under Timed Action Instant (up to ~3 s for heavy items). Done: `FastTransfers` now
+      also takes grabs off the transaction (`*_Transfer.lua`, "Grabbing from the ground"); not tried in game.
+- [x] **World map admin features check `getAccessLevel() == "admin"`** instead of capabilities
+      (`ISWorldMap.lua` ~36, 166, 911, `ISMiniMap.lua` ~130): moderators and custom roles can't teleport
+      from the map (100607). Seeing remote players is Java and already by capability (CanSeeAll). Done:
+      `client/*_WorldMapAdmin.lua`, option `MapAdminCapabilities` (TeleportToCoordinates or UseDebugContextMenu).
 - [ ] **ALICE belt / webbing MaxItemSize checked against the whole dragged stack**, 1-4 magazines per
       drag (`ISInventoryPane.lua` ~1429, `ISInventoryPaneContextMenu.hasRoomForAny`; 98673, 101849).
 - [ ] **Houses can't be claimed as safehouses** ("non-residential"; 96629, 100611, TIS frequently
       reported list). Find the real check in Java; maybe a server claim command with a fixed test.
-- [ ] **Explored rooms reset on every relog in MP** (99809, re-confirmed on 42.21): save explored room
-      ids per player per server and re-apply.
+- [x] **Explored rooms reset on every relog in MP** (99809, re-confirmed on 42.21): rooms go dark again.
+      The per-square "seen" bits are saved with the chunk only in single player (`IsoGridSquare.save/load`),
+      and clients never load map_meta.bin (room explored flags). Done: `client/*_SeenRooms.lua`, option
+      `RememberSeenRooms` (client file per server and account of explored rooms, re-applied as chunks load).
 - [ ] Map items in MP: symbols lost on relog (96433), brochures don't mark the map (Steam).
 - [x] Water containers break after a server restart (92679, 93595). Meta entities lost between chunk and
       entity_data.bin saves (dedicated servers never hot-save). Done: `*_LostEntities.lua`, option
       `RepairLostEntities`. Not covered: broken items put in a crate before the fix (fixed once carried at login).
 - [ ] Timed actions stuck at 100% block the queue (forge, kiln, bulk crafting; 94615, 100905).
+- [x] **Clothing wear down rework** (option `ClothingWearRework`, beta; replaces `ZombieAttacksWearClothing`
+      and `SyncBrokenClothing`). The victim's client rolls every zombie attack that lands on it (own and other
+      players' zombies) and sends each thump / blocked swing as its own event when the swing ends; the server
+      applies it with vanilla's `addHoleFromZombieAttacks`, syncs once per tick and guards applied swings for
+      5 s against client syncs; broken items and worn ghosts handled as before
+      (`client/` + `server/ZomboidFixesB42_ClothingWear.lua`). Code done and shipped as beta in 3.0.0; what to
+      check in game is under section 5. Open: the wound and the wear are separate rolls (same odds, same
+      average); a fake local hole pushed by a client sync before the server's copy arrives becomes real
+      (vanilla does that too); a condition raise within 5 s of a swing (repair) is taken back; fake-dead and
+      vehicle attacks are not rolled.
 
 ## 4. Deferred: security hardening of unchecked client commands
 
@@ -182,19 +185,22 @@ check"). Most serious: `player.onHealthCheatCurrentPlayer` lets any client bite 
 ## 5. Found in the 2026-10-05 feature review (not fixed yet)
 
 Bugs that hurt players:
-- [ ] **DeleteNegativeWeightItems deletes vanilla food.** Food weight scales by hunger / script hunger
-      (`Food.getActualWeight`), and vegetable oil, ranch sauce and flour can end up with positive hunger
-      (evolved recipe code, forum 99705), so their weight goes negative and the feature deletes them. Skip
-      such food (or repair its hunger) instead of deleting it.
-- [ ] **Washing is shortened twice under fast forward**: `ISWashClothing:getDuration` calls
+- [x] ~~DeleteNegativeWeightItems deletes vanilla food.~~ Intended (author, 2026-10-05): a condiment only goes
+      negative when the cooking/crafting desync leaves it behind after it was used up and should have been
+      deleted, so deleting it is right, and keeping it lets a container's load go below zero (capacity abuse).
+- [x] **Washing is shortened twice under fast forward**: `ISWashClothing:getDuration` calls
       `adjustMaxTime` itself (`ISWashClothing.lua:215`), so the server's wrapped `adjustMaxTime` applies the
-      speed twice (speed squared).
-- [ ] Fast forward timed transfers: the server accepts `timedTransfer` even at normal speed
+      speed twice (speed squared). Fixed in `server/*_FastForward.lua`: the inner call stays vanilla
+      (`DURATION_CALLS_ADJUST`).
+- [x] Fast forward timed transfers: the server accepts `timedTransfer` even at normal speed
       (`*_FastForwardTransfer.lua` ~94-114), and the reach check is 8 tiles flat with no height check
-      (`*_Server.lua` ~50-58).
-- [ ] SeedPacketCount also gives 25 seeds for looted packets (they spawn, `Distributions.lua` ~20154).
+      (`*_Server.lua` ~50-58). Done: refused at speed 1 (the client falls back to vanilla), and the shared
+      `ZomboidFixesB42.isContainerInReach` also requires less than one level up or down (instant transfers,
+      timed transfers and TransferResync). Vanilla's `TransactionManager.isConsistent` has no distance check
+      for ordinary containers (5 tiles for vehicles), so this was never worse than vanilla.
+- [x] SeedPacketCount also gives 25 seeds for looted packets (they spawn, `Distributions.lua` ~20154).
       `ISHandcraftAction:performRecipe` records `modData["Base.PumpkinSeed"] = 25` on a crafted packet:
-      give back that amount instead.
+      give back that amount instead. Done: only packets with that record get the missing seeds (capped at 25).
 
 Wrong data in the item fixes:
 - [ ] Shin armor: swapping makes the plain Metal Shin Armor (0.85) slower than its spiked version (0.9),
@@ -233,12 +239,22 @@ Smaller issues:
       `~= false`, others `== true`: unify.
 
 Beta features: what playing each one should check
+- [ ] FastTransfers' new grab path (not beta itself, the option was played before the grabs were added): with
+      Timed Action Instant on a server, right-click Grab one item, Grab all of a pile of nails (batches of 20),
+      search mode icons, and a build cursor picking up planks; items arrive at once, actions queued after the
+      grab (eat, equip) still run, nothing is left as a floor ghost.
+- [ ] ClothingWearRework, on a server: events arrive for zombies another player owns, one per swing; own
+      zombies' local fake holes disappear after the server's sync; armor condition goes down at about the
+      single player rate and survives relog; a break drops the item for everyone with no ghost copy; no extra
+      lag in a horde.
 - [ ] Body part toggles (hotbar, under `BodyStatsEditor`): each condition on another player, flip.
 - [ ] AnimalGenderChange: all four branches (world, hutch, trailer, carried animal).
 - [ ] RepairLostEntities: a killed server and a restored backup with rain collectors, drying racks and
       a bucket on the floor; chunk re-saves while a backup runs.
 - [ ] TransferResync, ReloadAnimTiming, WaterPlantOnce, RemoveBushToolWear, VehicleBatteryDrain,
-      GasTankWelding, WaterDispenserCheck, BooksStayRead, NoStairAutoVault, GrabAmount, FirearmRadialNoBlanks, GoMMagazineTooltip, the admin
+      GasTankWelding, WaterDispenserCheck, InstantBuildHandy, MapAdminCapabilities, RememberSeenRooms,
+      BooksStayRead, NoStairAutoVault, GrabAmount,
+      FirearmRadialNoBlanks, GoMMagazineTooltip, the admin
       debug fixes (FixDebugAddFluid, ForagingDebugFixes, NoWalkOnSquarePick, ServerOptionsTooltip),
       AdminSpawnProtection: one session each on a server.
 - [ ] ItemDataFixes and RecipeFixes: each fix in its tooltip, and switching the option off mid-game

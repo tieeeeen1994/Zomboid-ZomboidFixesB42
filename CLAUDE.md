@@ -340,7 +340,9 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
 - Timed actions run **on the server** (`zombie/core/NetTimedAction`, `ActionManager`): at start
   `endTime = serverTimeMs + adjustMaxTime(getDuration()) * 20`, real milliseconds, **no multiplier**; completed when
   `getServerTimeMills()` passes it, then a Done packet ends the client's copy. The server calls `adjustMaxTime` only
-  there (the table is built with `Type.new(args)` and gets `netAction` = the Java action; `create()` is client side).
+  there (the table is built with `Type.new(args)` and gets `netAction` = the Java action; `create()` is client side),
+  except where Lua calls it itself: `ISWashClothing:getDuration` returns `self:adjustMaxTime(...)` (~215, so it is
+  adjusted twice on the server), and some `new`s compute `animSpeed` with it (no `netAction` yet).
   PZ's `KahluaTableImpl.rawget` falls back to the metatable, so class methods are found. `netAction:setDuration(ms)`
   moves a running action's end (`endTime = startTime + ms`).
 - Items on a server update only every 5 real s (`IsoCell` ProcessItems) with a real-time step
@@ -354,6 +356,10 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
   (`BaseAction.update`), so it fills early and waits on `setWaitForFinished`. Transaction ids are numbered by each client
   (`Transaction.lastId`, a byte), and the server handles a cancel (Reject) with `removeIf(id == id)` over every player's
   transactions, so one player's cancelled transfer can drop another's with the same id.
+- Vanilla's server reach checks for item transactions (42.21 `TransactionManager.isConsistent`): none for ordinary
+  world containers, 5 tiles flat for a vehicle part, and a `Floor`-type source must be within 1.1 tiles when the
+  move completes (`Transaction.update` ~338). Only the
+  client's loot window (3x3, same level) limits what a player is offered.
 - How a transaction fails (42.21, `zombie/core/TransactionManager`, `Transaction`, `ItemTransactionPacket`): the server
   checks `isConsistent` only on Request (Reject packet if it fails), then at `endTime` runs `Transaction.update` →
   `updateItem` per entry. If that returns false or throws (`"transaction.update() threw. Rejecting transaction"` in the
@@ -379,6 +385,12 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
 - `ISGrabItemAction` (right-click Grab, forage icons) never waits on the server: no `setWaitForFinished`, `maxTime`
   becomes the server's duration, and perform -> `transferItem` drops the transaction and ends, whatever the server did.
   Its transaction is created with `nil` items and an `"object"` source container whose parent is the world item.
+  It batches like a transfer (`checkQueueList`: same full type, up to 20; a new grab joins the **last** queued grab
+  action and sets `ignoreAction`), but only that one world item is addressed per transaction. Its `isValid` turns false
+  as soon as the world item leaves the square, which stops the action (and the queue behind it) when a server move
+  lands first. Callers: world Grab menu, `ISBuildingObject` picking up materials, search mode icons. Java's
+  `Transaction.getDuration` never reads the instant cheat; `FastTransfers` sends each grab batch as `CMD_TRANSFER`
+  from the floor instead.
 - The fast transfer path (`*_Transfer.lua` / `*_Server.lua`, Fast Timed Actions cheat and fast forward's timed
   batches) used to decline floor items outside the 3x3 around the **server's** position of the player (trails the
   client's while walking) and to check the main inventory's weight, which vanilla's server never does; a declined item
@@ -521,12 +533,18 @@ vehicle stories and road foraging use. Vanilla, Raven Creek and NagaCity ship on
   appended). OnCreate is looked up by name at every craft (`CraftRecipeData.initLuaFunctions`), called with
   `(craftRecipeData, character)` from `ISHandcraftAction:performRecipe` (server / SP only) after the outputs were added
   with `Actions.addOrDropItem`; performRecipe then stores, for a single result, `modData[consumedFullType] = count`
-  of every consumed (non-keep) item — e.g. `modData["Base.ClayBowl"]`.
+  of every consumed (non-keep) item — e.g. `modData["Base.ClayBowl"]`, `modData["Base.PumpkinSeed"] = 25` on a
+  packed seed packet. It is written on the server's copy after `addOrDropItem` has already sent the item, so the
+  owner's client copy lacks it; the record also tells a crafted item from the same item found as loot.
 - `Fixing` (repairs): `ScriptManager.instance:getFixing("Base.Fix X")`, `getRequiredItem()` (mutable list of full types,
   what `FixingManager.getFixes` matches), `getFixers()` (mutable LinkedList); a Fixer comes from
   `Fixing.new():Load(name, "fixing n { Fixer = Base.X; Aiming=2, }")`.
 - Food weight: `Food.getActualWeight` = script weight × (hunger / script HungerChange) (with ReplaceOnUse: the empty
-  item's weight plus the rest scaled), so portions from very filling food get heavy — engine, not data.
+  item's weight plus the rest scaled), so portions from very filling food get heavy — engine, not data. A hunger
+  value past 0 (sign flipped against the script's) gives a negative weight: that is a condiment (oil, flour, ranch
+  sauce) the MP cooking/crafting desync left behind after using it up, which should have been deleted. Such items
+  lower a container's load, even below zero (capacity abuse); `*_NegativeWeight.lua`
+  (`DeleteNegativeWeightItems`) deleting them is intended, not a false positive.
 - In 42.21 `HandWeapon.getAimingMod()` returns 1.0 and `IsoPlayer.IsUsingAimHandWeapon` is never called: the item script
   `AimingMod` / `IsAimedHandWeapon` do nothing. A weapon part on a model with no matching attachment point is drawn at the
   gun's origin (`AnimatedModel.transformToParent`).
@@ -585,6 +603,11 @@ Body-stat editing belongs to `Capability.CanModifyBodyStats` (admin and moderato
   `player` is a plain table with `username`.
 - `ISPlayerStatsUI:render()` positions every button every frame (Manage Inventory at the bottom of the right column);
   `updateButtons()` is called from render.
+- World map (42.21): the right-click admin menu (`ISWorldMap:onRightMouseUp` ~911: Teleport Here = `/teleportto`, grids,
+  virtual animals) and the full option lists (`WorldMapOptions:createChildren/synchUI`, `ISMiniMapOptionsPanel:synchUI`)
+  test `getAccessLevel() == "admin"`; `*_WorldMapAdmin.lua` swaps the global `getAccessLevel` for the duration of those
+  calls. Which remote players the map draws is Java (`UIWorldMap` ~433: `CanSeeAll` with at least the target's number
+  of capabilities sees everyone, else server option `MapRemotePlayerVisibility` with faction / safehouse / visibility).
 - Health panel (`client/XpSystem/ISUI/ISHealthPanel.lua`, 42.21): `self.character` is the **patient**, `self.otherPlayer`
   the doctor (nil when looking at yourself). The Cheat submenu (~1830-1860) calls `ISHealthPanel.onCheat(bodyPart, action,
   patient, doctor)`; for another player `onCheatOtherPlayer` (~329) sends `player.onHealthCheat {id = patient}` from the
@@ -721,6 +744,16 @@ within 2 s. `ISDropWorldItemAction:getDuration` uses the same main-inventory →
 Vanilla Trade (`ISWorldObjectContextMenuLogic`, Java-built): offered for a clicked player who is not asleep, not an
 animal, not invisible unless the role has `SeesInvisiblePlayers`; greyed out ("get closer") when `|dx| > 2 or |dy| > 2`;
 named with `getDisguisedDisplayName()`. `ISTradingUI` shows "too far away" on the same 2-tile rule.
+Builds in MP (42.21): `ISBuildAction:start` calls `createBuildAction` → Java `BuildAction` (not a Lua action).
+`BuildActionPacket.parse` on the server rebuilds the building object with `<Type>.new(...)` from the client table's
+`new` parameter names (every vanilla building object's `new` calls `ISBuildingObject.init`), then `ActionManager.start`
+→ `Action.setTimeData` with `BuildAction.getDuration` = (200 - Woodwork × 5, graves 150; 1 with
+`isTimedActionInstant`; then -50 for Handy) × 20 ms, with no Lua in between; `perform` fires
+`OnProcessAction("build", player, {x, y, z, north, spriteName, item})`. Any negative `Action` duration means looped:
+end = start + `AnimEventEmulator.getDurationMax()` (30 min), which is also the client's timeout for `isUsingTimeout`
+actions. GameServer main loop order: packets (every ~5 ms), then on each update tick `IngameState.update` (OnTick)
+and later `NetworkPlayerManager.update` (stat/trait syncs), so a server change made while handling a packet and
+undone in the next OnTick is never synced. `CharacterTraits.set/add/remove` only flip the trait map.
 Server-side timed actions: `NetTimedAction` only calls `new`, `getDuration`, `adjustMaxTime`, `serverStart`,
 `serverStop`, `animEvent`, `complete`, `isUsingTimeout` — never `isValid`, `update` or `perform`. A Lua error in
 `complete()` makes `ActionManager` send Reject (the changes made before the error stay); so does `complete()`
@@ -1054,7 +1087,16 @@ matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lu
   the player that `canReachTo` and `SafeHouse.isSafehouseAllowLoot` allow; a floor bag adds its own container button.
   Square visibility: `square:isCanSee(playerNum)`, `isCouldSee(playerNum)`, `isSeen(playerNum)` read the per-player
   lighting flags `bCanSee` / `bCouldSee` / `bSeen` (IsoGridSquare ~9156-9356; vanilla click handlers gate on `isSeen(0)`,
-  cursors on `isCouldSee`). Exact meaning not traced further.
+  cursors on `isCouldSee`). `bSeen` = the player has ever seen the square: an unseen square gets dark multiplier 0
+  (`CalcVisibility` ~8990), so unvisited interiors are drawn dark. With the native lighting the Java bit is sent to
+  native in `LightingJNI.updateChunk` (`visionMatrix` bit 27 + player, only for chunks with `lightCheck`) and read
+  back on every lighting update. It is saved in the chunk data (`IsoGridSquare.save/load` ~2976 / ~3362, one bit per
+  player index) **only in single player**: a server writes 0, a client ignores it, so in MP every chunk loads with
+  nothing seen. Lua: `square:setIsSeen(playerNum, true)` then `chunk:checkLightingLater_OnePlayer_AllLevels(playerNum)`
+  (`*_SeenRooms.lua`). `RoomDef.explored` (set on a client by `checkRoomSeen` when a square of the room is seen within
+  10 tiles, 50 in the same building) is saved only in map_meta.bin, which clients never load; on a client it only
+  drives the "SeeUnexploredRoom" music cue and `OnSeeNewRoom`, while zombies, loot and stories use the server's.
+  `getClientUsername()` is the account name from the connection on (before the player exists).
 - Drag and drop inside a panel: on `onMouseDown` remember the mouse, in `onMouseMove` and `onMouseMoveOutside` (both
   keep arriving while the button is pressed) start the drag past a few pixels with `self:setCapture(true)`, finish in
   `onMouseUp` / `onMouseUpOutside` (release the capture, reset `pressed` so ISButton does not also click). A ghost that

@@ -539,23 +539,23 @@ function ZomboidFixesB42.decodeContainer(encoded, player)
     return nil
 end
 
---- Where a container is in the world, for the reach check. Returns nil when it
--- has no position at all. A bag is where its holder is: in the player's hands, on
--- the ground or in the container it sits in.
+--- Where a container is in the world (x, y, z), for the reach check. Returns nil
+-- when it has no position at all. A bag is where its holder is: in the player's
+-- hands, on the ground or in the container it sits in.
 function ZomboidFixesB42.containerPosition(container, depth)
     local parent = container:getParent()
     if parent then
-        return parent:getX(), parent:getY()
+        return parent:getX(), parent:getY(), parent:getZ()
     end
     local square = container:getSourceGrid()
     if square then
-        return square:getX(), square:getY()
+        return square:getX(), square:getY(), square:getZ()
     end
     local holder = container:getContainingItem()
     if holder then
         local worldItem = holder:getWorldItem()
         if worldItem then
-            return worldItem:getX(), worldItem:getY()
+            return worldItem:getX(), worldItem:getY(), worldItem:getZ()
         end
         local outer = holder:getContainer()
         depth = depth or 0
@@ -564,4 +564,16 @@ function ZomboidFixesB42.containerPosition(container, depth)
         end
     end
     return nil
+end
+
+--- Is the player near enough to use this container? Within MAX_REACH flat and less
+-- than one level up or down: standing on a floor that is only that floor, on
+-- stairs (fractional z) the floors at both ends. Containers the player carries
+-- have no world position and are always fine.
+function ZomboidFixesB42.isContainerInReach(player, container)
+    local x, y, z = ZomboidFixesB42.containerPosition(container)
+    if not x then return true end
+    if z and math.abs(z - player:getZ()) >= 1 then return false end
+    local dx, dy = player:getX() - x, player:getY() - y
+    return (dx * dx + dy * dy) <= (ZomboidFixesB42.MAX_REACH * ZomboidFixesB42.MAX_REACH)
 end

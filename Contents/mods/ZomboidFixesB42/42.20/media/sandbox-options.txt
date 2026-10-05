@@ -289,6 +289,30 @@ option ZomboidFixesB42.WaterDispenserCheck
     translation = ZomboidFixesB42_WaterDispenserCheck,
 }
 
+option ZomboidFixesB42.InstantBuildHandy
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_InstantBuildHandy,
+}
+
+option ZomboidFixesB42.MapAdminCapabilities
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_MapAdminCapabilities,
+}
+
+option ZomboidFixesB42.RememberSeenRooms
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_RememberSeenRooms,
+}
+
 option ZomboidFixesB42.RemoveBushToolWear
 {
     type = boolean,

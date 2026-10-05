@@ -45,8 +45,12 @@
     SeedPacketCount: PutSeedsInPacket takes 5 seeds of every kind but 25 pumpkin or
     sunflower seeds (`25:Base.PumpkinSeed`, `25:Base.SunflowerSeeds`), while
     OpenPacketOfSeeds always gives 5, so 20 seeds vanish every time. An input's
-    per-item amounts cannot be changed from Lua, so opening a pumpkin or sunflower
-    packet now gives 25 (an OnCreate adds the missing 20).
+    per-item amounts cannot be changed from Lua, so opening a packet the player made
+    now gives back what went into it (an OnCreate adds the missing 20).
+    ISHandcraftAction:performRecipe records, on a craft's single result, how many of
+    each consumed item went in (modData["Base.PumpkinSeed"] = 25), so a made packet is
+    told apart from one found as loot (Distributions.lua ~20154, ProceduralDistributions
+    ~14802), which has no record and keeps vanilla's 5.
 
     ItemWeights: every pie slice (Pie is the cherry slice, PieApple...) weighs 0.5,
     as much as the raw whole pie it is cut from (PieWholeRaw 0.5 plus its
@@ -320,20 +324,25 @@ ScriptFixes.register("RecipeFixes", "SeedPacketCount",
         -- The call cannot be unset; it checks the option itself.
     end)
 
---- OnCreate of OpenPacketOfSeeds: a pumpkin or sunflower packet gives all 25 seeds.
+--- OnCreate of OpenPacketOfSeeds: a pumpkin or sunflower packet the player made
+-- gives back the seeds that went into it; a looted one stays at vanilla's count.
 -- Runs where the craft is performed (the server, or single player).
 function ZomboidFixesB42.OnCreateSeedPacket(data, character)
     if not character or not ScriptFixes.isEnabled("RecipeFixes") then return end
     local consumed = data:getAllConsumedItems()
     for i = 0, consumed:size() - 1 do
-        local seedType = PACKET_SEEDS[consumed:get(i):getFullType()]
-        if seedType then
+        local packet = consumed:get(i)
+        local seedType = PACKET_SEEDS[packet:getFullType()]
+        -- performRecipe's record of the seeds put in; never more than the recipe takes.
+        local recorded = seedType and tonumber(packet:getModData()[seedType])
+        if recorded and recorded > 0 then
+            local target = math.min(math.floor(recorded), SEEDS_PER_PACKET)
             local given = 0
             local created = data:getAllCreatedItems()
             for j = 0, created:size() - 1 do
                 if created:get(j):getFullType() == seedType then given = given + 1 end
             end
-            for _ = given + 1, SEEDS_PER_PACKET do
+            for _ = given + 1, target do
                 Actions.addOrDropItem(character, instanceItem(seedType))
             end
         end

@@ -18,7 +18,7 @@ Right-click a fast forward button to turn it yellow. While it is yellow, once yo
 
 [b]Fast item transfers with Fast Timed Actions[/b]
 Option: [i]Fast Item Transfers With Fast Timed Actions[/i]
-The Fast Timed Actions cheat makes item transfers quick in multiplayer too, like in single player. A quick transfer the server cannot make is done the normal way instead of not at all.
+The Fast Timed Actions cheat makes item transfers and grabbing items off the ground (right-click Grab, search mode icons) quick in multiplayer too, like in single player. A quick transfer the server cannot make is done the normal way instead of not at all.
 
 [b]Failed item transfers repair themselves (beta)[/b]
 Option: [i][BETA] Failed Item Transfers Repair Themselves[/i]
@@ -135,6 +135,18 @@ Welding a gas tank that is still on a vehicle finishes the repair. The game stop
 Option: [i][BETA] Water Dispenser Bottle Duplication Fix[/i]
 Taking the bottle off an office water dispenser twice in a row, or two players taking it at once, no longer gives a second full bottle and a second dispenser on the same tile, and putting a bottle on from a bag no longer leaves the full bottle in the bag.
 
+[b]Instant building with Handy (beta)[/b]
+Option: [i][BETA] Instant Building With Handy[/i]
+In multiplayer, admins with Timed Action Instant switched on and the Handy trait build instantly. The server gave them a negative build time, which the game turned into half an hour: an empty bar, and the building only appeared 30 minutes later.
+
+[b]World map admin tools by role (beta)[/b]
+Option: [i][BETA] World Map Admin Tools By Role[/i]
+The world map's admin tools (right-click Teleport Here, the cell and tile grids, the virtual animal tools, and the full list of map options) show for every role that may teleport to coordinates or use the debug context menu, so moderators and custom staff roles get them too, not only the role named admin.
+
+[b]Seen rooms stay lit after relogging (beta)[/b]
+Option: [i][BETA] Seen Rooms Stay Lit After Relogging[/i]
+In multiplayer, the rooms you have seen no longer go dark again every time you log back in or come back from far away. Your own game remembers the rooms you have seen on each server (a small file in Zomboid/Lua) and lights them again. Rooms are remembered whole, so one you only glimpsed from its doorway comes back fully lit.
+
 [b]No auto vault over stair railings (beta)[/b]
 Option: [i][BETA] No Auto Vault Over Stair Railings[/i]
 Running into a stair railing no longer vaults you over it.
@@ -224,7 +236,7 @@ Splitting a pot into clay bowls gives clay bowls of food, and beans, oatmeal, ce
 
 [b]Pumpkin and sunflower seed packets (beta)[/b]
 Option: [i][BETA] Recipe And Repair Fixes[/i]
-Opening a pumpkin or sunflower seed packet gives the 25 seeds packing it took, instead of 5.
+Opening a pumpkin or sunflower seed packet you made gives back the 25 seeds packing it took, instead of 5. Packets found as loot still give 5, as in vanilla.
 
 [b]Leek and grapefruit nutrition (beta)[/b]
 Option: [i][BETA] Item Data Fixes[/i]

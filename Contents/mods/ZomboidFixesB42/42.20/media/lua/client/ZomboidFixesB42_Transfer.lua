@@ -33,12 +33,19 @@
     signal with the item actually arriving. So a transfer takes one round trip to
     the server, with no bar, instead of the full vanilla transfer time.
 
+    Grabbing from the ground (ISGrabItemAction: the world context menu's Grab, a
+    build cursor picking up materials, foraging and search mode icons) is its own
+    action with its own transaction, timed by the same Java Transaction.getDuration
+    that never reads the cheat, so it is taken off the transaction the same way
+    (see "Grabbing from the ground" at the end of this file).
+
     Everything here is opt-in per action: if the FastTransfers sandbox option is
     off, or the containers involved cannot be addressed over the wire, zfixFast is
     never set and the action runs exactly as vanilla does today.
 --]]
 
 require "TimedActions/ISInventoryTransferAction"
+require "TimedActions/ISGrabItemAction"
 
 ZomboidFixesB42 = ZomboidFixesB42 or {}
 
@@ -564,4 +571,176 @@ function ISInventoryTransferAction:stop()
     self.zfixTimed = false
     self.zfixDeferred = nil
     return vanillaStop(self)
+end
+
+--[[ Grabbing from the ground -------------------------------------------------
+
+    ISGrabItemAction (42.21) queues world items in batches like a transfer
+    (checkQueueList: same full type, up to 20, and later grabs join the last queued
+    grab action), opens createItemTransaction(nil items, an "object" container whose
+    parent is the batch's first world item) in start and waits for its Done. Under
+    the cheat each batch goes to the server as CMD_TRANSFER from the floor instead
+    (moveFromGround: every item of the batch, by ID and floor hint), and the action
+    waits for the items to arrive in the inventory, as above. vanilla's grab never
+    waits on its own (no setWaitForFinished), so that is set here, and isValid is
+    skipped once started: the server removes each world item before the inventory
+    copy arrives, and vanilla's "is it still on the square" check would stop the
+    action, and the queue behind it, at that moment. Items the server declines that
+    are still on the ground go the vanilla way, one world item per transaction as
+    vanilla does.
+--]]
+
+local vanillaGrab = {
+    new     = ISGrabItemAction.new,
+    isValid = ISGrabItemAction.isValid,
+    start   = ISGrabItemAction.start,
+    update  = ISGrabItemAction.update,
+    perform = ISGrabItemAction.perform,
+    stop    = ISGrabItemAction.stop,
+}
+
+--- Send the world items of one grab batch that are still on the ground.
+local function sendGrabBatch(self, queuedItem)
+    local items = {}
+    self.zfixSentIds = {}
+    for _, worldItem in ipairs((queuedItem and queuedItem.items) or {}) do
+        local item = worldItem:getItem()
+        if item and worldItem:getSquare() then
+            table.insert(items, item)
+            self.zfixSentIds[item:getID()] = true
+        end
+    end
+    sendBatch(self, { items = items })
+end
+
+--- Hand a declined batch to vanilla: a transaction for the first declined item
+-- still on the ground, the rest of the batch after it the vanilla way.
+local function fallBackToVanillaGrab(self)
+    local worldItems = {}
+    for _, item in ipairs(self.zfixFallback) do
+        local worldItem = item:getWorldItem()
+        if worldItem and worldItem:getSquare() then table.insert(worldItems, worldItem) end
+    end
+    self.zfixFallback = nil
+    local queuedItem = self.queueList and self.queueList[1]
+    -- Nothing left on the ground: the rest of the batch is waited for as usual.
+    if #worldItems == 0 or not queuedItem then return end
+    forgetBatch(self)
+    self.zfixFast = false
+    self.useProgressBar = true
+    self.action:setUseProgressBar(true)
+    self.action:setWaitForFinished(false)
+    queuedItem.items = worldItems
+    for _, queued in ipairs(self.queueList) do queued.time = -1 end
+    self.item = worldItems[1]
+    self.sourceContainer = ItemContainer.new("object", self.item:getSquare(), self.item)
+    self.maxTime = -1
+    self.action:setTime(-1)
+    self.transactionId = vanillaCreateItemTransaction(self.character, nil, self.sourceContainer, self.destContainer)
+    print(string.format("[ZomboidFixesB42] The server declined %d item(s) of a quick grab; picking them up the normal way", #worldItems))
+end
+
+function ISGrabItemAction:new(character, item, time)
+    local o = vanillaGrab.new(self, character, item, time)
+    -- A grab that joined an earlier grab action (ignoreAction) is never run itself.
+    if not o.ignoreAction and wantsFastTransfer(character) then
+        local dst = ZomboidFixesB42.encodeContainer(o.destContainer, character)
+        if dst then
+            o.zfixFast = true
+            o.zfixSrc = ZomboidFixesB42.FLOOR
+            o.zfixDst = dst
+            -- Only for TransferResync, if the server declines an item.
+            o.srcContainer = ItemContainer.new("floor", nil, nil)
+            o.useProgressBar = false
+            o.maxTime = ZomboidFixesB42.TRANSFER_MAX_TIME
+            for _, queued in ipairs(o.queueList or {}) do queued.time = o.maxTime end
+        end
+    end
+    return o
+end
+
+function ISGrabItemAction:isValid()
+    if self.zfixFast and self.started then return true end
+    return vanillaGrab.isValid(self)
+end
+
+function ISGrabItemAction:start()
+    if not self.zfixFast then return vanillaGrab.start(self) end
+    -- Vanilla's animation and job text, without its transaction (see
+    -- ISInventoryTransferAction:start for why one must not even be opened).
+    suppressTransaction = true
+    local ok, err = pcall(vanillaGrab.start, self)
+    suppressTransaction = false
+    if not ok then error(err) end
+    self.transactionId = 0
+    self.action:setUseProgressBar(false)
+    self.action:setWaitForFinished(true)
+    self.maxTime = ZomboidFixesB42.TRANSFER_MAX_TIME
+    self.action:setTime(self.maxTime)
+    sendGrabBatch(self, self.queueList and self.queueList[1])
+end
+
+function ISGrabItemAction:update()
+    if not self.zfixFast then return vanillaGrab.update(self) end
+    local item = self.item and self.item:getItem()
+    if item then item:setJobDelta(self.action:getJobDelta()) end
+
+    if self.zfixFallback and not self.zfixCompleted then return fallBackToVanillaGrab(self) end
+
+    if not self.zfixCompleted then
+        local moved = batchMoved(self)
+        if moved or waitedTooLong(self) then
+            if moved and ZomboidFixesB42.clearGhostsOf then
+                ZomboidFixesB42.clearGhostsOf(self.character, self.zfixPending)
+            elseif not moved and ZomboidFixesB42.resyncTransfer then
+                ZomboidFixesB42.resyncTransfer(self.character, self.zfixPending, self.srcContainer, self.destContainer, "lost")
+            end
+            self.zfixCompleted = true
+            self:forceComplete()
+        end
+    end
+end
+
+function ISGrabItemAction:perform()
+    if not self.zfixFast then return vanillaGrab.perform(self) end
+
+    local queuedItem = table.remove(self.queueList, 1)
+    -- Grabs queued after the batch was sent join it (checkQueueList): send them next.
+    if queuedItem then
+        local left = {}
+        for _, worldItem in ipairs(queuedItem.items) do
+            local item = worldItem:getItem()
+            if item and not (self.zfixSentIds and self.zfixSentIds[item:getID()]) then
+                table.insert(left, worldItem)
+            end
+        end
+        if #left > 0 then
+            table.insert(self.queueList, 1, { items = left, time = self.maxTime, type = queuedItem.type })
+        end
+    end
+    forgetBatch(self)
+    self.zfixSentIds = nil
+    self.zfixCompleted = false
+
+    if #self.queueList > 0 then
+        local nextItem = self.queueList[1]
+        self.item = nextItem.items[1]
+        self.action:reset() -- clears forceComplete
+        self.maxTime = ZomboidFixesB42.TRANSFER_MAX_TIME
+        self.action:setTime(self.maxTime)
+        self:resetJobDelta()
+        sendGrabBatch(self, nextItem)
+    else
+        self.action:stopTimedActionAnim()
+        self.action:setLoopedAction(false)
+        self.action:setWaitForFinished(false)
+        ISBaseTimedAction.perform(self)
+        self.started = false
+    end
+    ISInventoryPage.renderDirty = true
+end
+
+function ISGrabItemAction:stop()
+    if self.zfixFast then forgetBatch(self) end
+    return vanillaGrab.stop(self)
 end

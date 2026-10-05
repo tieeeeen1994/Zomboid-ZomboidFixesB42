@@ -47,6 +47,7 @@
 if not isServer() then return end
 
 require "TimedActions/ISBaseTimedAction"
+require "TimedActions/ISWashClothing"
 
 ZomboidFixesB42 = ZomboidFixesB42 or {}
 
@@ -166,6 +167,10 @@ local originalAdjustMaxTime = ISBaseTimedAction.adjustMaxTime
 --- On the server this is only reached from NetTimedAction.getDuration, when an
 -- action starts (the client's create() runs its own copy).
 function ISBaseTimedAction:adjustMaxTime(maxTime)
+    -- An action whose own getDuration already calls adjustMaxTime (see below):
+    -- that inner call stays vanilla, and the speed is applied once, when Java
+    -- adjusts the result.
+    if self.zfixInGetDuration then return originalAdjustMaxTime(self, maxTime) end
     -- NetTimedAction.start runs setTimeData (getDuration -> this) and then the
     -- action's serverStart, so this is the action any emulateAnimEvent that follows
     -- belongs to (ZomboidFixesB42_FastForwardAnimEvents.lua).
@@ -179,6 +184,26 @@ function ISBaseTimedAction:adjustMaxTime(maxTime)
     running[self] = { startMs = now, lastMs = now, doneMs = 0, totalMs = adjusted * MS_PER_UNIT, speed = applied }
     if applied > 1 then return adjusted / applied end
     return adjusted
+end
+
+-- Actions whose getDuration returns self:adjustMaxTime(maxTime) itself
+-- (ISWashClothing.lua ~215, 42.21). NetTimedAction.getDuration adjusts that result
+-- again, so without this the speed was applied twice (washing at speed squared)
+-- and the action was remembered with an already shortened length.
+local DURATION_CALLS_ADJUST = { "ISWashClothing" }
+
+for _, typeName in ipairs(DURATION_CALLS_ADJUST) do
+    local class = _G[typeName]
+    local vanillaGetDuration = class and class.getDuration
+    if vanillaGetDuration then
+        class.getDuration = function(self, ...)
+            self.zfixInGetDuration = true
+            local ok, result = pcall(vanillaGetDuration, self, ...)
+            self.zfixInGetDuration = nil
+            if not ok then error(result) end
+            return result
+        end
+    end
 end
 
 local function apply(speed)

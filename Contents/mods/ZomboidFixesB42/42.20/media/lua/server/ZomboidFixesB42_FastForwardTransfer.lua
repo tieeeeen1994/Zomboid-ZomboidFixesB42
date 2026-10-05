@@ -23,8 +23,10 @@
     at that moment, that the item is still in the source, that the destination takes it
     and has room, and that the player is in reach. Vanilla's server has no more checks
     than that (TransactionManager.isConsistent; safehouses are only checked on the
-    client, and still are). At normal speed a batch takes exactly vanilla's time, so
-    the path gives nothing a vanilla client does not have.
+    client, and still are). The command is only taken while fast forward runs, and
+    the reach check (ZomboidFixesB42.isContainerInReach) is stricter than vanilla's,
+    which has no distance check for ordinary containers at all, so the path gives
+    nothing a vanilla client does not have.
 
     A batch started before fast forward is a Java transaction and finishes at normal
     speed; every batch after it follows the speed.
@@ -94,7 +96,10 @@ end
 local function onTimedTransfer(player, args)
     local token = type(args.token) == "string" and args.token or nil
     if not token then return end
-    if not isEnabled() or player:isDead() or not ZomboidFixesB42.moveTransferBatch then
+    -- Only while fast forward runs: at normal speed vanilla's transaction does the
+    -- job, and this path has no reason to be open. A batch the client sent just as
+    -- the speed dropped is declined, and the client moves it the vanilla way.
+    if not isEnabled() or speed() <= 1 or player:isDead() or not ZomboidFixesB42.moveTransferBatch then
         return reply(player, token, ZomboidFixesB42.parseTransferItemIds(args.items))
     end
 

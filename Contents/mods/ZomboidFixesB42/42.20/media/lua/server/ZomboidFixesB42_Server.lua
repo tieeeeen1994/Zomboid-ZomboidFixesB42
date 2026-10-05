@@ -46,15 +46,9 @@ local function isAllowed(player)
     return true
 end
 
---- Is the player near enough to use this container?
+--- Is the player near enough to use this container? (MAX_REACH flat, same floor.)
 local function isInReach(player, container)
-    local x, y = ZomboidFixesB42.containerPosition(container)
-    -- Containers the player is carrying have no world position and are always fine.
-    if not x then return true end
-
-    local dx = player:getX() - x
-    local dy = player:getY() - y
-    return (dx * dx + dy * dy) <= (ZomboidFixesB42.MAX_REACH * ZomboidFixesB42.MAX_REACH)
+    return ZomboidFixesB42.isContainerInReach(player, container)
 end
 
 local function parseItemIds(encoded)

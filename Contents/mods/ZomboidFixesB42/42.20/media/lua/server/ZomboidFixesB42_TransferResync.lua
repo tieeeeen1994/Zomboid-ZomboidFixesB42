@@ -61,10 +61,7 @@ local function isEnabled()
 end
 
 local function isInReach(player, container)
-    local x, y = ZomboidFixesB42.containerPosition(container)
-    if not x then return true end
-    local dx, dy = player:getX() - x, player:getY() - y
-    return (dx * dx + dy * dy) <= (ZomboidFixesB42.MAX_REACH * ZomboidFixesB42.MAX_REACH)
+    return ZomboidFixesB42.isContainerInReach(player, container)
 end
 
 --- A container the client named, if it resolves and is in reach. The floor
