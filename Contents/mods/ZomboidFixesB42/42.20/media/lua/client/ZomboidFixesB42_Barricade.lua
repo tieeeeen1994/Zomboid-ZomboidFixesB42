@@ -20,10 +20,13 @@
     materials when it ends. Counts are re-read at most every 300 ms. Metal
     barricades use the same cursor but other materials and are left alone. The
     build cheat skips the check, as vanilla does.
+
+    ISBuildIsoEntity lives in media/lua/server, which is not loaded (nor on the
+    require paths) when the client files first load at the main menu, so its
+    isValid is wrapped at OnGameStart, after the game has loaded the server folder.
 --]]
 
 require "ISUI/ISWorldObjectContextMenu"
-require "BuildingObjects/ISBuildIsoEntity"
 require "BuildingObjects/TimedActions/ISBuildAction"
 
 ZomboidFixesB42 = ZomboidFixesB42 or {}
@@ -66,28 +69,38 @@ local function materialsOk(holder, character)
     return holder.zfixMaterialsOk
 end
 
+--- Wraps ISBuildIsoEntity.isValid once per class table (Lua reloads rebuild it).
+local wrappedCursorClass = nil
+
+local function wrapCursorIsValid()
+    if ISBuildIsoEntity == nil or wrappedCursorClass == ISBuildIsoEntity then return end
+    wrappedCursorClass = ISBuildIsoEntity
+    local vanillaIsValid = ISBuildIsoEntity.isValid
+
+    function ISBuildIsoEntity:isValid(square, ...)
+        local valid = vanillaIsValid(self, square, ...)
+        if not valid or not self.zfixPlankBarricade or not isEnabled() then return valid end
+        local character = self.character
+        if not character or isCheat(character) then return valid end
+        -- Only the cursor itself: create() calls isValid on the copy the build action
+        -- carries, after the materials it is about to use were counted.
+        if getCell():getDrag(character:getPlayerNum()) ~= self then return valid end
+        return materialsOk(self, character)
+    end
+end
+
+Events.OnGameStart.Add(wrapCursorIsValid)
+
 local vanillaOnBarricade = ISWorldObjectContextMenu.onBarricade
 
 function ISWorldObjectContextMenu.onBarricade(spriteName, playerObj, ...)
+    wrapCursorIsValid()
     local result = vanillaOnBarricade(spriteName, playerObj, ...)
     if spriteName == PLANK_SPRITE and playerObj then
         local drag = getCell():getDrag(playerObj:getPlayerNum())
         if drag then drag.zfixPlankBarricade = true end
     end
     return result
-end
-
-local vanillaIsValid = ISBuildIsoEntity.isValid
-
-function ISBuildIsoEntity:isValid(square, ...)
-    local valid = vanillaIsValid(self, square, ...)
-    if not valid or not self.zfixPlankBarricade or not isEnabled() then return valid end
-    local character = self.character
-    if not character or isCheat(character) then return valid end
-    -- Only the cursor itself: create() calls isValid on the copy the build action
-    -- carries, after the materials it is about to use were counted.
-    if getCell():getDrag(character:getPlayerNum()) ~= self then return valid end
-    return materialsOk(self, character)
 end
 
 local vanillaActionIsValid = ISBuildAction.isValid

@@ -66,7 +66,11 @@ or methods exist.
   shared or server folder) forces an order.
 - Client Lua already loads at the main menu (`isClient()` false there) and reloads with the server's mods when joining
   multiplayer. `media/lua/server` also loads on clients and in single player (hence the `if isClient() then return end`
-  guards); a dedicated server does not load `media/lua/client`.
+  guards); a dedicated server does not load `media/lua/client`. At the main menu only shared + client are loaded
+  (`LuaManager.LoadDirBase()`), and `media/lua/server` joins the require paths only when the game loads it, so a
+  client file must not touch a server-folder class at file level (`ISBuildIsoEntity`, `ISBuildingObject`: nil there,
+  and `require "BuildingObjects/..."` finds nothing); wrap such methods at `OnGameStart` (`*_Barricade.lua`).
+  Within one folder, all vanilla files load first (sorted), then each mod's in mod order.
 - Pitfalls: `cond and nil or x` always gives `x` (write an if); a `string.gsub` replacement string treats `%` as special
   (escape user text with `gsub(s, "%%", "%%%%")`); `string.gsub` returns two values, so wrap it in parentheses when
   returning or concatenating at the end of a list; there is no `next()`; `gsub` with a function replacement works;
