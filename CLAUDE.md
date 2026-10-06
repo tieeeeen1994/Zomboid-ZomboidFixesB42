@@ -52,6 +52,9 @@ or methods exist.
   `lupa.LuaRuntime().execute('loadfile([[harness.lua]])([[mod.lua]])')`. Mocks are plain Lua tables with methods
   (Python objects do not take `obj:method()` calls). An earlier server-side `ZombieAttacksWearClothing` was checked that
   way, against a Lua port of vanilla's attack code.
+- A mod folder in `~/Zomboid/Workshop/<mod>` takes precedence over the same mod id subscribed on Steam, so a stale
+  local copy hides the subscribed version (Nick's Inventory Selection Fix 1.0.0 vs 1.0.1, which ships
+  `NISF_ShiftRange.lua`; this mod's own copy of that fix was dropped).
 - The shell is zsh: `$var[...]` is array subscripting, so `"$f[:.]"` inside a grep pattern breaks; use Python for
   such loops.
 
@@ -613,6 +616,10 @@ vehicle stories and road foraging use. Vanilla, Raven Creek and NagaCity ship on
   sauce) the MP cooking/crafting desync left behind after using it up, which should have been deleted. Such items
   lower a container's load, even below zero (capacity abuse); `*_NegativeWeight.lua`
   (`DeleteNegativeWeightItems`) deleting them is intended, not a false positive.
+- Item data left alone (42.21): the JS-3T's model (`JS3T_Shotgun`, models_weapons.txt) has no `recoilpad` /
+  `choketube` attachment, so those parts would be drawn at the gun's origin; `CanHaveHoles` is only read for Clothing
+  (Cooler_Seafood); nothing makes `HotDrinkRed`; crafted face shemaghs may be deliberate. Armor families follow a
+  pattern (thigh / shin run speed: spiked -0.05, articulated +0.05 from plain); fix only the pieces that break it.
 - In 42.21 `HandWeapon.getAimingMod()` returns 1.0 and `IsoPlayer.IsUsingAimHandWeapon` is never called: the item script
   `AimingMod` / `IsAimedHandWeapon` do nothing. A weapon part on a model with no matching attachment point is drawn at the
   gun's origin (`AnimatedModel.transformToParent`).
@@ -892,6 +899,15 @@ The crafting window's `startHandcraft` returns while `logic:isCraftActionInProgr
 first craft starts are dropped (`*_CraftQueue.lua` keeps and replays them).
 `ISPickAxeGroundCoverItem` (rocks, ore, boulders, stumps) keeps its tool in `self.pickAxe` but `complete` wears
 `self.pickaxe` (never set, 42.21 ~146); `*_PickAxeWear.lua` does the wear under the same `RemoveBushToolWear` option.
+`ISAddTakeDispenserBottle:isValid` (42.21 ~6) compares with an undefined global `bottle` (always true) and `complete`
+re-checks nothing, so a second queued take/put duplicates the bottle and the dispenser object; the bottle put on is
+removed with `getInventory():Remove` (main inventory only) (`*_WaterDispenser.lua`). Fixed by vanilla in 42.21, no
+longer needs a mod: the composter's "Get compost" submenu (moved to `ISWorldObjectContextMenu.handleCompost` ~355,
+where its predicates are in scope). Known and left: `ISColorPicker` / `ISColorPickerHSB:picked` pass a nil global
+`mouseUp` (~151 / ~275), but every callback ignores it except `ISModalEditRole:onPickedTagColor` (`== false`, set while
+hovering), so nothing changes; `ISHealthPanel` cheats on another player are not misdirected (see Health panel).
+`server/*_ItemEdit.lua` requires a client-folder file that cannot load on a dedicated server (no fonts); the setter
+whitelist then falls back to any `set*` method, still behind the Edit Item capability.
 
 ### Single player vs a server (what breaks, what to call instead)
 
@@ -1322,7 +1338,10 @@ first craft starts are dropped (`*_CraftQueue.lua` keeps and replays them).
   inventory for 2 s) are swapped for the inventory item with its ID or taken off. `getSurroundingAttackingZombies`
   counts zombies within 0.9 tiles in AttackState, AttackNetworkState, LungeState or LungeNetworkState. No Lua path
   sends one zombie's ZombieHitPlayerPacket (`sendHitZombie(player)` is a deprecated debug global that sends one from
-  every zombie the client knows).
+  every zombie the client knows). The ghost check never takes make-up off (its window previews live outside the
+  inventory). Known gaps: the wound and the wear are separate rolls (same odds, same average); a fake local hole a
+  client sync pushes before the server's copy arrives becomes real (vanilla does that too); a condition raise within
+  5 s of a swing (repair) is taken back; fake-dead and vehicle attacks are not rolled.
 - `client/ZomboidFixesB42_AdminFullBright.lua` (option `AdminFullBright`): an Admin Powers option (`ISAdminPowerUI.AddOption`,
   file named to load before `*_AdminHotbarActions.lua`, which turns every option into a hotbar toggle). Always Day
   (ClimateManager day/ambient values while `isAlwaysDayCheat`) lights only the outdoors; the native lighting lights
