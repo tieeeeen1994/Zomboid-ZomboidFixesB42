@@ -118,6 +118,10 @@ Changes made in the item editor save for items in crates, vehicles, on the floor
 Option: [i][BETA] Working Debug Add Fluid On World Objects[/i]
 Debug Add Fluid fills rain collectors and other world containers instead of emptying them.
 
+[b]Working hutch Remove Egg cheat (beta)[/b]
+Option: [i][BETA] Working Hutch Remove Egg Cheat[/i]
+In multiplayer, the debug Remove Egg option on a hutch nest box (Animal Cheat on) puts the egg in your inventory. It used to take the egg out of the nest box without ever showing it to you, so it seemed lost until you relogged, and it ended in an error on a nest box someone had just emptied.
+
 [b]Working foraging debug tools (beta)[/b]
 Option: [i][BETA] Working Foraging Debug Tools[/i]
 The foraging debug menu can add, move and refresh icons, and added icons can be picked up.
@@ -152,6 +156,34 @@ Adding fuel to a generator takes as long as the fuel that actually goes in. It u
 Option: [i][BETA] Water Dispenser Bottle Duplication Fix[/i]
 Taking the bottle off an office water dispenser twice in a row, or two players taking it at once, no longer gives a second full bottle and a second dispenser on the same tile, and putting a bottle on from a bag no longer leaves the full bottle in the bag.
 
+[b]Make-up fixes in multiplayer (beta)[/b]
+Option: [i][BETA] Make-Up Fixes In Multiplayer[/i]
+Removing make-up in the make-up window deletes it on the server. It used to only come off, and the hidden make-up item stayed in your inventory for good, as did every make-up that new make-up replaced; applying make-up now deletes the one it replaces, and any left over from before. Applied make-up also no longer comes off two seconds later when Clothing Wear Down Rework is on.
+
+[b]Medical check stats reset fix (beta)[/b]
+Option: [i][BETA] Medical Check Stats Reset Fix[/i]
+In multiplayer, a second medical check on a player while the first health window on them is still open, or pressing the admin Health button again, no longer resets all of their stats on the server: hunger, thirst, tiredness, pain, panic, stress, boredom, unhappiness, sickness and drunkenness stay as they are.
+
+[b]Notebook fixes in multiplayer (beta)[/b]
+Option: [i][BETA] Notebook Fixes In Multiplayer[/i]
+A notebook or note you lock in the writing window stays locked after relogging and for whoever you give it to; the lock used to exist only on your own screen. What you write is saved the moment you press OK, also for a second split-screen player or after leaving the window open for over half an hour. Only the player who locked it, or someone allowed to edit any item, can unlock it.
+
+[b]Padlock fixes in multiplayer (beta)[/b]
+Option: [i][BETA] Padlock Fixes In Multiplayer[/i]
+A padlock taken off a door or gate can be put on again straight away; it used to come back with no keys until you relogged. A key taken from a key ring no longer stays on the ring.
+
+[b]Small text and menu fixes (beta)[/b]
+Option: [i][BETA] Small Text And Menu Fixes[/i]
+Faction invitations name the faction instead of "null faction", the admin Manage Inventory window centres its title, and right-clicking a crop with a trowel or shovel in your inventory no longer adds a greyed out "Not enough soil to plant here" to the Gardening menu.
+
+[b]Unstick timed actions (beta)[/b]
+Option: [i][BETA] Unstick Timed Actions After (Seconds)[/i] (15 by default, 0 = off)
+In multiplayer a timed action the server never answers (crafting at a forge or kiln, eating, reading, moving furniture) used to stay at 100% for good, with every action queued after it stuck behind it until you restarted the game. It is now stopped once it has waited at 100% for the set time plus as long again as it took to get there, as if the server had refused it, and you can act again.
+
+[b]Crafting stations stay reachable (beta)[/b]
+Option: [i][BETA] Crafting Stations Stay Reachable[/i]
+Once something below a forge, kiln, furnace or other crafting station on its tile was removed, the server could no longer find the station, and every craft there stuck at 100%. The server now keeps the stations near each player up to date.
+
 [b]Instant building with Handy (beta)[/b]
 Option: [i][BETA] Instant Building With Handy[/i]
 In multiplayer, admins with Timed Action Instant switched on and the Handy trait build instantly. The server gave them a negative build time, which the game turned into half an hour: an empty bar, and the building only appeared 30 minutes later.
@@ -175,6 +207,10 @@ Chickens the game deletes after laying in a full hutch are put back.
 [b]Hutch dirt speed[/b]
 Option: [i]Hutch Dirt Speed[/i] (0.25 by default, 1 = vanilla)
 Hutches and nest boxes get dirty at a quarter of the normal speed. Set any speed you like, or 1 for vanilla.
+
+[b]Grabbing eggs takes every egg (beta)[/b]
+Option: [i][BETA] Grabbing Eggs Takes Every Egg[/i]
+Grab Eggs on a hutch nest box takes every egg in it. With Timed Action Instant on a server, the action used to end after about a fifth of the eggs, and fast forward in single player skipped eggs the same way.
 
 [b]Delete negative weight items[/b]
 Option: [i]Delete Negative Weight Items[/i]

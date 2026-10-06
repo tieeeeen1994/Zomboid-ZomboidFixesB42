@@ -104,7 +104,8 @@
     GHOST_GRACE_MS, in case the item is still on its way: if an item with that ID is
     in the main inventory, it is worn instead; if no item with that ID is anywhere in
     the inventory, the ghost is taken off. Either way the client's setWornItem sends
-    SyncClothing, and the server drops its own copy from it.
+    SyncClothing, and the server drops its own copy from it. Make-up is never taken
+    off: the make-up window wears its previews from outside the inventory.
 --]]
 
 if not isClient() then return end
@@ -248,7 +249,12 @@ local function checkGhosts(player)
             print("[ZomboidFixesB42] worn " .. ghost.item:getFullType() .. " (" .. tostring(id)
                 .. ") was a copy, now wearing the one in the inventory")
             fixed = true
-        elseif not ZomboidFixesB42.findItemById(inventory, id) then
+        elseif not ZomboidFixesB42.findItemById(inventory, id)
+                and not (ZomboidFixesB42.isMakeUp and ZomboidFixesB42.isMakeUp(ghost.item)) then
+            -- Make-up never breaks, so it is never a ghost of a broken item: the
+            -- make-up window's previews are worn in no inventory on purpose, and
+            -- vanilla's apply leaves the owner's copy outside it (see
+            -- shared/ZomboidFixesB42_MakeUp.lua). Taking those off undid them.
             player:removeWornItem(ghost.item, false)
             print("[ZomboidFixesB42] worn " .. ghost.item:getFullType() .. " (" .. tostring(id)
                 .. ") is in no inventory, taken off")

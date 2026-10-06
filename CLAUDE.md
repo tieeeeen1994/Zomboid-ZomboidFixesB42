@@ -238,6 +238,22 @@ is never saved. A client's `ItemContainer.Remove` (RemoveInventoryItemFromContai
 from the client crossing the server's Unwear of an item it broke (a hit rolled on the server) leaves such a copy on both
 sides with the real item's ID while the real item lies on the floor. `ItemContainer.AddItem` refuses an ID the
 container already has (`Error, container already has id`), as does the client's AddInventoryItemToContainer (`Dupe item ID`).
+Make-up (42.21): hidden `Clothing` items (`hidden = true`; `ISInventoryPane` skips `isHidden`) worn at locations whose
+`getTranslationName()` starts with "MakeUp" (`ItemBodyLocation` are registry singletons, `tostring` = "base:makeup_lips").
+`ISMakeUpUI` previews by wearing a client `instanceItem` (each change sends SyncClothing, so the server wears a copy
+of it); single player applies in the window, MP queues `ISApplyMakeUp`, whose `complete` sends the tool
+(`self.item`) instead of the make-up, so the owner wears a SyncClothing copy, and removes the replaced make-up only if
+the server's inventory holds what is worn there (by then the preview copy). Removing is client only: its
+`removeWornItem` unwears on the server through SyncClothing but the item stays in the server's inventory. The server
+saves players (`ServerPlayerDB.serverUpdateNetworkCharacter` → `IsoPlayer.save`), so leftovers persist.
+`*_MakeUp.lua` fixes both; ClothingWear's ghost check never takes make-up off.
+Notebooks (42.21): `ISWriteSomething` (-1 duration) opens `ISUIWriteJournal`; OK/Cancel →
+`onWriteSomethingClick` writes pages + name, `ISTimedActionQueue.clear(getPlayer())` (player 1) → `stop` →
+`syncItemFields` (SyncItemFieldsPacket carries custom name + pages, **not** `Literature.lockedBy`, which the item
+bytes do save). Padlocks: the Java menu offers Put Padlock for `playerInv:FindAndReturn("Padlock")` (main inventory)
+only with `getNumberOfKey() > 0`, Remove Padlock when `haveThisKeyId(thump:getKeyId())` (also searches key rings);
+`ISPadlockAction:complete` sent the new padlock before setting its keys (`*_Padlock.lua`). Faction invites:
+`Events.ReceiveFactionInvite(faction, host, username)`, `faction` a Faction object.
 
 Client commands: `ClientCommand` packet is priority 1, reliability 2 = RakNet RELIABLE (**not ordered**), capability
 LoginOnServer. `PacketsCache.isLimitExceeded`: a client silently drops (cancels) packets of one type beyond
@@ -402,7 +418,10 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
   was dropped from the batch, so the transfer silently did nothing while vanilla (cheat off) worked. Its `start` also
   opened a vanilla transaction and cancelled it at once, i.e. sent a Reject per batch (see the removeIf note above).
 - 37 vanilla actions work on `emulateAnimEvent(netAction, periodMs, event)` (Java `AnimEventEmulator`, real-time period,
-  not exposed): milking, shearing, reading, fitness, drinking, fluids, reloading... `*_FastForwardAnimEvents.lua` fires
+  not exposed): milking, shearing, reading, fitness, drinking, fluids, reloading... `AnimEventEmulator.update` runs once
+  per server update (`IngameState.update` ~865, before OnTick and `ActionManager.update`) and fires each event at most
+  once per call, timer reset to now, so a period under ~100 ms is capped at 10 a second (Timed Action Instant shrinks
+  some periods to 20 ms: `ISHutchGrabEgg` then ends with most eggs left). `*_FastForwardAnimEvents.lua` fires
   (speed - 1) extra `netAction:animEvent` per period, stopping on the table's `complete`/`serverStop` or `getProgress() >= 1`.
   `emulateAnimEventOnce` (magazine eject/insert, racking, petting) is fired early on the game clock and the action's own
   `animEvent` wrapper swallows Java's later copy. Every reloading action has `getDuration() -1`: it ends on its events only.
@@ -442,6 +461,13 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
 - Hutch state runs on the server only (`IsoHutch.isOwner()` = `!GameClient.client`). `IsoHutch.update` syncs the whole
   hutch (doors, dirt, every nest box's eggs) every 3.5 s (`sendUpdate`), so a client's nest box eggs are overwritten
   within seconds. Animals in a hutch travel in AnimalPacket (`location` 1, `hutchNestBox`, `hutchPosition`).
+  Nest box eggs: `hutch:getNestBox(i)` (0..`getMaxNestBox()` inclusive, a HashMap, nil outside), `NestBox.removeEgg(i)`
+  = `ArrayList.remove` (throws on an empty box), max 10 eggs. The normal grab (`ISHutchGrabEgg:animEvent`, server) sends
+  the egg with `sendAddItemToContainer`; only the hutch window's debug Remove Egg (`animal.removeEggFromNestBox`,
+  ClientCommands ~802) forgets to (`*_HutchRemoveEgg.lua`). The grab's server run is looped (-1) and ends by the
+  client's `isValid` cancelling once the box syncs empty; with Timed Action Instant it is (eggs + 5) × 20 ms with a
+  20 ms event, and single player takes one egg per update however far fast forward moved `timer`
+  (`*_HutchGrabEgg.lua` takes the rest in `complete`).
 - `DesignationZone.update()` (from `IsoWorld.update`, every 2.5 s real time) runs **on clients too**: `checkStreamed`
   flips `streamed` from the zone's two corner squares and, on coming back, calls `doMeta(hours away)`. On a client
   `DesignationZoneAnimal.doMeta` replays those hours on its own copy of the loose animals (`updateStatsAway`): hens lay
@@ -621,7 +647,14 @@ Body-stat editing belongs to `Capability.CanModifyBodyStats` (admin and moderato
   patient, doctor)`; for another player `onCheatOtherPlayer` (~329) sends `player.onHealthCheat {id = patient}` from the
   doctor, the server (`ClientCommands.lua` ~474, `UseHealthCheat`) forwards it to the patient's client
   (`ISHealthPanel.onHealthCheat` server command, ~1964), which runs `onCheatCurrentPlayer` on `getPlayer()` and sends
-  `player.onHealthCheatCurrentPlayer {id = own}` itself (~481, unchecked). So the patient's own client must be online and
+  `player.onHealthCheatCurrentPlayer {id = own}` itself (~481, unchecked).
+  Another player's health window streams their body through `doctor:startReceivingBodyDamageUpdates(patient)`
+  (IsoPlayer ~6665: `resetBodyDamageRemote` + BodyDamageUpdatePacket START, reliability 2 unordered, LoginOnServer;
+  stop = STOP). Server `BodyDamageSync.startSendingUpdates`: a new Updater (`bdSent = new BodyDamage(patient)`, diffs
+  every 0.5 s into the client's `getBodyDamageRemote()`), or for an existing pair `bdSent.RestoreToFullHealth()`,
+  which with parentChar = the patient runs `stats.resetStats()` on the **real** patient (every CharacterStat to default)
+  and `setCorpseSicknessRate(0)`: a second Medical Check while the window is open wipes their moodles
+  (`*_MedicalCheck.lua`). Java methods can be wrapped from Lua through `__classmetatables[Class.class].__index`. So the patient's own client must be online and
   do the last hop, and in that handler `player` and the target are always the same player when it comes from the UI
   (`healthFull` / `healthFullBody` / `fatique` read `player`). It ends with `syncBodyPart` of the clicked part only;
   `healthFullBody`'s other parts reach the owner with the next PlayerDamage (2 s).
@@ -770,6 +803,17 @@ end = start + `AnimEventEmulator.getDurationMax()` (30 min), which is also the c
 actions. GameServer main loop order: packets (every ~5 ms), then on each update tick `IngameState.update` (OnTick)
 and later `NetworkPlayerManager.update` (stat/trait syncs), so a server change made while handling a packet and
 undone in the next OnTick is never synced. `CharacterTraits.set/add/remove` only flip the trait map.
+Stuck at 100% (42.21): `NetTimedAction.parse` runs `PZNetKahluaTableImpl.load` on the arguments before the Lua
+`new`; `loadComponent` / `loadResource` (entity net ID → `GameEntityManager.GetEntity`, null → NPE) and a vehicle
+window part of a missing vehicle throw out of parse, `GameServer.mainLoopDealWithNetData` swallows it, and neither
+Accept nor Reject is sent (`loadInventoryItem` returns nil instead). A Lua error in `new` is caught
+(`KahluaThread.pcall` catches Throwable) → action nil → Reject, and `NetTimedActionPacket.processServer` writes the
+right state (both 42.20 bugs, fixed). Client: `LuaTimedActionNew.start` sets waitForFinished, so only Done / Reject
+end it; `hasStalled` needs a negative time; the client ActionManager drops entries after 30 min and `isDone` /
+`isRejected` start with `!actions.isEmpty()`. Lua has `isActionDone` / `isActionRejected` / `getActionDuration(player,
+id)` but cannot read a LuaTimedActionNew's `transactionId`. Server entity net IDs are re-keyed lazily
+(`getEntityNetID` → `checkEntityIDChange` only when called), so an index shift on the square leaves
+`GetEntity(newId)` null until something calls it (`*_EntityNetIDs.lua`, `*_StuckActions.lua`).
 Server-side timed actions: `NetTimedAction` only calls `new`, `getDuration`, `adjustMaxTime`, `serverStart`,
 `serverStop`, `animEvent`, `complete`, `isUsingTimeout` — never `isValid`, `update` or `perform`. A Lua error in
 `complete()` makes `ActionManager` send Reject (the changes made before the error stay); so does `complete()`

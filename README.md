@@ -5,6 +5,7 @@ Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly 
 - The foraging debug menu can add, move and refresh icons, and added icons can be picked up (beta).
 - Item editor changes save for items in crates, vehicles, on the floor and in other players' inventories.
 - Debug Add Fluid fills rain collectors and other world containers instead of emptying them (beta).
+- The hutch window's debug Remove Egg puts the egg in your inventory in multiplayer instead of losing it until you relog (beta).
 - The admin tag shows for every admin panel cheat. It can also be set to never show, or left as vanilla.
 - Shin armor run speeds follow the same pattern as thigh armor: articulated is faster than plain metal, spiked slower.
 - No fall damage on stairs while Fast Move is on (beta).
@@ -12,6 +13,7 @@ Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly 
 - Clothing wear down rework for multiplayer: zombie attacks that clothing or armor stops wear it down like in single player, so armor with full protection no longer lasts forever; clothing destroyed while worn falls off for everyone and stays destroyed after relogging, with no plain copy of itself left on your character (a white scarf for a green one).
 - Chickens the game deletes after laying in a full hutch are put back.
 - Hutches and nest boxes get dirty at a quarter of the normal speed. The speed can be changed, or set back to vanilla.
+- Grab Eggs takes every egg in the nest box, also with Timed Action Instant on a server or fast forward in single player, which used to leave most of them behind (beta).
 - Running into a stair railing no longer vaults you over it (beta).
 - Speed controls are back in multiplayer. The game fast forwards once every player votes for it, timed actions (milking, shearing, reading and reloading included), looting and cooking speed up with it, and right-clicking a fast forward button makes your timed actions vote for that speed automatically once you have been busy for a few seconds (5 by default).
 - Guns of Marz attachment tooltips wrap instead of stretching across the screen, at 200 characters a line by default.
@@ -33,6 +35,13 @@ Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly 
 - Welding a gas tank that is still on a vehicle finishes the repair instead of using up the materials for nothing (beta).
 - Adding fuel to a generator takes as long as the fuel that actually goes in, not as long as the whole can (beta).
 - Water dispenser bottles can no longer be duplicated by taking the bottle twice or putting one on from a bag (beta).
+- Make-up in multiplayer: removing it deletes it on the server instead of leaving it hidden in your inventory, applying new make-up deletes the make-up it replaces, and applied make-up no longer comes off after two seconds with the clothing wear rework on (beta).
+- A second medical check on a player whose health window is still open no longer resets their hunger, thirst, tiredness, pain, panic, stress and other stats in multiplayer (beta).
+- A notebook or note you lock in multiplayer stays locked after relogging and for whoever you give it to, and what you write is saved the moment you press OK (beta).
+- A padlock taken off in multiplayer can be put on again straight away, and its key no longer stays on your key ring (beta).
+- Small vanilla typos: faction invitations name the faction instead of "null faction", the admin Manage Inventory title is centred, and right-clicking a crop with a trowel or shovel no longer shows "Not enough soil to plant here" (beta).
+- A timed action the server never answers no longer stays stuck at 100% blocking every action after it: it is stopped after a while (15 seconds plus its own length by default) so you can act again (beta).
+- Crafting at a forge, kiln, furnace or other station keeps working after something else on its tile is removed, instead of every craft there sticking at 100% (beta).
 - Admins with Timed Action Instant and the Handy trait build instantly in multiplayer instead of waiting half an hour per build (beta).
 - The world map's admin tools (right-click Teleport Here, grids, all map options) show for moderators and custom roles that may teleport, not only for the admin role (beta).
 - Rooms you have seen in multiplayer stay lit after relogging instead of going dark again (beta).

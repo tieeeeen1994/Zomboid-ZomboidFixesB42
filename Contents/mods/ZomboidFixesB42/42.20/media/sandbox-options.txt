@@ -40,6 +40,14 @@ option ZomboidFixesB42.FixDebugAddFluid
     translation = ZomboidFixesB42_FixDebugAddFluid,
 }
 
+option ZomboidFixesB42.HutchRemoveEggCheat
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_HutchRemoveEggCheat,
+}
+
 option ZomboidFixesB42.AdminTag
 {
     type = enum,
@@ -89,6 +97,14 @@ option ZomboidFixesB42.HutchDirtSpeed
     default = 0.25,
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_HutchDirtSpeed,
+}
+
+option ZomboidFixesB42.HutchGrabAllEggs
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_HutchGrabAllEggs,
 }
 
 option ZomboidFixesB42.NoStairAutoVault
@@ -299,6 +315,64 @@ option ZomboidFixesB42.WaterDispenserCheck
     default = true,
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_WaterDispenserCheck,
+}
+
+option ZomboidFixesB42.MakeUpSync
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_MakeUpSync,
+}
+
+option ZomboidFixesB42.MedicalCheckNoReset
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_MedicalCheckNoReset,
+}
+
+option ZomboidFixesB42.NotebookSync
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_NotebookSync,
+}
+
+option ZomboidFixesB42.PadlockFixes
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_PadlockFixes,
+}
+
+option ZomboidFixesB42.UITextFixes
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_UITextFixes,
+}
+
+option ZomboidFixesB42.StuckActionTimeout
+{
+    type = integer,
+    min = 0,
+    max = 600,
+    default = 15,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_StuckActionTimeout,
+}
+
+option ZomboidFixesB42.EntityNetIDRefresh
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_EntityNetIDRefresh,
 }
 
 option ZomboidFixesB42.InstantBuildHandy

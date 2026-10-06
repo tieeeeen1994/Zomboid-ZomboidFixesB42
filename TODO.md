@@ -70,31 +70,52 @@ Sandbox.json tooltip, `[BETA]` until it has been played in game.
       use, then the server's `complete` waters again with the full uses and uses the item again.
       Done: `*_WaterPlant.lua` (server alone waters, clamped to the can; `serverStop` pours the part
       done on cancel), option `WaterPlantOnce`.
-- [ ] **Egg taken from a nest box is invisible.** `animal.removeEggFromNestBox`
-      (`server/ClientCommands.lua` ~772) adds the egg without `sendAddItemToContainer`.
+- [x] **Egg taken from a nest box is invisible.** `animal.removeEggFromNestBox`
+      (`server/ClientCommands.lua` ~802) adds the egg without `sendAddItemToContainer`.
+      Done 2026-10-06: only the hutch window's debug Remove Egg sends it (normal grabs already send
+      the egg); `*_HutchRemoveEgg.lua` routes it to our own command, option `HutchRemoveEggCheat`.
+- [x] **Grab Eggs leaves eggs behind with Timed Action Instant.** The emulated egg event fires at most once
+      per server update while the action lasts 20 ms per egg; SP fast forward skips eggs in `update`.
+      Done 2026-10-06: `shared/*_HutchGrabEgg.lua` takes the rest in `complete`, option `HutchGrabAllEggs`.
 - [x] **Remove Bush skips neighbouring bushes.** `object.removeBush` (`server/ClientCommands.lua` ~122)
       removes while iterating forward (`i = i - 1` does nothing); `ZombRand(1) == 0` is always true.
       `shovelGround` (~180) errors on a nil `emptyBag`.
       Done 2026-10-05: the live copy is `ISRemoveBush:complete`; walked backwards in `shared/*_RemoveBushSquare.lua`
       (RemoveBushWholeSquare). It also threw past the list end whenever the bush was not last. Twigs-always left as
       is. `object.removeBush` / `shovelGround` have no sender in 42.21 (a tampered client only logs an error).
-- [ ] **Removed make-up comes back in MP.** `ISMakeUpUI.onRemoveMakeUp` (~114) removes it on the
+- [x] **Removed make-up comes back in MP.** `ISMakeUpUI.onRemoveMakeUp` (~114) removes it on the
       client only (apply uses `ISApplyMakeUp`).
-- [ ] **Notebook text lost in MP.** `ISInventoryPaneContextMenu.onWriteSomethingClick` (~2713) never
+      Done 2026-10-06: no path re-wears it found; the client's removeWornItem does unwear on the server
+      (SyncClothing), but the item stayed in the server's inventory, as did replaced make-up, and
+      `ISApplyMakeUp:complete` sends the tool instead of the make-up (owner wears a no-inventory copy,
+      which ClothingWear's ghost check took off after 2 s). `*_MakeUp.lua`, option `MakeUpSync`.
+- [x] **Notebook text lost in MP.** `ISInventoryPaneContextMenu.onWriteSomethingClick` (~2713) never
       calls `syncItemFields`; `ISUIWriteJournal` `setLockedBy` is not synced either. 42.21 fixed "notes
       in a backpack notebook not saving": check what is left.
-- [ ] **Faction invite says "null faction".** `ISFactionUI.lua` ~410 passes an undefined
-      `factionName` (the parameter is `faction`).
-- [ ] **Padlock unlock sends the padlock too early.** `ISPadlockAction.lua` ~40: sent with
+      Done 2026-10-06: 42.21's `ISWriteSomething:stop` syncs the text (clear → stop); left: `lockedBy` (not in
+      SyncItemFieldsPacket), `clear(getPlayer())` (player 1 only), and the 30-min end of a -1 server action
+      before OK. `*_Notebook.lua` syncs at OK/Cancel and sends the lock, option `NotebookSync`.
+- [x] **Faction invite says "null faction".** `ISFactionUI.lua` ~410 passes an undefined
+      `factionName` (the parameter is `faction`). Done 2026-10-06: `client/*_UITextFixes.lua`, UITextFixes.
+- [x] **Padlock unlock sends the padlock too early.** `ISPadlockAction.lua` ~40: sent with
       `sendAddItemToContainer` before `setNumberOfKey` / `setKeyId`.
-- [ ] Cosmetic typos: `ISColorPicker.lua` ~151 / `ISColorPickerHSB.lua` ~275 pass a nil global
+      Done 2026-10-06: the client's padlock had 0 keys, and Put Padlock needs > 0, so it could not be put on
+      again until relog; the key's removal was sent for the main inventory while `haveThisKeyId` searches key
+      rings. `shared/*_Padlock.lua`, option `PadlockFixes`.
+- [x] Cosmetic typos: `ISColorPicker.lua` ~151 / `ISColorPickerHSB.lua` ~275 pass a nil global
       `mouseUp`; `ISPlayerStatsManageInvUI.lua` ~215 `playerUsername` vs `self.playerUsername`;
       `ISFarmingMenu.lua` ~141 undefined `currentPlant`.
+      Done 2026-10-06: Manage Inventory title centring and the crop "no soil" option in `client/*_UITextFixes.lua`.
+      `mouseUp` left: every picker callback ignores it except `ISModalEditRole` (`== false`, set while
+      hovering), so passing the intended value would change nothing.
 - [x] Generators: pickup action completes but gives no item (`ISTakeGenerator.lua` ~43, `instanceItem`
       nil; forum 101307); add-fuel time ignores the amount (101661).
       Done 2026-10-05: refuel timed from the fuel that fits (`shared/*_GeneratorFuel.lua`, GeneratorRefuelTime).
       Pickup needs nothing on 42.21: `IsoGenerator.getGeneratorItemType` falls back to Base.Generator.
-- [ ] Medical-checking another player twice clears their negative statuses (forum 99627).
+- [x] Medical-checking another player twice clears their negative statuses (forum 99627).
+      Done 2026-10-06: a second START_UPDATING for a doctor/patient pair whose `BodyDamageSync.Updater` exists runs
+      `bdSent.RestoreToFullHealth()`, and bdSent's parent is the patient, so `stats.resetStats()` hits the real
+      player. `client/*_MedicalCheck.lua` drops the second start (IsoPlayer class metatable), MedicalCheckNoReset.
 - [ ] Scrapping gold jewellery used as a key ring deletes every key on it (forum 101057).
 - [ ] Barricading needs 2 nails but uses 1; runs with no plank left and builds nothing (100019, 100313).
 - [x] "Eat all" then queueing another eat: the eaten item's auto-return cancels the queue (99717);
@@ -179,7 +200,14 @@ in the log.
 - [x] Water containers break after a server restart (92679, 93595). Meta entities lost between chunk and
       entity_data.bin saves (dedicated servers never hot-save). Done: `*_LostEntities.lua`, option
       `RepairLostEntities`. Not covered: broken items put in a crate before the fix (fixed once carried at login).
-- [ ] Timed actions stuck at 100% block the queue (forge, kiln, bulk crafting; 94615, 100905).
+- [x] Timed actions stuck at 100% block the queue (forge, kiln, bulk crafting; 94615, 100905).
+      Done 2026-10-06: the server never answers when `NetTimedAction.parse` throws while rebuilding the
+      arguments (`PZNetKahluaTableImpl.loadComponent` / `loadResource` NPE on an entity net ID it cannot find),
+      and the client's ActionManager forgets a request after 30 min with `isDone`/`isRejected` both false on
+      an empty list. `client/*_StuckActions.lua` (StuckActionTimeout, 15 s + the action's own length) force-stops
+      it; `server/*_EntityNetIDs.lua` (EntityNetIDRefresh) re-keys stations near players, whose server net ID
+      goes stale when an object below them is removed. 42.21 already fixed the Lua-error and wrong-reply-state
+      causes from 100905.
 - [x] **Clothing wear down rework** (option `ClothingWearRework`, beta; replaces `ZombieAttacksWearClothing`
       and `SyncBrokenClothing`). The victim's client rolls every zombie attack that lands on it (own and other
       players' zombies) and sends each thump / blocked swing as its own event when the swing ends; the server
@@ -292,6 +320,36 @@ Beta features: what playing each one should check
       FirearmRadialNoBlanks, GoMMagazineTooltip, the admin
       debug fixes (FixDebugAddFluid, ForagingDebugFixes, NoWalkOnSquarePick, ServerOptionsTooltip),
       AdminSpawnProtection: one session each on a server.
+- [ ] HutchRemoveEggCheat, on a server with the Animal Cheat on: right-click a nest box with eggs in the hutch
+      window, Remove Egg; the egg shows in the inventory at once (not only after relog) and the nest box count
+      drops for everyone; Remove Egg on a box another player just emptied logs no error.
+- [ ] HutchGrabAllEggs: on a server with Timed Action Instant on, Grab Eggs on a nest box with 5-10 eggs takes
+      every egg (vanilla took about a fifth); without the cheat it still takes them one by one and ends when the
+      box is empty; walking away half way keeps only the eggs taken so far. Single player: Grab Eggs at fast
+      forward takes them all.
+- [ ] MakeUpSync, on a server with ClothingWearRework on: apply lipstick, it stays on after a few seconds and
+      for other players; previewing in the make-up window keeps the preview on; apply a second lipstick over it;
+      remove it with the window's Remove; relog: the make-up is still gone and nothing reappears. No
+      "Dupe item ID" in the client log when applying.
+- [ ] MedicalCheckNoReset, on a server: make a second player hungry, thirsty or stressed; medical-check them,
+      and with the window still open check them again (and press the admin Health button twice): their moodles
+      stay and the window keeps updating. Walking out of reach and back still refreshes the window.
+- [ ] NotebookSync, on a server: write in a notebook and press OK, relog: the text is there; lock it, relog
+      and hand it to another player: it is still locked and they cannot edit it; unlock it again as the
+      writer. A write-once note (LOCK_ON_WRITE) stays locked for good. A second split-screen player's text is
+      saved at OK.
+- [ ] PadlockFixes, on a server: put a padlock on a door or gate, take it off with the key on a key ring: the
+      key leaves the ring (no copy left on it), and Put Padlock is offered again at once for the padlock taken
+      off (vanilla needed a relog); put it back on and the new key works.
+- [ ] UITextFixes: a faction invitation names the faction (not "null faction"); the admin Manage Inventory
+      window's title is centred; right-clicking a crop with a trowel or shovel in the inventory shows no
+      greyed "Not enough soil to plant here." (single player too), while an indoor or upstairs floor still does.
+- [ ] StuckActionTimeout, on a server: normal crafts, eating, reading and washing a pile of clothes (whose server
+      time is longer than the bar) still finish and are never stopped; a stuck action (reproduce with
+      EntityNetIDRefresh off: build a kiln, put and pick up an object on its tile, craft there) is stopped with
+      "The server never finished that action" after about 15 s plus its own length, and the player can act again.
+- [ ] EntityNetIDRefresh: the same kiln set-up with the option on crafts normally; no
+      `NullPointerException ... loadComponent` in the server log; no server lag with many players.
 - [x] ItemDataFixes and RecipeFixes: each fix in its tooltip, and switching the option off mid-game
       reverts it (ScriptFixes revert path).
       Confirmed working by the author 2026-10-06; beta labels dropped.
