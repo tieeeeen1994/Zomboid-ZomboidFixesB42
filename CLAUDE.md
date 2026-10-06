@@ -1034,7 +1034,10 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   frame's box start under them (`*_TooltipStacking.lua`; Tien's Bag Upgrades draws its rows after the chain and does
   the same, which works in either load order).
 - Item tooltips (`ObjectTooltip.Layout` / `LayoutItem`) keep every row's text in public fields: Lua can add rows, never
-  read or remove them. `getNumClassFields` / `getClassField` / `getClassFieldVal` throw "Not in debug" without `-debug`
+  read or remove them. Size extra tooltip lines from the tooltip itself (42.21 `ObjectTooltip.checkFont`, static):
+  `tooltip:getFont()` (tooltip font option), `tooltip:getLineSpacing()` = that font's line height (scaled by the
+  `fontSize` option, 1x-4x), padding = `MeasureStringX(font, "0")` left/right, half that top/bottom. Fixed pixel
+  heights break past 1x: Plysken's attachment slot box did (`*_TooltipStacking.lua` redraws it). `getNumClassFields` / `getClassField` / `getClassFieldVal` throw "Not in debug" without `-debug`
   (`LuaManager.validateReflectionAccess`). `item:DoTooltipEmbedded(tooltip, layout, 0)` fills a layout without drawing
   it; the caller renders it at the y worked out again by hand (`*_GoMTooltips.lua`). A gun's ammo row (`HandWeapon.DoTooltip`)
   is shown only while `getMaxAmmo() > 0` and is labelled with `getMagazineType()`'s display name, cached per item in a private

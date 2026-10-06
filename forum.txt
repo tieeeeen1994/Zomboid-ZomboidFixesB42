@@ -346,9 +346,9 @@ Guns of Marz attachment tooltips wrap instead of stretching across the screen.
 Option: [i][BETA] Guns of Marz Magazine Tooltip[/i]
 A Guns of Marz gun's tooltip names the magazine really in it, with its capacity, instead of an earlier one.
 
-[b]Bag attachment slots under other tooltip lines (beta)[/b]
-Option: [i][BETA] Bag Attachment Slots Under Other Tooltip Lines[/i]
-Plysken Attachments Reborn's attachment slots no longer draw over the lines other mods add to a bag's tooltip, such as Dynamic Backpack Upgrades' upgrade slots, when Plysken's mod loads after them.
+[b]Bag attachment slots tooltip box (beta)[/b]
+Option: [i][BETA] Bag Attachment Slots Tooltip Box[/i]
+Plysken Attachments Reborn's bag attachment slot box is drawn at the tooltip's real font size, so with a bigger font size the slot names no longer overlap each other or spill out of the box. It also starts under the lines other mods add to a bag's tooltip, such as Dynamic Backpack Upgrades' or Tien's Bag Upgrades' upgrade slots, whichever mod loads first.
 
 [b]Turbo Game in multiplayer[/b]
 Option: [i]Turbo Game In Multiplayer[/i]
