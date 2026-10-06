@@ -42,6 +42,8 @@ Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly 
 - Small vanilla typos: faction invitations name the faction instead of "null faction", the admin Manage Inventory title is centred, and right-clicking a crop with a trowel or shovel no longer shows "Not enough soil to plant here" (beta).
 - A timed action the server never answers no longer stays stuck at 100% blocking every action after it: it is stopped after a while (15 seconds plus its own length by default) so you can act again (beta).
 - Crafting at a forge, kiln, furnace or other station keeps working after something else on its tile is removed, instead of every craft there sticking at 100% (beta).
+- Scrapping a forged gold or silver key ring no longer deletes the keys on it, and cutting up a sack or bag, or making a hollow book, no longer deletes what is inside: those recipes only take empty containers (beta).
+- Plank barricades take 2 nails, as the menu asks, and the barricade cursor stops once the last plank is used instead of building nothing (beta).
 - Admins with Timed Action Instant and the Handy trait build instantly in multiplayer instead of waiting half an hour per build (beta).
 - The world map's admin tools (right-click Teleport Here, grids, all map options) show for moderators and custom roles that may teleport, not only for the admin role (beta).
 - Rooms you have seen in multiplayer stay lit after relogging instead of going dark again (beta).

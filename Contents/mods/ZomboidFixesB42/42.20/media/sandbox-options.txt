@@ -375,6 +375,22 @@ option ZomboidFixesB42.EntityNetIDRefresh
     translation = ZomboidFixesB42_EntityNetIDRefresh,
 }
 
+option ZomboidFixesB42.KeepContainerContents
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_KeepContainerContents,
+}
+
+option ZomboidFixesB42.BarricadeFixes
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_BarricadeFixes,
+}
+
 option ZomboidFixesB42.InstantBuildHandy
 {
     type = boolean,

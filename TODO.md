@@ -116,8 +116,15 @@ Sandbox.json tooltip, `[BETA]` until it has been played in game.
       Done 2026-10-06: a second START_UPDATING for a doctor/patient pair whose `BodyDamageSync.Updater` exists runs
       `bdSent.RestoreToFullHealth()`, and bdSent's parent is the patient, so `stats.resetStats()` hits the real
       player. `client/*_MedicalCheck.lua` drops the second start (IsoPlayer class metatable), MedicalCheckNoReset.
-- [ ] Scrapping gold jewellery used as a key ring deletes every key on it (forum 101057).
-- [ ] Barricading needs 2 nails but uses 1; runs with no plank left and builds nothing (100019, 100313).
+- [x] Scrapping gold jewellery used as a key ring deletes every key on it (forum 101057).
+      Done 2026-10-06: Scrap_Smaller_Gold/Silver_Object (key rings), ScrapSack, ScrapSackLarge, CutHeadSack and
+      MakeHollowBook consume containers without flags[IsEmpty] (IsEmptyContainer is a no-op); each gets an OnTest
+      refusing a non-empty container. `shared/*_KeepContainerContents.lua`, option `KeepContainerContents`.
+- [x] Barricading needs 2 nails but uses 1; runs with no plank left and builds nothing (100019, 100313).
+      Done 2026-10-06: the Java menu wants 2 nails, the BarricadePlanks entity recipe takes 1: a second nails input
+      is appended (author's choice: 2). The context-menu cursor never re-checks materials (`haveMaterial` reads
+      only modData needs); the plank cursor and its build actions now check plank + nails.
+      `shared/` + `client/*_Barricade.lua`, option `BarricadeFixes`. Preview spot glitch for a second plank not done.
 - [x] "Eat all" then queueing another eat: the eaten item's auto-return cancels the queue (99717);
       queued crafts: only 2 run (100495).
       Done 2026-10-05: put-backs (`allowMissingItems`) no longer forceStop (`client/*_ReturnTransfer.lua`,
@@ -350,6 +357,13 @@ Beta features: what playing each one should check
       "The server never finished that action" after about 15 s plus its own length, and the player can act again.
 - [ ] EntityNetIDRefresh: the same kiln set-up with the option on crafts normally; no
       `NullPointerException ... loadComponent` in the server log; no server lag with many players.
+- [ ] KeepContainerContents: a forged gold key ring holding keys is not offered (or greyed) in Scrap Smaller Gold
+      Object, and is once emptied; a full sandbag in Scrap Sack and a hollow book with something inside in Make
+      Hollow Book likewise; empty ones and the normal scrap items still work.
+- [ ] BarricadeFixes, single player and server: the build panel lists 2 nails for a plank barricade and it
+      takes 2; the barricade keeps its name in the build panel; with 1 plank, barricade one window, then the
+      cursor is red on the next; clicking several windows quickly with one plank leaves the extra actions
+      stopped (no full-length action building nothing); metal barricades unchanged.
 - [x] ItemDataFixes and RecipeFixes: each fix in its tooltip, and switching the option off mid-game
       reverts it (ScriptFixes revert path).
       Confirmed working by the author 2026-10-06; beta labels dropped.

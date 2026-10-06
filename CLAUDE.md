@@ -247,6 +247,18 @@ the server's inventory holds what is worn there (by then the preview copy). Remo
 `removeWornItem` unwears on the server through SyncClothing but the item stays in the server's inventory. The server
 saves players (`ServerPlayerDB.serverUpdateNetworkCharacter` → `IsoPlayer.save`), so leftovers persist.
 `*_MakeUp.lua` fixes both; ClothingWear's ghost check never takes make-up off.
+Craft inputs that consume an `InventoryContainer` delete its contents; `flags[IsEmpty]` refuses a non-empty one
+(`InputScript.doesItemPassIsOrNotEmptyAndFullTests`), `IsEmptyContainer` only logs (`CraftRecipeManager` ~800, no
+return). A recipe-wide `OnTest = Fn` (`CraftRecipe.OnTestItem(item, character)`, every candidate input item,
+tools included) can refuse items instead (`*_KeepContainerContents.lua`). Barricading (42.21) is the build entity
+`BarricadePlanks` / metal ones (`ISWorldObjectContextMenu.onBarricade` → `ISBuildIsoEntity` cursor,
+`dragNilAfterPlace = false`, never re-checks materials: `ISBuildingObject:haveMaterial` reads only modData
+`need:` keys); its recipe is `ScriptManager:getGameEntityScript("Base.BarricadePlanks"):getComponentScriptFor(
+ComponentType.CraftRecipe):getCraftRecipe()`. `CraftRecipe:Load` appends an inputs block; the new input is
+resolved only by the recipe's public `OnPostWorldDictionaryInit` (InputScript's is protected), which re-adds the
+recipe name to every input item's `getUsedInRecipes` and logs a sealed-fluid-filter line per input; `Load` also
+resets `translationName` (`overrideTranslationName` to restore). `ISBuildAction` (client) checks `isValid` every
+tick; a 42.21 `ISBarricadeAction` remains but only the unit tests use it.
 Notebooks (42.21): `ISWriteSomething` (-1 duration) opens `ISUIWriteJournal`; OK/Cancel →
 `onWriteSomethingClick` writes pages + name, `ISTimedActionQueue.clear(getPlayer())` (player 1) → `stop` →
 `syncItemFields` (SyncItemFieldsPacket carries custom name + pages, **not** `Literature.lockedBy`, which the item

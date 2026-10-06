@@ -184,6 +184,14 @@ In multiplayer a timed action the server never answers (crafting at a forge or k
 Option: [i][BETA] Crafting Stations Stay Reachable[/i]
 Once something below a forge, kiln, furnace or other crafting station on its tile was removed, the server could no longer find the station, and every craft there stuck at 100%. The server now keeps the stations near each player up to date.
 
+[b]Scrapping never deletes container contents (beta)[/b]
+Option: [i][BETA] Scrapping Never Deletes Container Contents[/i]
+Scrapping a forged gold or silver key ring used to delete every key on it, and cutting up a sack, sandbag, laundry or mail bag, or making a hollow book from one that already hid something, deleted what was inside. Those recipes now only take an empty container, like the bag recipes already do; empty it first.
+
+[b]Barricade fixes (beta)[/b]
+Option: [i][BETA] Barricade Fixes[/i]
+A plank barricade takes 2 nails, as the right-click menu (which asks for 2) and the barricade itself show; it took only 1. Once the last plank is used, the barricade cursor turns red and a queued barricade stops, instead of running to the end and building nothing.
+
 [b]Instant building with Handy (beta)[/b]
 Option: [i][BETA] Instant Building With Handy[/i]
 In multiplayer, admins with Timed Action Instant switched on and the Handy trait build instantly. The server gave them a negative build time, which the game turned into half an hour: an empty bar, and the building only appeared 30 minutes later.
