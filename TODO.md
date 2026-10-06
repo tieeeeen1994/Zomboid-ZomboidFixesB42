@@ -131,8 +131,13 @@ Sandbox.json tooltip, `[BETA]` until it has been played in game.
       ReturnKeepsQueue). Crafts: `startHandcraft` ignores clicks while `isCraftActionInProgress()` (set when a
       craft starts), so only the clicks before the first start queue; kept and replayed once idle
       (`client/*_CraftQueue.lua`, CraftClickQueue). Not played yet.
-- [ ] Mechanics "XP once per part" limit (`get/addMechanicsItem`) is not saved, lost on reload (97845).
-- [ ] Fish fillets show 205 kcal until dropped (100231).
+- [x] Mechanics "XP once per part" limit (`get/addMechanicsItem`) is not saved, lost on reload (97845).
+      Done 2026-10-06: the map is saved; `BaseVehicle.createPhysics` re-rolls `mechanicalId` (part of every key) each
+      time a vehicle enters the world. `server/*_MechanicsXP.lua` puts the loaded ID back (OnSpawnVehicleStart/End),
+      option `MechanicsXPLimit`.
+- [x] Fish fillets show 205 kcal until dropped (100231).
+      Done 2026-10-06: `ISHandcraftAction:performRecipe` sends results before OnCreate (Java `cutFish`) sets their
+      values. `server/*_CraftResultSync.lua` re-sends crafted items afterwards, option `CraftResultSync`.
 
 ## 2. Item / recipe data fixes (options `ItemDataFixes` and `RecipeFixes`)
 
@@ -195,15 +200,26 @@ in the log.
       (`ISWorldMap.lua` ~36, 166, 911, `ISMiniMap.lua` ~130): moderators and custom roles can't teleport
       from the map (100607). Seeing remote players is Java and already by capability (CanSeeAll). Done:
       `client/*_WorldMapAdmin.lua`, option `MapAdminCapabilities` (TeleportToCoordinates or UseDebugContextMenu).
-- [ ] **ALICE belt / webbing MaxItemSize checked against the whole dragged stack**, 1-4 magazines per
+- [x] **ALICE belt / webbing MaxItemSize checked against the whole dragged stack**, 1-4 magazines per
       drag (`ISInventoryPane.lua` ~1429, `ISInventoryPaneContextMenu.hasRoomForAny`; 98673, 101849).
-- [ ] **Houses can't be claimed as safehouses** ("non-residential"; 96629, 100611, TIS frequently
+      Done 2026-10-06: `ItemContainer.hasRoomFor(chr, weight, floor)` compares MaxItemSize with the weight passed;
+      the drag (~1439) and TransferSameTypeMultiContainer pass running totals (`hasRoomForAny` uses the lightest
+      item, fine). `client/*_MaxItemSize.lua` (MaxItemSizePerItem); `shared/*_RemoveMaxItemSize.lua`
+      (RemoveMaxItemSize, off by default, author's request). Floor pickups (TransactionManager sums pending) not fixable.
+- [x] **Houses can't be claimed as safehouses** ("non-residential"; 96629, 100611, TIS frequently
       reported list). Find the real check in Java; maybe a server claim command with a fixed test.
+      Left as is 2026-10-06 (author's call): `SafeHouse.canBeSafehouse` (Java, also re-run by the server in
+      `SafehouseClaimPacket.processServer`) wants every room name in a fixed list of 15 plus a bedroom or living
+      room; B42 houses use other names (attic, sunroom...). Workaround: `SafehouseAllowNonResidential` or admin claim.
 - [x] **Explored rooms reset on every relog in MP** (99809, re-confirmed on 42.21): rooms go dark again.
       The per-square "seen" bits are saved with the chunk only in single player (`IsoGridSquare.save/load`),
       and clients never load map_meta.bin (room explored flags). Done: `client/*_SeenRooms.lua`, option
       `RememberSeenRooms` (client file per server and account of explored rooms, re-applied as chunks load).
-- [ ] Map items in MP: symbols lost on relog (96433), brochures don't mark the map (Steam).
+- [x] Map items in MP: symbols lost on relog (96433), brochures don't mark the map (Steam).
+      Done 2026-10-06: a map item's symbols are edited on the client copy only (no packet carries them, server Lua
+      cannot write them); `client/*_MapSymbols.lua` keeps them in the item's modData (syncItemFields) and redraws
+      them on open (MapSymbolsSave). `readPrintMedia` is added on the server by ISReadABook (never sent) and by
+      `onCheckMap` on the client only (never saved): `*_PrintMedia.lua` syncs both ways (PrintMediaSync).
 - [x] Water containers break after a server restart (92679, 93595). Meta entities lost between chunk and
       entity_data.bin saves (dedicated servers never hot-save). Done: `*_LostEntities.lua`, option
       `RepairLostEntities`. Not covered: broken items put in a crate before the fix (fixed once carried at login).
@@ -364,6 +380,19 @@ Beta features: what playing each one should check
       takes 2; the barricade keeps its name in the build panel; with 1 plank, barricade one window, then the
       cursor is red on the next; clicking several windows quickly with one plank leaves the extra actions
       stopped (no full-length action building nothing); metal barricades unchanged.
+- [ ] MechanicsXPLimit: uninstall and reinstall a part (XP), again (no XP), save and reload (or restart the server,
+      or walk far away and back), again: still no XP until 24 game hours have passed; new vehicles still get XP.
+- [ ] CraftResultSync, on a server: fillet a big and a small fish: the fillets show different calories and weights
+      at once, without dropping them; a jar of food keeps its lid condition; batch crafts still work, no lag.
+- [ ] MaxItemSizePerItem: drag 10 full M1911 magazines onto ALICE webbing with room: all go in at once; an item
+      heavier than 1.3 is refused (red) while the rest go in; the transfer same type button fills the webbing.
+- [ ] RemoveMaxItemSize (off by default): turned on, a heavy item goes into a wallet or toolbox up to capacity,
+      also picked up from the floor and on a server; the tooltip has no max item size row; off again restores it.
+- [ ] MapSymbolsSave, on a server: draw symbols and a note on a paper map, close it, relog: still there; drop it,
+      walk far away and back, pick it up: still there; give it to another player: they see them; erase all,
+      relog: gone; stash maps' printed annotations are not doubled.
+- [ ] PrintMediaSync, on a server: read a brochure: its icon is on the world map's print media layer at once,
+      locations revealed only with the auto-reveal option on; open a paper map, relog: still counted as read.
 - [x] ItemDataFixes and RecipeFixes: each fix in its tooltip, and switching the option off mid-game
       reverts it (ScriptFixes revert path).
       Confirmed working by the author 2026-10-06; beta labels dropped.

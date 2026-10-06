@@ -192,6 +192,30 @@ Scrapping a forged gold or silver key ring used to delete every key on it, and c
 Option: [i][BETA] Barricade Fixes[/i]
 A plank barricade takes 2 nails, as the right-click menu (which asks for 2) and the barricade itself show; it took only 1. Once the last plank is used, the barricade cursor turns red and a queued barricade stops, instead of running to the end and building nothing.
 
+[b]Mechanics XP limit survives reloads (beta)[/b]
+Option: [i][BETA] Mechanics XP Limit Survives Reloads[/i]
+Installing, uninstalling and repairing a part gives Mechanics XP once a day per part. The game gave every vehicle a new hidden ID each time it loaded (world load, server restart, or walking away and back), so the same parts gave XP again at once. Vehicles now keep their ID and the limit holds.
+
+[b]Crafted items show their real values (beta)[/b]
+Option: [i][BETA] Crafted Items Show Their Real Values[/i]
+In multiplayer, fish fillets showed 205 kcal whatever the fish, until dropped and picked up again, because the server set their real values only after sending them. Crafted items are now sent again once the recipe is done with them, which also fixes other recipes that adjust their results.
+
+[b]Max item size checks each item (beta)[/b]
+Option: [i][BETA] Max Item Size Checks Each Item[/i]
+Bags with a max item size (ALICE belts and chest rigs, toolboxes, totes, first aid kits...) checked it against everything dragged in at once, so only 1 to 4 magazines went into ALICE webbing per drag. Each item is now checked on its own, when dragging and with the transfer same type button. Picking items up from the floor straight into such a bag still stops at the limit; that check is in Java.
+
+[b]No max item size limit (beta, off by default)[/b]
+Option: [i][BETA] No Max Item Size Limit (Off By Default)[/i]
+Removes the max item size of every bag that has one, mods' bags included, so only the bag's capacity limits what goes in. A balance change rather than a fix, so it is off unless the server turns it on.
+
+[b]Paper map markings are kept (beta)[/b]
+Option: [i][BETA] Paper Map Markings Are Kept[/i]
+In multiplayer, symbols and notes drawn on a paper map vanished after a relog, when the area reloaded, or when the map was given to someone else, because the server saved the map blank. They are now stored with the map when you close it and drawn back whenever it is opened.
+
+[b]Read brochures and maps show on the world map (beta)[/b]
+Option: [i][BETA] Read Brochures And Maps Show On The World Map[/i]
+In multiplayer, brochures and fliers you read only showed on the world map after a relog, their locations were revealed by the server's settings instead of your own, and paper maps you opened were forgotten after a relog. All three now work as in single player.
+
 [b]Instant building with Handy (beta)[/b]
 Option: [i][BETA] Instant Building With Handy[/i]
 In multiplayer, admins with Timed Action Instant switched on and the Handy trait build instantly. The server gave them a negative build time, which the game turned into half an hour: an empty bar, and the building only appeared 30 minutes later.

@@ -391,6 +391,54 @@ option ZomboidFixesB42.BarricadeFixes
     translation = ZomboidFixesB42_BarricadeFixes,
 }
 
+option ZomboidFixesB42.MechanicsXPLimit
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_MechanicsXPLimit,
+}
+
+option ZomboidFixesB42.CraftResultSync
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_CraftResultSync,
+}
+
+option ZomboidFixesB42.MaxItemSizePerItem
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_MaxItemSizePerItem,
+}
+
+option ZomboidFixesB42.RemoveMaxItemSize
+{
+    type = boolean,
+    default = false,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_RemoveMaxItemSize,
+}
+
+option ZomboidFixesB42.MapSymbolsSave
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_MapSymbolsSave,
+}
+
+option ZomboidFixesB42.PrintMediaSync
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_PrintMediaSync,
+}
+
 option ZomboidFixesB42.InstantBuildHandy
 {
     type = boolean,

@@ -44,6 +44,12 @@ Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly 
 - Crafting at a forge, kiln, furnace or other station keeps working after something else on its tile is removed, instead of every craft there sticking at 100% (beta).
 - Scrapping a forged gold or silver key ring no longer deletes the keys on it, and cutting up a sack or bag, or making a hollow book, no longer deletes what is inside: those recipes only take empty containers (beta).
 - Plank barricades take 2 nails, as the menu asks, and the barricade cursor stops once the last plank is used instead of building nothing (beta).
+- The once-a-day Mechanics XP per vehicle part holds after reloading or a server restart; vehicles used to get a new hidden ID every time they loaded, which reset it (beta).
+- Crafted items show their real values in multiplayer: fish fillets have their share of the fish's calories instead of 205 kcal until dropped, and the same for other recipes that adjust what they make (beta).
+- Bags with a max item size check it per item, so a whole stack of magazines goes into ALICE webbing in one drag instead of 1 to 4 at a time (beta).
+- Optional: no max item size at all, so only a bag's capacity limits what goes in (beta, off by default).
+- Symbols and notes drawn on a paper map are kept in multiplayer after relogging, when the area reloads, and for anyone the map is given to (beta).
+- Brochures, fliers and maps you read show on the world map in multiplayer right away and are remembered after relogging, and their locations follow your own auto-reveal option (beta).
 - Admins with Timed Action Instant and the Handy trait build instantly in multiplayer instead of waiting half an hour per build (beta).
 - The world map's admin tools (right-click Teleport Here, grids, all map options) show for moderators and custom roles that may teleport, not only for the admin role (beta).
 - Rooms you have seen in multiplayer stay lit after relogging instead of going dark again (beta).

@@ -247,6 +247,31 @@ the server's inventory holds what is worn there (by then the preview copy). Remo
 `removeWornItem` unwears on the server through SyncClothing but the item stays in the server's inventory. The server
 saves players (`ServerPlayerDB.serverUpdateNetworkCharacter` → `IsoPlayer.save`), so leftovers persist.
 `*_MakeUp.lua` fixes both; ClothingWear's ghost check never takes make-up off.
+Mechanics XP once per part per day (42.21): `IsoPlayer.addMechanicsItem(key, part, time)` gives XP when `key` is not in
+its saved `mechanicsItem` map (entries expire after 24 game h); keys are `itemID .. vehicle:getMechanicalID() .. digit`
+(0 uninstall, 1 install, 2 repair, 3 engine parts). `mechanicalId` is saved, but `BaseVehicle.createPhysics` (every
+time a vehicle enters the world) ends with `mechanicalId = Rand.Next(100000)` right before `OnSpawnVehicleEnd`;
+`OnSpawnVehicleStart` fires at its start (not for spawn swaps or a vehicle that already has physics). Crafting:
+`ISHandcraftAction:performRecipe` sends results with `Actions.addOrDropItem` before `luaCallOnCreate`, so Java OnCreate
+changes (`RecipeCodeOnCreate.cutFish` fillet values) and the modData record miss the owner
+(`*_MechanicsXP.lua`, `*_CraftResultSync.lua`). `RecipeCodeHelper.addItemToCharacterInventory` sends at once.
+Map items (42.21): `MapItem.save/load` write its `WorldMapSymbols`; `getSymbols` is @HiddenFromLua and the symbols
+API comes from a map UI (`ISMap.mapAPI:getSymbolsAPIv2()`, V2 symbols: `isUserDefined`, `isText/isTexture`,
+`getSymbolID`, `getUntranslatedText` (nil for plain text) / `getTranslatedText`, `getLayerID`, position, RGBA,
+anchor, scale, rotation, zoom range); nothing syncs a map item's symbols (`WorldMapClient` only shares the world map
+singleton's), so the server saves them blank (`*_MapSymbols.lua` keeps them in modData). Print media:
+`IsoGameCharacter.readPrintMedia` (saved set, the world map's print media icons) is added by `ISReadABook:complete`
+(server, not synced) and `addReadMap` in `onCheckMap` (client only) (`*_PrintMedia.lua`).
+Safehouse claims (42.21): `SafeHouse.canBeSafehouse(square, player)` (client menu and again in
+`SafehouseClaimPacket.processServer`) calls a building non-residential when any room name is outside bathroom,
+bedroom, closet, fishingstorage, garage, hall, kidsbedroom, kitchen, laundry, livingroom, diningroom, sewingroom,
+office, emptyoutside, empty, or it has no bedroom/livingroom; many B42 houses fail (attic, sunroom...). Server option
+`SafehouseAllowNonResidential` skips the test. Left unfixed by choice.
+Bag max item size (42.21): `Item.maxItemSize` (script `MaxItemSize`, `DoParam`-able, read live by
+`InventoryContainer.getMaxItemSize`) is checked only in `ItemContainer.hasRoomFor(chr, weight, floor)` against the
+weight passed; `hasRoomFor(chr, item)` passes the item's. Lua's drag (`ISInventoryPaneDraggedItems:update` ~1439) and
+`TransferSameTypeMultiContainer:consumeItems` pass running totals, and Java `TransactionManager.isConsistent` passes
+item + pending transactions into the same bag for floor pickups (`*_MaxItemSize.lua`, `*_RemoveMaxItemSize.lua`).
 Craft inputs that consume an `InventoryContainer` delete its contents; `flags[IsEmpty]` refuses a non-empty one
 (`InputScript.doesItemPassIsOrNotEmptyAndFullTests`), `IsEmptyContainer` only logs (`CraftRecipeManager` ~800, no
 return). A recipe-wide `OnTest = Fn` (`CraftRecipe.OnTestItem(item, character)`, every candidate input item,
