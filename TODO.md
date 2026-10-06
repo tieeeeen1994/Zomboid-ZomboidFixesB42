@@ -16,6 +16,9 @@ game, and a test scenario in the Beta section below).
 
 ## Beta features: what playing each one should check
 
+- [ ] TooltipStacking, with Dynamic Backpack Upgrades loaded before Plysken Attachments Reborn: hover a bag with
+      attachment slots and an upgrade slot line; the attachment slot box sits under the upgrade lines, nothing
+      overlaps, on the first frame after moving between items too; tick it off and the overlap is back.
 - [ ] BodyStatsEditor extras: the hotbar's body part toggles (each condition on another player, flip), the Health
       button next to Body in Player Stats (opens the window without asking; player must be loaded on the admin's
       client), and the health window's Full Health, Keep Treatment for a part and for the body (bandage,

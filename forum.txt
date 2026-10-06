@@ -346,6 +346,10 @@ Guns of Marz attachment tooltips wrap instead of stretching across the screen.
 Option: [i][BETA] Guns of Marz Magazine Tooltip[/i]
 A Guns of Marz gun's tooltip names the magazine really in it, with its capacity, instead of an earlier one.
 
+[b]Bag attachment slots under other tooltip lines (beta)[/b]
+Option: [i][BETA] Bag Attachment Slots Under Other Tooltip Lines[/i]
+Plysken Attachments Reborn's attachment slots no longer draw over the lines other mods add to a bag's tooltip, such as Dynamic Backpack Upgrades' upgrade slots, when Plysken's mod loads after them.
+
 [b]Turbo Game in multiplayer[/b]
 Option: [i]Turbo Game In Multiplayer[/i]
 Turbo Game cartridges and batteries go in and come out on multiplayer servers, including in consoles spawned from the item list. The battery charge, best scores and mood effects are kept, and best scores belong to the console they were set on. Your character no longer walks around while a game is open, and the game closes when a zombie is near or it is too dark.

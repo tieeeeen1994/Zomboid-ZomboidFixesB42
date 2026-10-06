@@ -175,6 +175,14 @@ option ZomboidFixesB42.GoMMagazineTooltip
     translation = ZomboidFixesB42_GoMMagazineTooltip,
 }
 
+option ZomboidFixesB42.TooltipStacking
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_TooltipStacking,
+}
+
 option ZomboidFixesB42.GrabAmount
 {
     type = boolean,

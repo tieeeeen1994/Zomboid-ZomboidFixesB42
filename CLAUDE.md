@@ -71,6 +71,14 @@ or methods exist.
   client file must not touch a server-folder class at file level (`ISBuildIsoEntity`, `ISBuildingObject`: nil there,
   and `require "BuildingObjects/..."` finds nothing); wrap such methods at `OnGameStart` (`*_Barricade.lua`).
   Within one folder, all vanilla files load first (sorted), then each mod's in mod order.
+  Same relative path in two mods (or a mod and vanilla): `LuaManager.LoadDirBase` lists every file by its lowercase
+  path under `media/lua/<folder>`, runs each path once, at its first place in the list, from
+  `ZomboidFileSystem.getAbsolutePath` = the last mod loaded that has it (`activeFileMap`, logged as `mod "X"
+  overrides <path>`). So a later mod's file, even an empty one, replaces another mod's Lua file; scripts
+  (`media/scripts/...`) are replaced the same way. Translations are not: `Translator.tryFillMapFromMods` reads every
+  mod's `Translate/<LANG>/<File>.json` in mod order and merges by key (a later non-empty value wins). Every
+  mod's sandbox-options.txt is read too (not traced in Java: many mods log "overrides media/sandbox-options.txt"
+  and all their options exist).
 - Pitfalls: `cond and nil or x` always gives `x` (write an if); a `string.gsub` replacement string treats `%` as special
   (escape user text with `gsub(s, "%%", "%%%%")`); `string.gsub` returns two values, so wrap it in parentheses when
   returning or concatenating at the end of a list; there is no `next()`; `gsub` with a function replacement works;
@@ -279,6 +287,14 @@ Bag max item size (42.21): `Item.maxItemSize` (script `MaxItemSize`, `DoParam`-a
 weight passed; `hasRoomFor(chr, item)` passes the item's. Lua's drag (`ISInventoryPaneDraggedItems:update` ~1439) and
 `TransferSameTypeMultiContainer:consumeItems` pass running totals, and Java `TransactionManager.isConsistent` passes
 item + pending transactions into the same bag for floor pickups (`*_MaxItemSize.lua`, `*_RemoveMaxItemSize.lua`).
+Bag capacity / weight reduction (42.21): both persist per instance and travel in the item bytes (`ItemContainer.save`
+writes `capacity`, `InventoryContainer.save` writes `weightReduction`, so saves, chunk data and every item send carry a
+`setCapacity` / `setWeightReduction` made on the server), but `SyncItemFieldsPacket` carries neither (only modData),
+so a live change reaches the owner's copy only by re-sending the item or by the client applying it itself. Clamps:
+`ItemContainer.getCapacity` caps an item's container at 50 (vehicle part 1000, else 100), `InventoryContainer.getCapacity`
+/ `getEffectiveCapacity` at 50 - the bag's own weight; WR is clamped 0..100 on set. Dynamic Backpack Upgrades (workshop
+2996978365, 42.20 folder) assumes capacity is not saved and re-applies it from modData every game minute, on every
+tooltip frame and every context menu.
 Craft inputs that consume an `InventoryContainer` delete its contents; `flags[IsEmpty]` refuses a non-empty one
 (`InputScript.doesItemPassIsOrNotEmptyAndFullTests`), `IsEmptyContainer` only logs (`CraftRecipeManager` ~800, no
 return). A recipe-wide `OnTest = Fn` (`CraftRecipe.OnTestItem(item, character)`, every candidate input item,
@@ -624,6 +640,14 @@ vehicle stories and road foraging use. Vanilla, Raven Creek and NagaCity ship on
   `choketube` attachment, so those parts would be drawn at the gun's origin; `CanHaveHoles` is only read for Clothing
   (Cooler_Seafood); nothing makes `HotDrinkRed`; crafted face shemaghs may be deliberate. Armor families follow a
   pattern (thigh / shin run speed: spiked -0.05, articulated +0.05 from plain); fix only the pieces that break it.
+- World / static meshes (42.21, `FileTask_LoadMesh`, `jassimp/ProcessedAiScene`, `ImportedStaticMesh`): loaded through
+  Assimp with FIND_INSTANCES, MAKE_LEFT_HANDED, LIMIT_BONE_WEIGHTS, TRIANGULATE, OPTIMIZE_MESHES,
+  REMOVE_REDUNDANT_MATERIALS, JOIN_IDENTICAL_VERTICES; the mesh node's world transform is kept as the mesh transform;
+  UV v is flipped (1 - v); faces are reversed (2, 1, 0). Vanilla world items are 3ds Max FBX 7.3 (Z-up raw vertices,
+  ground at z = 0, PreRotation -90 X, Lcl Rotation +90 X, Lcl Scaling 1/36, UnitScaleFactor 91.44), referenced by
+  `model X { mesh = WorldItems/..., texture = WorldItems/..., scale = ... }` (mesh without extension, from
+  `media/models_X`; texture from `media/textures`). A new mesh written into a copy of a vanilla file with only the
+  Geometry replaced loads like the vanilla one: TienBagUpgrades `scripts/fbx_bin.py` / `make_models.py`.
 - In 42.21 `HandWeapon.getAimingMod()` returns 1.0 and `IsoPlayer.IsUsingAimHandWeapon` is never called: the item script
   `AimingMod` / `IsAimedHandWeapon` do nothing. A weapon part on a model with no matching attachment point is drawn at the
   gun's origin (`AnimatedModel.transformToParent`).
@@ -1000,6 +1024,15 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   Traits/professions: `CharacterTraitDefinition.getTraits()` / `CharacterProfessionDefinition.getProfessions()` →
   `getTexture()`. Tiles: `getWorld():getAllTilesName()` → `"<set>_<n>"`, n < 256. Lua cannot list folders.
 - `getText(key, arg)` formats a Lua number as a Java Double ("1.0"); pass `string.format("%d", n)`.
+- Stacking under the item tooltip (`ISToolTipInv:render`, 42.21): vanilla measures the ObjectTooltip (`DoTooltip`
+  with `setMeasureOnly`), then `self:setHeight(th)`, `drawRect`, `drawRectBorder`, `DoTooltip` again. Mods add rows
+  either by swapping the panel's `setHeight` / `drawRectBorder` for one render (Dynamic Backpack Upgrades: the first
+  `setHeight` call is taken for vanilla's, so another mod calling `self:setHeight` earlier in the chain breaks it) or,
+  like Plysken Attachments Reborn (`zPAR_Tooltip.lua`), by drawing a box of their own **before** calling the rest, at
+  `self.tooltip:getHeight()`, which is the previous frame's ObjectTooltip height. Rows added to the panel do not move
+  that, so the two overlap; setting `self.tooltip:setHeight(self.height)` after the whole chain makes the next
+  frame's box start under them (`*_TooltipStacking.lua`; Tien's Bag Upgrades draws its rows after the chain and does
+  the same, which works in either load order).
 - Item tooltips (`ObjectTooltip.Layout` / `LayoutItem`) keep every row's text in public fields: Lua can add rows, never
   read or remove them. `getNumClassFields` / `getClassField` / `getClassFieldVal` throw "Not in debug" without `-debug`
   (`LuaManager.validateReflectionAccess`). `item:DoTooltipEmbedded(tooltip, layout, 0)` fills a layout without drawing
