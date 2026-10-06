@@ -73,6 +73,9 @@ local vanillaDraggedUpdate = DraggedItems.update
 function DraggedItems:update(...)
     if not isEnabled() then return vanillaDraggedUpdate(self, ...) end
 
+    -- getDropContainer reads self.playerNum, which vanilla's update only sets on its
+    -- first line: on a new pane's first drag it is still nil (getPlayerData(nil) errors).
+    self.playerNum = self.inventoryPane.player
     local container = self:getDropContainer()
     local script, limit = sizeLimitOf(container)
     if not script then return vanillaDraggedUpdate(self, ...) end
