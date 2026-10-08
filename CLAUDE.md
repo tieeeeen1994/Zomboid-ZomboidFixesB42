@@ -294,7 +294,10 @@ writes `capacity`, `InventoryContainer.save` writes `weightReduction`, so saves,
 `setCapacity` / `setWeightReduction` made on the server), but `SyncItemFieldsPacket` carries neither (only modData),
 so a live change reaches the owner's copy only by re-sending the item or by the client applying it itself. Clamps:
 `ItemContainer.getCapacity` caps an item's container at 50 (vehicle part 1000, else 100), `InventoryContainer.getCapacity`
-/ `getEffectiveCapacity` at 50 - the bag's own weight; WR is clamped 0..100 on set. Dynamic Backpack Upgrades (workshop
+/ `getEffectiveCapacity` at 50 - the bag's script weight (`actualWeight`, not contents), but only the inner
+container's is enforced (`ItemContainer.hasRoomFor`, the loot window's weight bar); the item's lower number shows
+only in vanilla's tooltip Capacity row, and `InventoryContainer.setCapacity` stores past it with a logged warning;
+WR is clamped 0..100 on set. Dynamic Backpack Upgrades (workshop
 2996978365, 42.20 folder) assumes capacity is not saved and re-applies it from modData every game minute, on every
 tooltip frame and every context menu.
 Craft inputs that consume an `InventoryContainer` delete its contents; `flags[IsEmpty]` refuses a non-empty one
