@@ -537,6 +537,58 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
 - A client world item keeps the server's item ID (chunk data and AddItemToMap serialise it), and
   `IsoGridSquare.removeWorldObject` is local only, so a client can drop an item the server does not have by ID.
 
+### Animal AI, animal sync and animals vs zombies (42.21)
+
+Traced 2026-10-08 while reviewing Animals Attack Zombies (`~/Zomboid/Workshop/AnimalsAttackZombies`).
+
+- Animal AI runs on the server / single player only: `IsoAnimal.updateInternal` (~418) only moves a client copy, and
+  `AnimalIdleState.execute` runs `wanderIdle` only for `isLocalPlayer()` animals (true off-client).
+- `AnimalPacket` (`NetworkPlayerAI.set` ~151 / `parse` ~328) carries position + prediction, facing
+  (`forwardDirection`), **`idleAction`** (flag 2; the client sets it, or clears it when absent, on every packet),
+  onFloor / dead / `animalRunning` / attacking flags, stress (byte), health ×100, hunger, thirst, acceptance, milk,
+  wool, location. `AnimalSynchronizationManager` sends it per connection every 800 ms (on screen) / 1000 ms, at once
+  when the animal changes square on screen (`isAnimalNeedExtraUpdate` ~739), or after `animal:sendExtraUpdateToClients()`
+  (IsoAnimal ~1187, public, Lua-callable on the server only: it walks `GameServer.udpEngine.connections`, null in
+  single player). `animal:setDebugStress(v)` sets stress outright (Java `changeStress` has no hook, so holding an
+  animal calm means resetting it). A remote animal takes the packet's facing only while not
+  moving (`IsoPlayer.updateRemotePlayer` ~6952), so a server `faceThisObject` shows up to ~1 s late.
+- Animal voices: `playBreedSound(id)` (missing id = silent) → `AnimalSoundState.start` → the emitter (nothing on a
+  server) plus, with sandbox `AnimalSoundAttractZombies` (default off), a world sound of the definition's
+  `idleSoundRadius/Volume` (cattle 50/30), which every MP client playing it sends to the server.
+- `fleeZombies` (definition, default true) gates zombies in `BaseAnimalBehavior.spotted` (~1517) and `fleeFromChr`
+  (~1401); off = zombies ignored entirely. Zombies never hurt animals (`AttackState.triggerPlayerReaction` ~196 drops
+  an IsoAnimal target). `goAttack(chr)` (~237) does nothing while `blockMovement` or FIGHTANIMAL is set, else sets
+  FIGHTANIMAL + `isDoingBehavior`, `stopAllMovementNow`, `pathToCharacter`; the path's exit runs `doBehaviorAction` →
+  `fightAnimal` (needs `fightingOpponent`, which `resetBehaviorAction` clears). `setBlockMovement(true)` calls
+  `stopAllMovementNow`, which also clears `idleAction` (`AnimalData.resetEatingCheck`); `wanderIdle` (~73) drops
+  `blockMovement` after 8000 multiplier units (~2.8 min at 1x). Between behaviors (`isDoingBehavior` false, no block)
+  `wanderIdle` / `checkBehavior` may start a wander or eat/drink path at any update.
+- Stress: `changeStress` (~2373) multiplies rises by 1 + the stress gene and falls by the gene; `updateStress` (~684)
+  decays −multiplier/5500 per update only when calm and not wild (≈0.1-0.3 a real minute at 1x). At ≥ 80:
+  `animalShouldThump` (~2761) lets `canThump` animals (default true; false for chickens, turkeys and babies) thump
+  fences and doors whenever they move, `checkPregnancy` loses the baby 1 in 50 per check, `tryLure` fails,
+  `attackIfStressed` animals go for players with acceptance < 30; milk / wool rates × 40/stress above 40.
+- `IsoCell.getAnimals()` (~4578) builds a new LinkedList from the whole object list on every call.
+  `isInMatingSeason` (~2861): end month exclusive (sheep/pig 9..2 = Sep-Jan, turkey 4..5 = April only), always true
+  with sandbox AnimalMatingSeason off.
+- Zombie hit sync: `ZombiePacket` (owner → server → others) carries health (server `NetworkZombiePacker.applyZombie`
+  ~225 sets it; other clients ignore it for a zombie they already have) but no stagger / knockdown / hit reaction
+  (`NetworkZombieVariables`). Vanilla hits reach observers through the relayed HitCharacter packet, whose
+  `fields/hit/Character.process` (~97) + `Zombie.process` (~62) set the flags on every client; a knockdown applied only
+  on the owner is never seen by others. Owner health ≤ 0 → server `parseZombie` (~65) calls `die()` →
+  `sendCharacterDeath` → `DeadZombiePacket` (server → clients only), whose `postpone` sets the observer copy's health to
+  0 so it falls; the corpse waits for that local death or 5 s (`NetworkCharacterAI.setCorpse`). On the server
+  `zombie:getOwnerPlayer()` is the simulating player; on a client `isRemoteZombie()` = not owned by this connection.
+- Dragging a corpse (`IsoDeadBody.Grappled` → `reanimateZombieForGrapple` ~1928) makes a live, on-floor IsoZombie with
+  `isReanimatedForGrappleOnly()`; anything scanning `getZombieList()` must skip it (vanilla `IsoAnimal.updateLOS` does).
+- Zombie stagger transitions (actiongroups/zombie): `bStaggerBack` → staggerback (node by playerAttackPosition
+  FRONT / BEHIND / LEFT / RIGHT and hitforce); `bKnockedDown` + not on floor + no hit reaction + playerAttackPosition
+  "FRONT" → staggerback-knockeddown, "BACK" → staggerback-knockeddown-fromBehind (`Zombie_PushedFwdOver_FromBehind`;
+  nothing in vanilla sets "BACK", `knockDown(true)` writes "BEHIND"). The `wasHit` event matters only inside
+  hitreaction. `sitting` has no stagger transitions, `eatbody` no knockdown.
+- Server `getTimeDelta()`: `fpsMultiplier = 60 / averageFPS` (GameServer ~1118), so per update ≈ real seconds ×
+  multiplier; the client's `FPSTracking` caps `fpsMultiplier` at 5 (below 12 FPS the game clock runs slow).
+
 ### Entities, meta storage and chunk saves (42.21)
 
 - Components (`zombie/entity/ComponentType.java`) with flag 2 "run in meta": FluidContainer, CraftLogic, FurnaceLogic,
