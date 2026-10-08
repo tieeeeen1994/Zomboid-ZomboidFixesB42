@@ -32,9 +32,22 @@
     lights the engine dropped and follows a change of either option.
     Always Day keeps its own tick: while Full Bright is on, the Always Day option
     reads and saves the admin's own choice, and that choice is put back when Full
-    Bright goes off. In multiplayer Full Bright is off after a restart; in single
-    player vanilla saves every Admin Powers option to CheatPanel.ini and sets it again
-    at game start, this one included.
+    Bright goes off. Full Bright borrows the player's Always Day cheat flag
+    (CheatType.ALWAYS_DAY), which is more than the climate: sendPlayerExtraInfo sends
+    it to the server (ExtraInfoPacket), which saves it with the player (IsoGameCharacter
+    save writes the cheat set; single player saves the local copy) and echoes the
+    packet back to the owner too (sendToClients, firing RefreshCheats); and the faded
+    cheat list in the bottom right corner (ISVersionWaterMark's WaterMarkUI:render,
+    one IGUI_CheatPanel_<tooltip> line per isCheatSet) lists it as Always Day. So the
+    global sendPlayerExtraInfo is wrapped to send the admin's own choice while Full
+    Bright is on (the server never learns of Full Bright), RefreshCheats sets the flag
+    again at once when the echo clears it, and the corner list shows Full Bright in
+    place of Always Day (both lines when the admin's own Always Day is on too).
+    Full Bright and the own choice are saved on every change to
+    Zomboid/Lua/ZomboidFixesB42_FullBright.ini, per server and account (single
+    player: per save), and put back at game start: vanilla only restores Admin Powers
+    in single player (CheatPanel.ini, written on the window's Save, not by the hotbar).
+    In single player the own choice also replaces the flag the save kept.
 
     Side effects, as with Always Day: the lit squares count as lit for this client's
     zombies looking at this admin (IsoZombie.updateVisionRadius) and for reading.
@@ -44,11 +57,12 @@
     With the sandbox option off, the option is left out of the Admin Powers window
     (ISAdminPowerUI adds every OptionList entry the role allows, so its addOption* are
     wrapped) and the hotbar greys its toggle out (option.zfixEnabled).
-    Loads before ZomboidFixesB42_AdminHotbarActions.lua, which makes a hotbar toggle
-    of every Admin Powers option it finds.
+    ZomboidFixesB42_AdminHotbarActions.lua makes a hotbar toggle of every Admin
+    Powers option, added before or after it.
 --]]
 
 require "ISUI/AdminPanel/ISAdminPowerUI"
+require "ISUI/ISVersionWaterMark"
 
 local OPTION_ID = "ZomboidFixesB42_FullBright"
 -- How far from the player, in tiles, rooms are lit.
@@ -96,6 +110,9 @@ end
 local active = false
 -- The admin's own Always Day setting while Full Bright holds it on.
 local ownAlwaysDay = false
+-- False from world load until the saved state is put back at game start: vanilla's
+-- own restore runs first (CheatPanel.ini, single player) and must not overwrite it.
+local restored = false
 -- ["x,y,z"] = IsoLightSource
 local lights = {}
 -- The cell the lights were added to, and their radius.
@@ -196,6 +213,51 @@ local function setActive(player, on)
     end
 end
 
+-- Saved state: one line per server and account (single player: per save),
+-- "<key>=<Full Bright>,<own Always Day>".
+local STATE_FILE = "ZomboidFixesB42_FullBright.ini"
+
+local function stateKey(player)
+    if isClient() then
+        return getServerIP() .. "_" .. getServerPort() .. "_" .. tostring(player:getUsername())
+    end
+    return "SP_" .. tostring(getWorld():getWorld())
+end
+
+local function readStates()
+    local states, order = {}, {}
+    local reader = getFileReader(STATE_FILE, false)
+    if not reader then return states, order end
+    while true do
+        local line = reader:readLine()
+        if not line then break end
+        local key, on, own = string.match(line, "^(.*)=(%a+),(%a+)$")
+        if key then
+            if not states[key] then order[#order + 1] = key end
+            states[key] = { on = on == "true", own = own == "true" }
+        end
+    end
+    reader:close()
+    return states, order
+end
+
+local function saveState(player)
+    if not restored or not player then return end
+    local key = stateKey(player)
+    local states, order = readStates()
+    local own = ownAlwaysDay
+    if not active then own = player:isAlwaysDayCheat() end
+    local old = states[key]
+    if old and old.on == active and old.own == own then return end
+    if not old then order[#order + 1] = key end
+    states[key] = { on = active, own = own }
+    local writer = getFileWriter(STATE_FILE, true, false)
+    for _, k in ipairs(order) do
+        writer:write(k .. "=" .. tostring(states[k].on) .. "," .. tostring(states[k].own) .. "\n")
+    end
+    writer:close()
+end
+
 local option = ISAdminPowerUI.AddOption(OPTION_ID, "right", Capability.ClimateManager,
     function(self)
         return active
@@ -204,6 +266,7 @@ local option = ISAdminPowerUI.AddOption(OPTION_ID, "right", Capability.ClimateMa
         local player = self.player or getPlayer()
         if selected and not (isEnabled() and isAllowed(player)) then return end
         setActive(player, selected == true)
+        saveState(player)
     end
 )
 
@@ -233,10 +296,60 @@ if alwaysDay and option then
     alwaysDay.setValue = function(self, selected)
         if active then
             ownAlwaysDay = selected == true
-            return vanillaSet(self, true)
+            vanillaSet(self, true)
+        else
+            vanillaSet(self, selected)
         end
-        return vanillaSet(self, selected)
+        saveState(self.player or getPlayer())
     end
+end
+
+-- The server (and its save) gets the admin's own Always Day, never Full Bright's.
+local vanillaSendExtraInfo = sendPlayerExtraInfo
+sendPlayerExtraInfo = function(player, ...)
+    if active and player ~= nil and player == getPlayer() then
+        player:setAlwaysDayCheat(ownAlwaysDay)
+        vanillaSendExtraInfo(player, ...)
+        player:setAlwaysDayCheat(true)
+        return
+    end
+    return vanillaSendExtraInfo(player, ...)
+end
+
+-- The server echoes that packet back, which clears the flag; set it again before the
+-- climate next reads it.
+Events.RefreshCheats.Add(function()
+    if not active then return end
+    local player = getPlayer()
+    if player and not player:isAlwaysDayCheat() and isAllowed(player) then
+        player:setAlwaysDayCheat(true)
+    end
+end)
+
+-- The faded cheat list in the bottom right corner: Full Bright, not Always Day.
+if WaterMarkUI and option then
+    local vanillaRender = WaterMarkUI.render
+    local function draw(self, ...)
+        self.drawTextRight = nil
+        if not active then return vanillaRender(self, ...) end
+        local alwaysDayText = getText("IGUI_CheatPanel_AlwaysDay")
+        local step = getTextManager():getFontHeight(UIFont.NewSmall) + 3
+        local shift = 0
+        local drawTextRight = self.drawTextRight
+        self.drawTextRight = function(panel, text, x, y, ...)
+            if text == alwaysDayText then
+                if ownAlwaysDay then
+                    drawTextRight(panel, text, x, y, ...)
+                    shift = shift - step
+                end
+                return drawTextRight(panel, option.text, x, y + shift, ...)
+            end
+            return drawTextRight(panel, text, x, y + shift, ...)
+        end
+        vanillaRender(self, ...)
+        self.drawTextRight = nil
+    end
+    WaterMarkUI.render = draw
 end
 
 local function onTick()
@@ -256,3 +369,32 @@ local function onTick()
 end
 
 Events.OnTick.Add(onTick)
+
+-- Leaving a game and loading another (single player) keeps this file's state.
+Events.OnInitWorld.Add(function()
+    active = false
+    restored = false
+    lights = {}
+    lightsCell = nil
+    lightsRadius = nil
+    lastX = nil
+end)
+
+-- Put the saved state back; runs after vanilla's own restore (registered earlier).
+Events.OnGameStart.Add(function()
+    local player = getPlayer()
+    local state = player and readStates()[stateKey(player)]
+    if state then
+        -- Single player: the save kept the flag as it was, Full Bright's included. In
+        -- multiplayer the server's copy (sent with the own choice) is already right.
+        if not isClient() then
+            if active then
+                ownAlwaysDay = state.own
+            else
+                player:setAlwaysDayCheat(state.own)
+            end
+        end
+        setActive(player, state.on and isEnabled() and isAllowed(player))
+    end
+    restored = true
+end)

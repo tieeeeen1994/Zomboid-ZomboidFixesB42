@@ -41,6 +41,11 @@
     fresh, undamaged copy on the player. The client takes the item off as it
     reports, and SyncClothing arrives in order, so once the server sees the item
     unworn every older SyncClothing has already been applied and it is safe to drop.
+
+    Admins with No Wear on (server/ZomboidFixesB42_AdminNoWear.lua) are left out of
+    all of it: no swing wears their clothing, no reported break drops it, and no
+    guard puts back a hole No Wear took away. A swing event still syncs their look,
+    which replaces the holes the game's own local roll put on their copy.
 --]]
 
 if isClient() then return end
@@ -50,6 +55,11 @@ ZomboidFixesB42 = ZomboidFixesB42 or {}
 local function isEnabled()
     local vars = SandboxVars and SandboxVars.ZomboidFixesB42
     return vars ~= nil and vars.ClothingWearRework == true
+end
+
+local function hasNoWear(player)
+    local noWear = ZomboidFixesB42.NoWear
+    return noWear ~= nil and noWear.isActive ~= nil and noWear.isActive(player)
 end
 
 -- How long to wait for the client's SyncClothing before giving up and letting
@@ -99,7 +109,7 @@ local function removePending(id)
 end
 
 local function onBrokenClothing(player, args)
-    if not isEnabled() or not player or player:isDead() then return end
+    if not isEnabled() or not player or player:isDead() or hasNoWear(player) then return end
 
     local id = tonumber(args.id)
     if not id or pending[id] then return end
@@ -306,7 +316,7 @@ local function checkGuards()
         local guard = guards[i]
         local player, item = guard.player, guard.item
         if now > guard.expires or player:isDead() or not item:isWorn()
-            or item:getContainer() ~= player:getInventory() then
+            or item:getContainer() ~= player:getInventory() or hasNoWear(player) then
             table.remove(guards, i)
         else
             local fixed = false
@@ -345,6 +355,10 @@ local function onClothingWear(player, args)
     local zombie = findZombie(player, zombieId)
     if not zombie or zombie:isDead() then return end
 
+    if hasNoWear(player) then
+        dirty[player] = true
+        return
+    end
     applySwing(player, part, args.scratch == true)
 end
 

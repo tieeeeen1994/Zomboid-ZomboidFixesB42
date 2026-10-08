@@ -110,6 +110,23 @@ Option: [i][BETA] Full Bright Admin Power[/i]
 Options: [i]Full Bright Light Spacing[/i] (8 tiles by default), [i]Full Bright Light Radius[/i] (20 tiles by default, the most the game allows)
 Always Day only lights the outdoors, so rooms stay dark inside. Full Bright, next to Always Day in the Admin Powers window and on the admin hotbar, turns Always Day on and lights every room around the admin as well. Only the admin sees it; nothing changes for anyone else.
 
+[b]God Vehicle admin power (beta)[/b]
+Option: [i][BETA] God Vehicle Admin Power[/i]
+God Vehicle, in the Admin Powers window and on the admin hotbar, for roles that can use the Mechanics Cheat. While an admin with it on sits in a vehicle (any seat), that vehicle and the trailer it tows never wear down: crashes, running down zombies, zombies and players hitting it and driving wear do no damage, windows do not break, no fuel is used, the tires keep their air and the battery does not run down. On a server crashes do not hurt the people inside either. Repairs, refuelling, pumping tires and taking parts off still work. It ends as soon as the admin gets out, and the server remembers each admin's choice across relogs.
+
+[b]No Wear admin power (beta)[/b]
+Option: [i][BETA] No Wear Admin Power[/i]
+Option: [i]No Wear Items[/i] (Everything Carried by default, or Held, Worn And Attached)
+No Wear, in the Admin Powers window and on the admin hotbar, for roles with the Edit Item permission. While it is on, the admin's items never wear down: weapons and tools keep full condition, head condition and sharpness, and clothing keeps full condition with no holes, whatever wears them (fighting, chopping, crafting, building, zombie attacks). Turning it on repairs and sharpens everything at once, broken items included. Sewn-on patches stay. The server remembers each admin's choice across relogs.
+
+[b]Endless Supplies admin power (beta)[/b]
+Option: [i][BETA] Endless Supplies Admin Power[/i]
+Endless Supplies, in the Admin Powers window and on the admin hotbar, for roles with the Add Item permission. While it is on, everything with charges the admin carries, in their bags too, stays at full charges: batteries, lighters, propane torches, thread, duct tape, glue, paint and the like never run out. Turning it on fills them all at once. Liquids are not changed. The server remembers each admin's choice across relogs.
+
+[b]Working Refill Container and a Reroll button (beta)[/b]
+Option: [i][BETA] Working Refill Container And Reroll Button[/i]
+Vanilla's Refill Container (right-click a container's button in the loot window, for admins and anyone with the LootZed admin power on) often only emptied the container on a server. Now the server refills it in one go, and the loot window gets a Reroll button next to Take All that does the same, for the same people. The admin hotbar gets a Reroll containers shortcut that rerolls every container on a square you pick. Furniture and other world containers only (not corpses, floor bags or vehicles). Whatever was in it is gone for good, so mind players' stashes; every reroll is written to the admin log.
+
 [b]Item editor changes save everywhere[/b]
 Option: [i]Item Editor Changes Save Everywhere[/i]
 Changes made in the item editor save for items in crates, vehicles, on the floor and in other players' inventories, not only in your own.

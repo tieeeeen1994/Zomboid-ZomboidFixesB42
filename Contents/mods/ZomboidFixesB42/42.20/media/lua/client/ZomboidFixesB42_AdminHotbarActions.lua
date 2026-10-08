@@ -236,10 +236,12 @@ local POWER_ICONS = {
     AnimalExtraValues = "sym:Cow",
     AlwaysDay = "sym:Sun",
     ZomboidFixesB42_FullBright = "item:Base.LightBulb",
+    ZomboidFixesB42_GodVehicle = "sym:Tire",
+    ZomboidFixesB42_NoWear = "sym:Anvil",
+    ZomboidFixesB42_EndlessSupplies = "item:Base.Battery",
 }
 
-for _, option in ipairs(ISAdminPowerUI.OptionList or {}) do
-    local power = option
+local function registerPower(power)
     register({
         id = "power:" .. power.id,
         category = "powers",
@@ -272,6 +274,19 @@ for _, option in ipairs(ISAdminPowerUI.OptionList or {}) do
             end,
         },
     })
+end
+
+for _, option in ipairs(ISAdminPowerUI.OptionList or {}) do
+    registerPower(option)
+end
+
+-- Powers added after this file (files that sort after it, this mod's No Wear among
+-- them, and other mods loaded later) become actions as they are added.
+local vanillaAddOption = ISAdminPowerUI.AddOption
+function ISAdminPowerUI.AddOption(...)
+    local option = vanillaAddOption(...)
+    if option then registerPower(option) end
+    return option
 end
 
 -- 2. Players --------------------------------------------------------------------------------------------
@@ -878,6 +893,32 @@ register({
     icon = "item:Base.Garbagebag",
     available = toolsOr("EditItem"),
     run = function(ctx) AdminContextMenu.onRemoveItemTool(ctx.admin) end,
+})
+
+--- Reroll every container on a square, as the loot window's Reroll button does
+-- for one (ZomboidFixesB42_RerollContainer.lua; the server does it).
+register({
+    id = "items.reroll",
+    category = "items",
+    title = txt("RerollContainers"),
+    tooltip = txt("RerollContainersTooltip"),
+    icon = "item:Base.Dice",
+    params = { locationParam("@pick") },
+    available = function(admin)
+        local reroll = ZomboidFixesB42.RerollContainer
+        if not reroll or not reroll.isEnabled() then return false, txt("RerollOff") end
+        return needs("UseLootZed")(admin)
+    end,
+    run = function(ctx)
+        local square = squareAt(ctx, ctx.values.location)
+        if not square then return end
+        if not ZomboidFixesB42.RerollContainer.hasRerollable(square) then
+            return Hotbar.say(ctx.admin, txt("NoContainerThere"), true)
+        end
+        sendClientCommand(ctx.admin, ZomboidFixesB42.MODULE, ZomboidFixesB42.CMD_REROLL_CONTAINER,
+            { x = square:getX(), y = square:getY(), z = square:getZ(), all = true })
+        if not isClient() then ISInventoryPage.renderDirty = true end
+    end,
 })
 
 -- 5. Vehicles ------------------------------------------------------------------------------------------------

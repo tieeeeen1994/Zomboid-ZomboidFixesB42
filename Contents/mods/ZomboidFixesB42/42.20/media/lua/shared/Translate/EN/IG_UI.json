@@ -64,6 +64,10 @@
     "IGUI_ZomboidFixesB42_AdminHotbar_NeedsDebug": "Only with the -debug launch option.",
     "IGUI_ZomboidFixesB42_AdminHotbar_NeedsBodyStats": "The body stats editor is off in the sandbox options.",
     "IGUI_ZomboidFixesB42_AdminHotbar_PowerOff": "This admin power is off in the sandbox options.",
+    "IGUI_ZomboidFixesB42_AdminHotbar_RerollOff": "Rerolling containers is off in the sandbox options.",
+    "IGUI_ZomboidFixesB42_AdminHotbar_RerollContainers": "Reroll containers",
+    "IGUI_ZomboidFixesB42_AdminHotbar_RerollContainersTooltip": "Empties every container on a square (furniture, shelves, fridges...) and fills it again from the loot tables, like the loot window's Reroll button. Whatever was in them is gone for good.",
+    "IGUI_ZomboidFixesB42_AdminHotbar_NoContainerThere": "No container to reroll there.",
     "IGUI_ZomboidFixesB42_AdminHotbar_SettingsTitle": "Admin Hotbar: %1",
     "IGUI_ZomboidFixesB42_AdminHotbar_OpenWindowInstead": "Open the window instead of running directly",
     "IGUI_ZomboidFixesB42_AdminHotbar_Label": "Label",
@@ -420,5 +424,13 @@
     "IGUI_ZomboidFixesB42_GrabAmount_Invalid": "Enter a whole number from 1 to %1",
     "IGUI_ZomboidFixesB42_ActionStuck": "The server never finished that action",
     "IGUI_CheatPanel_ZomboidFixesB42_FullBright": "Full Bright",
-    "IGUI_CheatPanel_ZomboidFixesB42_FullBright_tooltip": "Always Day, and every room around you lit as well. Only you see it."
+    "IGUI_CheatPanel_ZomboidFixesB42_FullBright_tooltip": "Always Day, and every room around you lit as well. Only you see it.",
+    "IGUI_CheatPanel_ZomboidFixesB42_GodVehicle": "God Vehicle",
+    "IGUI_CheatPanel_ZomboidFixesB42_GodVehicle_tooltip": "The vehicle you are in, and what it tows, never wears down: no damage, no fuel used, no air lost, no battery drain.",
+    "IGUI_CheatPanel_ZomboidFixesB42_NoWear": "No Wear",
+    "IGUI_CheatPanel_ZomboidFixesB42_NoWear_tooltip": "Your items never wear down: full condition and sharpness, no holes in clothing. Turning it on repairs them all.",
+    "IGUI_CheatPanel_ZomboidFixesB42_EndlessSupplies": "Endless Supplies",
+    "IGUI_CheatPanel_ZomboidFixesB42_EndlessSupplies_tooltip": "Everything you carry with charges (batteries, lighters, torches, thread, tape, glue) stays full. Turning it on fills them all.",
+    "IGUI_ZomboidFixesB42_Reroll": "Reroll",
+    "IGUI_ZomboidFixesB42_Reroll_tooltip": "Throw away everything in this container and fill it again from the loot tables."
 }

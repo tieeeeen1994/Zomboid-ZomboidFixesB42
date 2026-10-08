@@ -269,6 +269,47 @@ option ZomboidFixesB42.AdminFullBrightRadius
     translation = ZomboidFixesB42_AdminFullBrightRadius,
 }
 
+option ZomboidFixesB42.AdminGodVehicle
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_AdminGodVehicle,
+}
+
+option ZomboidFixesB42.AdminNoWear
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_AdminNoWear,
+}
+
+option ZomboidFixesB42.AdminNoWearItems
+{
+    type = enum,
+    numValues = 2,
+    default = 2,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_AdminNoWearItems,
+}
+
+option ZomboidFixesB42.AdminEndlessSupplies
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_AdminEndlessSupplies,
+}
+
+option ZomboidFixesB42.RerollContainerFix
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_RerollContainerFix,
+}
+
 option ZomboidFixesB42.NoWalkOnSquarePick
 {
     type = boolean,

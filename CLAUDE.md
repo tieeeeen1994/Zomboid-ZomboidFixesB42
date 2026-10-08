@@ -125,6 +125,8 @@ or methods exist.
   property fixes), `RecipeFixes` (recipe and repair edits), `AdminTag` (enum 1 vanilla / 2 every cheat / 3 never,
   `Sandbox_<translation>_option<n>` labels), `BodyStatsEditor` (also the hotbar's body part toggles). Merged tooltips
   list each fix on its own line (`\\n` in the JSON, as vanilla writes it).
+  Exception: a plain correction of a vanilla UI's layout (columns, staying on screen; `*_AdminPowersLayout.lua`)
+  gets no option and no README / forum / mod.info line: it is how the window should have been.
   Client overrides fall back to vanilla when off; server handlers ignore (or refuse with a reply, if the client waits)
   commands when off. Every option defaults to **on** (opt out, not opt in); numeric ones default to a working value,
   not their "off" value. The few that default off (AdminSpawnProtection = 0) are marked
@@ -516,6 +518,93 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
   `modData.contentAmount` + the item's capacity. Repairing an installed part = `ISFixVehiclePartAction` (shared, server
   `complete`); its 42.21 `complete` errors on gas tanks (`*_GasTankWelding.lua`).
 
+### Where a vehicle wears down (42.21)
+
+Traced 2026-10-08 for God Vehicle (`*_AdminGodVehicle.lua`).
+- Part updates (`VehicleParts.updatePart`, server / SP, once a game minute) call the part script's `update` by
+  name through `LuaManager.getFunctionObject`, which **caches** the function in `luaFunctionMap` on first lookup
+  (cleared on Lua reload), so wrap `Vehicles.Update.*` at file load. Wear in them: `GasTank` (fuel, plus a leak
+  under 70 condition), `Brakes`, `Vehicles.LowerCondition` (suspension, muffler, tires), `Tire` (air loss, blowout
+  = `VehicleUtils.RemoveTire` at 0 air / under 15 condition), every battery drain through
+  `VehicleUtils.chargeBattery`; `Update.Battery` charges +0.001 a minute (and reads an undefined global
+  `engineStarted`). `Update.Engine` only moves modData temperature.
+- Crashes: a client's `BaseVehicle.crash` only plays the sound and sends `vehicle.crash`; the server's
+  `VehicleCommands` calls `vehicle:crash(amount, front)` → `addDamageFront/Rear` (skipped when the **driver** is
+  in god mode, `isDriverGodMode`), `damagePlayers`, towed trailer's `crash`. Running down zombies: the driver's
+  client sends `vehicle.damageFromHitChr` → `vehicle:damageFromHitChr`. `VehicleCommands` and its `Commands` are
+  `local`, but those Lua calls go through `__classmetatables[BaseVehicle.class].__index` and can be wrapped.
+- Windows: `VehicleWindow.damage` on a client sends `vehicle.damageWindow`; on the server it lowers the part's
+  condition (window health = part condition) and at 0 drops the glass (`setInventoryItem(null)`), adds broken glass.
+  `hit` (ISSmashVehicleWindow `complete`) = damage(all) + condition 0.
+- Java only: `applyDamageToPart` (weapons / bullets, server, `transmitPart*`), `Thump` (lightbar + the thumper's
+  part), `tryStartEngine` (-0.025 battery per start). `AttackVehicleState` (zombie at a car, network state
+  `attackvehicle`, runs on every client animating it): a window hit sends damageWindow from **each** such client;
+  a door / body part hit is `setCondition` on that client only (transmit* do nothing on a client), never synced.
+- `transmitPartCondition/Item/ModData/UsedDelta/Window` only set update flags on the server. A part's
+  `getContainerContentAmount` is fuel / tire air for parts without an item container, but the item weight for
+  trunks, seats and the glove box (set by the container packets and `ItemUser`).
+- `VehiclePart.setInventoryItem(item, skill)` = `doInventoryItemStats` (condition taken from the item) +
+  `updatePartStats`; `setCondition` also sets the item's condition and the damage overlay.
+
+### Item condition, sharpness and holes (42.21)
+
+Traced 2026-10-08 for No Wear (`*_AdminNoWear.lua`).
+- `InventoryItem.setCondition(c, doSound)` clamps to 0..`getConditionMax()` and sets `broken = c <= 0`; with
+  `-debug` and the `cheat.player.unlimitedCondition` debug option it refuses any lowering (vanilla's own "no wear").
+  Head condition (`hasHeadCondition`, an item attribute, max `HeadConditionMax` or condition max; at 0 it sets
+  condition 0) and sharpness (`hasSharpness`, attribute, 0..`getMaxSharpness()` = head condition (or condition) /
+  max, so fill it last) have setters.
+- Wear: `damageCheck(skill, mult, maintenance, equipped)` = `sharpnessCheck` (sharpness down by 1 / conditionMax,
+  at 0 head or condition instead) + `headConditionCheck` + condition roll, then `reduceCondition` (=
+  `syncItemFields`). Callers: `CombatManager` (attacker's client, `checkSyncItemFields`), `IsoTree` chopping,
+  `CraftRecipeData` tool wear (server, no sync of its own), `RecipeCodeOnCreate`, `BuildAction` hammer,
+  `FixingManager`, `IsoAnimal` shears, plus Lua timed actions.
+- `SyncItemFieldsPacket` (both ways: client → server, or server → the owner when the item's outermost container
+  belongs to a player) carries condition, head condition, haveBeenRepaired, sharpness and for clothing the whole
+  `ItemVisual` (holes) and patches.
+- Holes: `ItemVisual:getHole(part)` (0 or 1), `removeHole(index)`, `getHolesNumber()`. `Clothing.addPatch` removes
+  the hole under a patch (the patch remembers `hasHole`); `removePatch` puts it back and subtracts `conditionGain`,
+  sending SyncClothing + SyncVisuals itself on the server. So a visual hole is always an open one.
+
+### Rerolling a container's loot (42.21)
+
+- First look: `RequestItemsForContainerPacket.processServer` fills only a container that is not explored:
+  `setExplored(true)`, `ItemPickerJava.fillContainer(container, player)`, then every item to the clients near it
+  (AddInventoryItemToContainer). Lua's `ItemPicker` is `ItemPickerJava` (`server/Items/ItemPicker.lua`).
+  `fillContainer` returns at once on a client; corpses (`inventorymale/female`) take the outfit branch.
+  Procedural items are tracked per room (`RoomDef:getProceduralSpawnedContainer()`, nil-safe only with a room).
+  `ItemPickerJava.updateOverlaySprite(obj)` redraws item-showing shelves and syncs from the server.
+- Vanilla "Refill container" (container button right-click, `ISLootZed.cheat or isAdmin()`): in MP a client
+  sequence of unordered commands (`ISRemoveItemTool.removeItem` per item, `object.clearContainerExplore`, which
+  errors outside a room, then `requestServerItemsForContainer`), so it can fill nothing (`*_RerollContainer.lua`
+  points the option at a server-side reroll; the admin hotbar's `items.reroll` sends `{ x, y, z, all = true }` to
+  reroll every container on a picked square). Buttons get `ISInventoryPage.onBackpackRightMouseDown` on every
+  `addContainerButton`, so replacing the global reaches them.
+- Loot window buttons (42.21): `ISLootWindowContainerControls.AddHandler(handlerClass, displayToRight)`; a handler
+  derives `ISLootWindowObjectControlHandler` (`shouldBeVisible`, `getControl` = `getButtonControl(title)`,
+  `perform`, `handleJoypadContextMenu`; fields `lootWindow`, `playerObj`, `object`, `container`).
+  `arrange()` runs from `ISInventoryPage:update` every update; left handlers in list order, right ones from the
+  right edge. The old title-bar `lootAll` button is created hidden.
+
+### Item charges (42.21)
+
+`DrainableComboItem` keeps whole uses, 0..`getMaxUses()` = floor(1 / useDelta) (`getCurrentUses`,
+`setCurrentUses` updates the weight; `setCurrentUsesFloat` / `setUsedDelta` round). `Use()` takes one; at 0 the item
+becomes its ReplaceOnDeplete item (`sendReplaceItemInContainer`), stays (KeepOnDeplete) or is removed. A base
+`InventoryItem`'s uses are whole items (`getMaxUses()` = 1). `SyncItemFieldsPacket` carries `uses` and the whole
+FluidContainer.
+
+### Admin powers kept by the server
+
+`shared/ZomboidFixesB42_ServerPowers.lua`: Admin Powers this mod adds that the server acts on (God Vehicle, No
+Wear) are defs with an id, sandbox option and capability; state per username in global mod data
+`ZomboidFixesB42_AdminPowers[id]`, protocol `serverPower` / `serverPowerState`, single player answered with
+`triggerEvent("OnServerCommand", ...)`. A new one = `ServerPowers.define` in its shared file,
+`ServerPowers.addOption` in a client file (any name: `*_AdminHotbarActions.lua` wraps `ISAdminPowerUI.AddOption`, so
+powers added after it load become hotbar toggles too),
+`ServerPowers.activePlayers` / `isOn` on the server. Users: God Vehicle, No Wear, Endless Supplies.
+`ServerPowers.eachCarriedItem(player, fn)` walks the main inventory and bags (5 deep).
+
 ### Animals, hutches and animal zones in multiplayer
 
 - Hutch state runs on the server only (`IsoHutch.isOwner()` = `!GameClient.client`). `IsoHutch.update` syncs the whole
@@ -766,6 +855,13 @@ Body-stat editing belongs to `Capability.CanModifyBodyStats` (admin and moderato
   test `getAccessLevel() == "admin"`; `*_WorldMapAdmin.lua` swaps the global `getAccessLevel` for the duration of those
   calls. Which remote players the map draws is Java (`UIWorldMap` ~433: `CanSeeAll` with at least the target's number
   of capabilities sees everyone, else server option `MapRemotePlayerVisibility` with faction / safehouse / visibility).
+- Admin Powers window (`ISAdminPowerUI`, 42.21): `addAdminPowerOptionsLeft/Right` add every `OptionList` entry
+  of that `side` the role may use (`isDebugEnabled()` or `hasCapability`) through `addOptionLeft/Right`, which
+  index `optionsLeft/Right` by tick box row; Save walks those rows, so which column an option sits in does not
+  matter. Created once at `new` (centred 480 x 350), then `updateAdminPower` (every `OnOpenPanel`) refills both
+  columns and grows the height downwards, which can push Save and Close off the screen
+  (`*_AdminPowersLayout.lua` balances the columns and moves it back; a plain UI correction, so no sandbox option
+  and no README / forum / mod.info line).
 - Health panel (`client/XpSystem/ISUI/ISHealthPanel.lua`, 42.21): `self.character` is the **patient**, `self.otherPlayer`
   the doctor (nil when looking at yourself). The Cheat submenu (~1830-1860) calls `ISHealthPanel.onCheat(bodyPart, action,
   patient, doctor)`; for another player `onCheatOtherPlayer` (~329) sends `player.onHealthCheat {id = patient}` from the
@@ -1435,7 +1531,7 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   client sync pushes before the server's copy arrives becomes real (vanilla does that too); a condition raise within
   5 s of a swing (repair) is taken back; fake-dead and vehicle attacks are not rolled.
 - `client/ZomboidFixesB42_AdminFullBright.lua` (option `AdminFullBright`): an Admin Powers option (`ISAdminPowerUI.AddOption`,
-  file named to load before `*_AdminHotbarActions.lua`, which turns every option into a hotbar toggle). Always Day
+  `*_AdminHotbarActions.lua` turns every option into a hotbar toggle, also ones added after it loads). Always Day
   (ClimateManager day/ambient values while `isAlwaysDayCheat`) lights only the outdoors; the native lighting lights
   interiors only from windows, room lights and light sources. `FBORenderChunk.NoLighting` / `ForceSkyLightLevel` are
   debug-only (`BooleanDebugOption.getValue` = default without `-debug`), `IsoRoomLight` is not exposed, and per-square
@@ -1444,6 +1540,16 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   loaded area, `removeLamppost(light)` = life 0; each square is lit on its own, so a short radius shows as steps across
   a two-tile object) every `AdminFullBrightSpacing` tiles (radius `AdminFullBrightRadius`) through the rects of the rooms near the player
   (`getMetaGrid():getRoomsIntersecting(x, y, w, h, list)`, `RoomDef:getRects()`), client only.
+  It borrows the Always Day cheat flag (`CheatType.ALWAYS_DAY`; the cheat set is saved with the player by
+  `IsoGameCharacter.save`, on the server in MP, locally in SP). `sendPlayerExtraInfo` (synchronous:
+  `ExtraInfoPacket.set` reads every flag at the call) carries it to the server, which echoes the packet to
+  **every** client, the owner included (`sendToClients(ExtraInfo, null)` → `processClient` sets all flags, fires
+  `RefreshCheats`; that event fires nowhere else). The faded cheat list in the bottom right corner is
+  `ISVersionWaterMark.lua`'s `WaterMarkUI:render`: one `IGUI_CheatPanel_<CheatType:getTooltip()>` line per
+  `isCheatSet` for `getSpecificPlayer(0)`, drawn with `self:drawTextRight`. So the global `sendPlayerExtraInfo`
+  is wrapped to send the own Always Day, `RefreshCheats` re-sets the flag, the watermark's `drawTextRight` is
+  swapped for one render, and the state is kept in `Zomboid/Lua/ZomboidFixesB42_FullBright.ini` (vanilla
+  restores Admin Powers only in SP, from `CheatPanel.ini`, written only by the window's Save).
 - `shared/ZomboidFixesB42_ScriptFixes.lua` + `*_ItemFixesClothing/Weapons/Food.lua`: item and recipe data fixes, behind
   `ItemDataFixes` / `RecipeFixes`, applied at `OnLoadMapZones` and re-checked every ten minutes
   (`ScriptFixes.register(option, name, apply, revert)`, several fixes per option, `name` for the log;

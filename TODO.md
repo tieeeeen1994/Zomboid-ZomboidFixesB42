@@ -33,6 +33,38 @@ game, and a test scenario in the Beta section below).
       CraftClickQueue (several Craft clicks all craft), NoFastMoveFallDamage, ChopperControls, AdminFullBright,
       AdminSpawnProtection, and the admin debug fixes (FixDebugAddFluid, ForagingDebugFixes, NoWalkOnSquarePick,
       ServerOptionsTooltip).
+- [ ] AdminFullBright persistence, on a server: turn Full Bright on (Always Day off), relog: Full Bright is on
+      again and Always Day off; the bottom right cheat list says Full Bright, not Always Day (both with Always
+      Day ticked too); turning Full Bright off leaves Always Day as it was. Same from the admin hotbar toggle,
+      and in single player with -debug.
+- [ ] AdminGodVehicle, on a server with a second player watching: turn God Vehicle on, get in a car as a passenger
+      while someone else drives; crash it into a wall and run down zombies (no part loses condition, nobody in it
+      is hurt), idle with the headlights and radio on and the engine off (battery stays), drive a while (fuel,
+      tires, brakes, suspension stay), let zombies thump a door and a window (no dent on either client, no broken
+      glass), smash a window from outside (it stays), start the engine a few times (battery stays). Refuel and
+      repair a part from outside while the admin sits in it (both go up and stay); a mechanic takes a tire off
+      (it comes off). Get out: everything wears again. Relog: the option is still ticked. Same from the admin
+      hotbar toggle, and in single player with -debug (crashes hurt the occupants there, parts still hold).
+- [ ] AdminNoWear, on a server with a second player watching: carry a damaged, dull axe, a broken bat in a bag and
+      a holed jacket; turn No Wear on: all full within a second, the jacket's holes gone for both players. Fight
+      zombies with a low-condition weapon until it would break (never drops), chop a tree, craft with a tool, let
+      zombies hit the clothing with the clothing wear rework on and off (no holes stay, no condition lost, nothing
+      falls off). Set No Wear Items to Held, Worn And Attached: the bag's bat is no longer repaired. Relog: still
+      on. Turn it off: wear works again. A moderator without Edit Item cannot turn it on. Single player with
+      -debug. God Vehicle again after the shared power code moved (state survives a relog).
+- [ ] AdminEndlessSupplies, on a server: carry a half-used battery, lighter and thread in a bag, a propane torch in
+      hand; turn it on: all full within a second. Weld or craft until the torch would run out (it never does),
+      sew, start fires; a depleted lighter kept at 0 fills again. Turn it off: charges drain again. Relog: still on.
+      A moderator without Add Item cannot turn it on. Single player with -debug. Admin Powers now has 28 powers:
+      14 and 14.
+- [ ] RerollContainerFix, on a server with a second player at the same container: as admin, right-click a looted
+      kitchen counter's button, Refill Container: new items appear for both players (vanilla often left it
+      empty), the admin log has the line. The Reroll button after Take All does the same. Also an empty container,
+      one outdoors (trash bin, mailbox), a shelf that shows its items, a fridge. No button on a corpse, a floor
+      bag, a vehicle trunk; none for a moderator until they turn the LootZed power on, then it works. Single player
+      with -debug and LootZed on: the button refreshes the window at once. Admin hotbar Reroll containers: pick a
+      kitchen square (every counter, fridge and shelf there rerolled), keep-picking several squares, a square with
+      no container says so; also Full Bright, God Vehicle, No Wear and Endless Supplies toggles on the hotbar.
 - [ ] HutchRemoveEggCheat, on a server with the Animal Cheat on: right-click a nest box with eggs in the hutch
       window, Remove Egg; the egg shows in the inventory at once (not only after relog) and the nest box count
       drops for everyone; Remove Egg on a box another player just emptied logs no error.
