@@ -629,6 +629,10 @@ Wear) are defs with an id, sandbox option and capability; state per username in 
 `ServerPowers.addOption` in a client file (any name: `*_AdminHotbarActions.lua` wraps `ISAdminPowerUI.AddOption`, so
 powers added after it load become hotbar toggles too),
 `ServerPowers.activePlayers` / `isOn` on the server. Users: God Vehicle, No Wear, Endless Supplies.
+The corner cheat list (`WaterMarkUI:render`) only lists `CheatType` flags (every vanilla Admin Powers option sets one),
+so `client/*_AdminPowersWatermark.lua` draws a line per server power that is on above the highest line drawn (it
+notes it through the panel's `drawTextRight`); Full Bright's own wrapper inside it renames Always Day, and both put
+back whatever `drawTextRight` they found.
 `ServerPowers.eachCarriedItem(player, fn)` walks the main inventory and bags (5 deep).
 
 ### Animals, hutches and animal zones in multiplayer

@@ -31,7 +31,8 @@
 
 ZomboidFixesB42 = ZomboidFixesB42 or {}
 
-local ServerPowers = { byId = {} }
+-- byId: [id] = def; list: the defs in the order they were defined.
+local ServerPowers = { byId = {}, list = {} }
 ZomboidFixesB42.ServerPowers = ServerPowers
 
 local DATA_KEY = "ZomboidFixesB42_AdminPowers"
@@ -44,6 +45,12 @@ local DATA_KEY = "ZomboidFixesB42_AdminPowers"
 --     logName = name in the admin log,
 -- }
 function ServerPowers.define(def)
+    local list = ServerPowers.list
+    local index = #list + 1
+    for i, old in ipairs(list) do
+        if old.id == def.id then index = i end
+    end
+    list[index] = def
     ServerPowers.byId[def.id] = def
     return def
 end

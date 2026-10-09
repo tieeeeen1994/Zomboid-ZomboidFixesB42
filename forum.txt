@@ -64,8 +64,8 @@ Finished skill books stay read after relogging, including books read with the in
 Option: [i][BETA] Rain Collectors And Drying Racks Survive Crashes[/i]
 Rain collectors, wells, amphoras, drying racks, and buckets, pots and other items that catch rain, no longer break after a server crash, a killed server or a restored backup. Ones already broken are rebuilt, empty, when their area loads. Broken items already picked up are fixed when their owner joins or their vehicle loads.
 
-[b]Working animal gender change (beta)[/b]
-Option: [i][BETA] Working Animal Gender Change[/i]
+[b]Working animal gender change[/b]
+Option: [i]Working Animal Gender Change[/i]
 Changing an animal's gender in the animal info window also changes its model and type, and no longer reverts for other players.
 
 [h2]Admin tools[/h2]
@@ -97,62 +97,62 @@ A Body part condition shortcut for the admin hotbar: one click turns a bite, scr
 Option: [i][BETA] Admin Chopper Controls[/i]
 Admins and moderators can send and stop the chopper from the right-click Debug menu, and the debug menu's chopper buttons work on servers. Stopping it ends today's chopper event, so it does not fly straight back, and it reaches every player, including anyone who still hears a chopper that already left.
 
-[b]Admin spawn protection (beta, off by default)[/b]
-Option: [i][BETA] Admin Spawn Protection[/i] (seconds, 0 = off)
+[b]Admin spawn protection (off by default)[/b]
+Option: [i]Admin Spawn Protection[/i] (seconds, 0 = off)
 Admins who join are fully healed and in god mode for the number of seconds you set, so an admin revived on the server does not die again on load.
 
 [b]Admin tag for every cheat[/b]
 Option: [i]Admin Tag[/i] (Vanilla, Every Cheat or Never; Every Cheat by default)
 The admin tag over an admin's head shows for every admin panel cheat, not only some of them. It can also be set to never show, or left as vanilla.
 
-[b]Full Bright admin power (beta)[/b]
-Option: [i][BETA] Full Bright Admin Power[/i]
+[b]Full Bright admin power[/b]
+Option: [i]Full Bright Admin Power[/i]
 Options: [i]Full Bright Light Spacing[/i] (8 tiles by default), [i]Full Bright Light Radius[/i] (20 tiles by default, the most the game allows)
 Always Day only lights the outdoors, so rooms stay dark inside. Full Bright, next to Always Day in the Admin Powers window and on the admin hotbar, turns Always Day on and lights every room around the admin as well. Only the admin sees it; nothing changes for anyone else.
 
-[b]God Vehicle admin power (beta)[/b]
-Option: [i][BETA] God Vehicle Admin Power[/i]
+[b]God Vehicle admin power[/b]
+Option: [i]God Vehicle Admin Power[/i]
 God Vehicle, in the Admin Powers window and on the admin hotbar, for roles that can use the Mechanics Cheat. While an admin with it on sits in a vehicle (any seat), that vehicle and the trailer it tows never wear down: crashes, running down zombies, zombies and players hitting it and driving wear do no damage, windows do not break, no fuel is used, the tires keep their air and the battery does not run down. On a server crashes do not hurt the people inside either. Repairs, refuelling, pumping tires and taking parts off still work. It ends as soon as the admin gets out, and the server remembers each admin's choice across relogs.
 
-[b]No Wear admin power (beta)[/b]
-Option: [i][BETA] No Wear Admin Power[/i]
+[b]No Wear admin power[/b]
+Option: [i]No Wear Admin Power[/i]
 Option: [i]No Wear Items[/i] (Everything Carried by default, or Held, Worn And Attached)
 No Wear, in the Admin Powers window and on the admin hotbar, for roles with the Edit Item permission. While it is on, the admin's items never wear down: weapons and tools keep full condition, head condition and sharpness, and clothing keeps full condition with no holes, whatever wears them (fighting, chopping, crafting, building, zombie attacks). Turning it on repairs and sharpens everything at once, broken items included. Sewn-on patches stay. The server remembers each admin's choice across relogs.
 
-[b]Endless Supplies admin power (beta)[/b]
-Option: [i][BETA] Endless Supplies Admin Power[/i]
+[b]Endless Supplies admin power[/b]
+Option: [i]Endless Supplies Admin Power[/i]
 Endless Supplies, in the Admin Powers window and on the admin hotbar, for roles with the Add Item permission. While it is on, everything with charges the admin carries, in their bags too, stays at full charges: batteries, lighters, propane torches, thread, duct tape, glue, paint and the like never run out. Turning it on fills them all at once. Liquids are not changed. The server remembers each admin's choice across relogs.
 
-[b]Working Refill Container and a Reroll button (beta)[/b]
-Option: [i][BETA] Working Refill Container And Reroll Button[/i]
+[b]Working Refill Container and a Reroll button[/b]
+Option: [i]Working Refill Container And Reroll Button[/i]
 Vanilla's Refill Container (right-click a container's button in the loot window, for admins and anyone with the LootZed admin power on) often only emptied the container on a server. Now the server refills it in one go, and the loot window gets a Reroll button next to Take All that does the same, for the same people. The admin hotbar gets a Reroll containers shortcut that rerolls every container on a square you pick. Furniture and other world containers only (not corpses, floor bags or vehicles). Whatever was in it is gone for good, so mind players' stashes; every reroll is written to the admin log.
 
 [b]Item editor changes save everywhere[/b]
 Option: [i]Item Editor Changes Save Everywhere[/i]
 Changes made in the item editor save for items in crates, vehicles, on the floor and in other players' inventories, not only in your own.
 
-[b]Working Debug Add Fluid (beta)[/b]
-Option: [i][BETA] Working Debug Add Fluid On World Objects[/i]
+[b]Working Debug Add Fluid[/b]
+Option: [i]Working Debug Add Fluid On World Objects[/i]
 Debug Add Fluid fills rain collectors and other world containers instead of emptying them.
 
 [b]Working hutch Remove Egg cheat (beta)[/b]
 Option: [i][BETA] Working Hutch Remove Egg Cheat[/i]
 In multiplayer, the debug Remove Egg option on a hutch nest box (Animal Cheat on) puts the egg in your inventory. It used to take the egg out of the nest box without ever showing it to you, so it seemed lost until you relogged, and it ended in an error on a nest box someone had just emptied.
 
-[b]Working foraging debug tools (beta)[/b]
-Option: [i][BETA] Working Foraging Debug Tools[/i]
+[b]Working foraging debug tools[/b]
+Option: [i]Working Foraging Debug Tools[/i]
 The foraging debug menu can add, move and refresh icons, and added icons can be picked up.
 
-[b]No walking when picking a square (beta)[/b]
-Option: [i][BETA] No Walking When Picking A Square[/i]
+[b]No walking when picking a square[/b]
+Option: [i]No Walking When Picking A Square[/i]
 Picking a square in the debug Horde Manager or Tile Picker no longer walks your character over to it.
 
 [b]Server Options tooltip fix (beta)[/b]
 Option: [i][BETA] Server Options Tooltip Fix[/i]
 The admin Server Options window no longer leaves an option's description stuck on screen, following the mouse around, after the mouse leaves the window or it is closed.
 
-[b]No fall damage with Fast Move (beta)[/b]
-Option: [i][BETA] No Fall Damage With Fast Move[/i]
+[b]No fall damage with Fast Move[/b]
+Option: [i]No Fall Damage With Fast Move[/i]
 No fall damage on stairs while Fast Move is on.
 
 [h2]Gameplay[/h2]
@@ -245,8 +245,8 @@ The world map's admin tools (right-click Teleport Here, the cell and tile grids,
 Option: [i][BETA] Seen Rooms Stay Lit After Relogging[/i]
 In multiplayer, the rooms you have seen no longer go dark again every time you log back in or come back from far away. Your own game remembers the rooms you have seen on each server (a small file in Zomboid/Lua) and lights them again. Rooms are remembered whole, so one you only glimpsed from its doorway comes back fully lit.
 
-[b]No auto vault over stair railings (beta)[/b]
-Option: [i][BETA] No Auto Vault Over Stair Railings[/i]
+[b]No auto vault over stair railings[/b]
+Option: [i]No Auto Vault Over Stair Railings[/i]
 Running into a stair railing no longer vaults you over it.
 
 [b]Rescue animals lost in hutch nest boxes[/b]
@@ -265,12 +265,12 @@ Grab Eggs on a hutch nest box takes every egg in it. With Timed Action Instant o
 Option: [i]Delete Negative Weight Items[/i]
 Items with negative weight are deleted.
 
-[b]Grab amount (beta)[/b]
-Option: [i][BETA] Grab Amount[/i]
+[b]Grab amount[/b]
+Option: [i]Grab Amount[/i]
 A new Grab amount... option between Grab one and Grab all takes exactly as many items from a stack as you type, in loot windows and in search mode.
 
-[b]No empty slices in the firearm radial menu (beta)[/b]
-Option: [i][BETA] No Empty Slices In The Firearm Radial Menu[/i]
+[b]No empty slices in the firearm radial menu[/b]
+Option: [i]No Empty Slices In The Firearm Radial Menu[/i]
 Empty slices are left out of the firearm radial menu, so it only shows what can be done.
 
 [b]Mod options of unloaded mods are kept[/b]
@@ -359,12 +359,12 @@ These only do something when that mod is installed.
 Option: [i]Guns of Marz Tooltip Line Length[/i] (200 characters by default)
 Guns of Marz attachment tooltips wrap instead of stretching across the screen.
 
-[b]Guns of Marz magazine tooltip (beta)[/b]
-Option: [i][BETA] Guns of Marz Magazine Tooltip[/i]
+[b]Guns of Marz magazine tooltip[/b]
+Option: [i]Guns of Marz Magazine Tooltip[/i]
 A Guns of Marz gun's tooltip names the magazine really in it, with its capacity, instead of an earlier one.
 
-[b]Bag attachment slots tooltip box (beta)[/b]
-Option: [i][BETA] Bag Attachment Slots Tooltip Box[/i]
+[b]Bag attachment slots tooltip box[/b]
+Option: [i]Bag Attachment Slots Tooltip Box[/i]
 Plysken Attachments Reborn's bag attachment slot box is drawn at the tooltip's real font size, so with a bigger font size the slot names no longer overlap each other or spill out of the box. It also starts under the lines other mods add to a bag's tooltip, such as Dynamic Backpack Upgrades' or Tien's Bag Upgrades' upgrade slots, whichever mod loads first.
 
 [b]Turbo Game in multiplayer[/b]

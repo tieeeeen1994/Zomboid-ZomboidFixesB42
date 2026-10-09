@@ -329,12 +329,14 @@ end)
 -- The faded cheat list in the bottom right corner: Full Bright, not Always Day.
 if WaterMarkUI and option then
     local vanillaRender = WaterMarkUI.render
+    -- Another wrapper (AdminPowersWatermark, outside this one) may have put its own
+    -- drawTextRight on the panel: draw through it and put it back afterwards.
     local function draw(self, ...)
-        self.drawTextRight = nil
         if not active then return vanillaRender(self, ...) end
         local alwaysDayText = getText("IGUI_CheatPanel_AlwaysDay")
         local step = getTextManager():getFontHeight(UIFont.NewSmall) + 3
         local shift = 0
+        local outer = rawget(self, "drawTextRight")
         local drawTextRight = self.drawTextRight
         self.drawTextRight = function(panel, text, x, y, ...)
             if text == alwaysDayText then
@@ -346,8 +348,9 @@ if WaterMarkUI and option then
             end
             return drawTextRight(panel, text, x, y + shift, ...)
         end
-        vanillaRender(self, ...)
-        self.drawTextRight = nil
+        local ok, err = pcall(vanillaRender, self, ...)
+        self.drawTextRight = outer
+        if not ok then error(err) end
     end
     WaterMarkUI.render = draw
 end
