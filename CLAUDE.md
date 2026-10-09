@@ -1277,6 +1277,15 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   that. `getSlotIndexAt` maps any point inside the bar, margins included, to the nearest slot (never -1 inside). It
   has no `onMouseDown`; ISPanelJoypad's does nothing while `moveWithMouse` is off. TienCustomizableHotbar makes it
   draggable.
+  Slot order (42.21): `availableSlot[i]` (attachment points, `slotType`) is saved in player modData `hotbar` (slot
+  types in order; `savePosition` + `transmitModData`, read back by `loadPosition`). Each attached item keeps its index
+  (`setAttachedSlot`) beside `attachedSlotType` and `attachedToModel` (the model location), all saved in the item bytes;
+  `reloadIcons` rebuilds `attachedItems` from the main inventory by that index. `SyncItemFieldsPacket` carries all
+  three both ways (`syncItemFields(chr, item)`), which is how `ISAttachItemHotbar:perform` (client) tells the server.
+  `refresh` pairs `attachedItems[i]` with `availableSlot[i]` and re-attaches with that slot's definition, so an index
+  that disagrees with the saved order (Reorder The Hotbar after a reconnect) drops or misplaces items.
+  `ISAttachItemHotbar` keeps the index taken when it was queued. `render` hard-codes x from `margins`.
+  TienCustomizableHotbar reorders it and adds side columns by shifting vanilla's draw calls (see its CLAUDE.md).
 - Taking items out and putting them back (42.21, traced for TienCustomizableHotbar): `transferIfNeeded(player, item)`
   queues the bag → main inventory transfer when `luautils.haveToBeTransfered`; `ISEquipWeaponAction:new(chr, item,
   maxTime, primary, twoHands)` requires the item in the **main** inventory (`isValid` = `getItemWithID`), and its
