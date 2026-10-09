@@ -589,6 +589,29 @@ Traced 2026-10-08 for No Wear (`*_AdminNoWear.lua`).
   `arrange()` runs from `ISInventoryPage:update` every update; left handlers in list order, right ones from the
   right edge. The old title-bar `lootAll` button is created hidden.
 
+### Hotbar attachments and carry weight (42.21)
+
+Traced 2026-10-09 for a planned "attached to a bag weighs like inside it" mod.
+- Load = `ItemContainer.getCapacityWeight()` → `IsoGameCharacter.getInventoryWeight()` (~11038), Java only, summing
+  the **main inventory's** items: attached (`getAttachedSlot() > -1`, not in hand) = `getHotbarEquippedWeight()`
+  (InventoryItem ~3423: (actual + contents) × 0.7, or × `EquippedOrWornEncumbranceMultiplier` 0.3 for script tag
+  `LightWhenAttached`, 21 items; `hasTag` reads the script, never the instance), worn / in hand = × 0.3, else full. A
+  worn bag counts `actual × 0.3 + contents × (1 - WR/100)` (`InventoryContainer.getEquippedWeight` ~278). Heavy-load
+  speed (`IsoPlayer` ~1068) and fall damage (`IsoGameCharacter` ~2330) read it. Lua wrappers cannot reach these calls.
+- Per-instance weight: `setActualWeight` + `setCustomWeight(true)` (saved, clamped >= 0) works for base items and
+  Food without extra items, but `HandWeapon.getActualWeight` (~225) is script weight + weapon parts only, so it cannot
+  lower a weapon. `getMaxWeight()` is an **int** (`maxWeight`, from `maxWeightBase × maxWeightDelta` traits).
+- Slots: `ISHotbar:refresh` (~433) adds a slot per entry of a worn item's `getAttachmentsProvided()` (bags in hand
+  skipped) plus the always-present `Back`; the slot keeps only the type, not which item gave it. The item keeps
+  `getAttachedSlotType()` (= that provided name), so the providing bag is the worn item whose list contains it. A worn
+  item's `getAttachmentReplacement()` only moves models (e.g. Back over a backpack). Vanilla bags that provide slots
+  (16): ALICE belt suspenders (WR 80: SmallBeltLeft/Right, WebbingLeft/Right = knives, tools, walkies), hiking / ALICE
+  / survivor / frame packs (WR 70-85: BedrollBottom*, bedrolls only), HolsterShoulder (WR 85, pistols).
+- `ISHotbar:update` (~244) drops any attached item that `getInventory():contains` (main inventory only) no longer
+  finds, `reloadIcons` scans the main inventory only, and the client `ISInventoryTransferAction` clears the slot of an
+  item it moves, so an attached item cannot live inside a bag without rewiring the hotbar. Attaching = shared
+  `ISAttachItemHotbar` (server `complete`: `setAttachedItem` + slot fields + `syncItemFields`).
+
 ### Item charges (42.21)
 
 `DrainableComboItem` keeps whole uses, 0..`getMaxUses()` = floor(1 / useDelta) (`getCurrentUses`,
@@ -1245,6 +1268,29 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   ~320 of them weapons (no drinks or pills). Plysken Attachments Reborn replaces `activateSlot` outright (equips only
   HandWeapon / InventoryContainer / Radio, wears clothing) and adds ~110 attachable items. TienActionableHotbar wraps
   `activateSlot` at `OnGameStart` to run a context menu option instead.
+  Look and placement (42.21): an ISPanelJoypad (background 0.5 black, `borderColor` 0.8 grey a 0.8), 60 px slots,
+  `margins` = `slotPad` = 10, height 82; `render` draws each slot's border, its number top left, a 0.2 white tint on
+  hover (red while dragging an item that cannot go there), the slot name in a dark box **above** the bar (outside its
+  bounds), `item:getTexture()` at its own size, `media/ui/icon.png` bottom right when equipped, an empty slot's
+  provider texture at 0.25; `update` shows an `ISToolTipInv` for the hovered item. `update` calls
+  `setSizeAndPosition()` **every update** (centred at the bottom of the player's screen), so moving it means wrapping
+  that. `getSlotIndexAt` maps any point inside the bar, margins included, to the nearest slot (never -1 inside). It
+  has no `onMouseDown`; ISPanelJoypad's does nothing while `moveWithMouse` is off. TienCustomizableHotbar makes it
+  draggable.
+- Taking items out and putting them back (42.21, traced for TienCustomizableHotbar): `transferIfNeeded(player, item)`
+  queues the bag → main inventory transfer when `luautils.haveToBeTransfered`; `ISEquipWeaponAction:new(chr, item,
+  maxTime, primary, twoHands)` requires the item in the **main** inventory (`isValid` = `getItemWithID`), and its
+  `complete` decides what leaves the hands (primary clears a both-hands secondary, a handgun clears a secondary
+  HandWeapon...); `ISUnequipAction:new(chr, item, maxTime, reason)` (vanilla hotbar 20, context menu `unequipItem` 50,
+  which also puts out lit candles / lanterns); `onWearItems({item}, playerNum)` transfers then `ISWearClothing`.
+  Put-back = `ISCraftingUI.ReturnItemToContainer` (skipped for Disorganized): main inventory → container transfer with
+  `setAllowMissingItems(true)`. The client `ISInventoryTransferAction` does not unequip a held item itself. A client
+  timed action class without `complete` stays client-only in MP (a 1-tick one is a clean "then do this" step in a queue).
+- Inventory drag and drop (42.21): `ISInventoryPane:onMouseDown` on an item sets `ISMouseDrag.dragging` (list of items /
+  stack groups, flatten with `ISInventoryPane.getActualItems`) and `draggingFocus = pane` at once, before any move. The
+  element under the mouse gets `onMouseUp` first; a drop target (vanilla hotbar, container buttons) acts and ends the
+  drag with `draggingFocus:onMouseUp(0, 0)` + both fields nil. Otherwise the pane's `update` (after mouse handling) clears
+  it on release and drops the items on the floor only when released over no UI element.
 - Context menu internals (`ISUI/ISContextMenu.lua`): an option is a pooled table `{ name, target, onSelect,
   param1..param10, subOption, notAvailable, isDisabled, checkMark, iconTexture, itemForTexture, toolTip }` (pool reused
   with `table.wipe`, so copy what you keep); a click runs `ISContextMenu.globalPlayerContext = player`, `closeAll()`,
