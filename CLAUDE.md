@@ -505,7 +505,12 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
   1000 / ReloadSpeed ms; its events (InsertBullet, InsertBulletSound) arrive **every frame**, kept to one per loop
   by `loadedThisLoop` (the click is lost for a loop when InsertBullet comes first). The server fires InsertBullet
   every `getReloadTime(500)` with no guard: two rounds per client loop (logged 2026-10-11). `*_ReloadTiming.lua`
-  makes that 1000 (server) and gives the click its own per-loop mark (client).
+  makes that 1000 (server) and gives the click its own per-loop mark (client); `ISUnloadBulletsFromMagazine`
+  (RemoveBullets node, RemoveBullet / RemoveBulletSound, unloadedThisLoop) is built the same way and gets the same.
+  Repeating emulated events drift: the emulator restarts an event's timer when it fires and runs once per server
+  update, so a period is rounded up to the next update (555 ms ≈ 600), and its first firing is one period after
+  the start. `*_ReloadTiming.lua` swaps `emulateAnimEvent` during those `serverStart`s, keeps the per-round event
+  and pays it from OnTick by elapsed ms × `fastForwardSpeed` / period (a magazine owes one at start).
 
 ### Vehicle parts and batteries
 

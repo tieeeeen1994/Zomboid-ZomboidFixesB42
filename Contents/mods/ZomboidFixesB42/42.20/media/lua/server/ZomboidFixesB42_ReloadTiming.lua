@@ -49,7 +49,26 @@
     most one of them. Logged on a server 2026-10-11 at ReloadSpeed 1.8: loops every ~555
     ms, a round every ~300 ms. So that base time becomes 1000 too (the 500 ms
     updateLoadingTime event, which the server's copy uses for nothing, with it); the
-    550 ms loadFinished that ends a full magazine is left alone.
+    550 ms loadFinished that ends a full magazine is left alone. Emptying a magazine
+    (ISUnloadBulletsFromMagazine: RemoveBullets node, the same clip and variable,
+    RemoveBullet every 500, unloadFinished every 550) is built the same way and gets
+    the same change.
+
+    Right lengths are not enough for the events that repeat once per round (shells'
+    loadFinished, a magazine's InsertBullet and RemoveBullet). AnimEventEmulator.update
+    runs once per server update (~100 ms) and restarts an event's timer when it fires,
+    so every period is rounded up to the next update: 555 ms becomes about 600, and the
+    rounds fall further behind the animation with every one. And its first firing
+    comes one whole period after the start, while a magazine's client loop clicks and
+    (in single player) moves its first round at the start of the first loop. So those
+    events are not given to the emulator: while serverStart runs, emulateAnimEvent is
+    swapped for one that keeps them, and an OnTick here owes the action
+    elapsed ms x game speed / period of them, paying what is owed every tick (a
+    magazine starts owing one). The average rate is then the animation's, whatever the
+    update rate, and the fast forward speed (ZomboidFixesB42.fastForwardSpeed) is
+    followed from the next tick, mid-action included; ZomboidFixesB42_FastForward-
+    AnimEvents.lua never sees these events, so it adds no extras for them. Paying stops
+    once the action completes, is stopped, or is about to complete (getProgress >= 1).
 
     This file replaces only those base times: while one of the four actions'
     serverStart runs, ISReloadWeaponAction.getReloadTime answers with the clip
@@ -76,6 +95,7 @@ require "TimedActions/ISInsertMagazine"
 require "TimedActions/ISEjectMagazine"
 require "TimedActions/ISRackFirearm"
 require "TimedActions/ISLoadBulletsInMagazine"
+require "TimedActions/ISUnloadBulletsFromMagazine"
 
 local function isEnabled()
     local vars = SandboxVars and SandboxVars.ZomboidFixesB42
@@ -99,8 +119,9 @@ local TIMES = {
     insert = {
         boltaction = { from = 1500, to = 1733 },
     },
-    -- Every magazine, whatever the gun (the action has no gun to key by).
+    -- Every magazine, whatever the gun (the actions have no gun to key by).
     magazine = { from = 500, to = 1000 },
+    unload = { from = 500, to = 1000 },
     eject = {
         handgun = { from = 1200, to = 1500 },
         boltaction = { from = 1200, to = 1733 },
@@ -113,6 +134,20 @@ local TIMES = {
         leveraction = { from = 1200, to = 1133, aimed = 1200 },
     },
 }
+
+-- Events paced here instead of by the emulator: the per-round event of each kind, and
+-- whether one is owed at once (a magazine's loop moves a round at its start, a shell
+-- loop at its end).
+local PACED = {
+    reload = { event = "loadFinished", owedAtStart = 0 },
+    magazine = { event = "InsertBullet", owedAtStart = 1 },
+    unload = { event = "RemoveBullet", owedAtStart = 1 },
+}
+
+-- Most rounds paid to one action in one tick, and how long one is paced at most
+-- (AnimEventEmulator.getDurationMax, 30 minutes).
+local MAX_PER_TICK = 60
+local MAX_AGE_MS = 1800000
 
 -- Gunworks' ReloadAnim module, looked up on first use: nil = not yet, false = absent.
 local gunworks = nil
@@ -149,13 +184,74 @@ end
 
 --- What `kind` of this action's gun should be timed with, or nil to keep vanilla.
 local function timesFor(action, kind)
-    if kind == "magazine" then return TIMES.magazine end
+    if kind == "magazine" or kind == "unload" then return TIMES[kind] end
     local gun = action.gun
     if not gun or not instanceof(gun, "HandWeapon") then return nil end
     local times = TIMES[kind][tostring(gun:getWeaponReloadType())]
     if not times or gunworksTimes(gun) then return nil end
     return times
 end
+
+-- Actions whose per-round event is paced here: { action, net, event, parameter, period, owed, startMs, lastMs }.
+local pacers = {}
+
+--- Mark the action ended when the server completes or stops it.
+local function hookEnd(action)
+    if action.zfixPaceHooked then return end
+    action.zfixPaceHooked = true
+    local complete = action.complete
+    local serverStop = action.serverStop
+    action.complete = function(self, ...)
+        self.zfixPaceEnded = true
+        if complete then return complete(self, ...) end
+        return true
+    end
+    action.serverStop = function(self, ...)
+        self.zfixPaceEnded = true
+        if serverStop then return serverStop(self, ...) end
+    end
+end
+
+local function pace(action, period, event, parameter, owedAtStart)
+    hookEnd(action)
+    local now = getTimestampMs()
+    table.insert(pacers, {
+        action = action, net = action.netAction, event = event, parameter = parameter,
+        period = period, owed = owedAtStart, startMs = now, lastMs = now,
+    })
+end
+
+local function isOver(p, now)
+    return p.action.zfixPaceEnded or now - p.startMs > MAX_AGE_MS or p.net:getProgress() >= 1
+end
+
+local function onTick()
+    if #pacers == 0 then return end
+    local now = getTimestampMs()
+    local speed = math.max(ZomboidFixesB42 and ZomboidFixesB42.fastForwardSpeed or 1, 1)
+    -- A copy, since paying runs the action's Lua.
+    local list = {}
+    for i, p in ipairs(pacers) do list[i] = p end
+    for _, p in ipairs(list) do
+        if isOver(p, now) then
+            p.over = true
+        else
+            p.owed = p.owed + (now - p.lastMs) * speed / p.period
+            p.lastMs = now
+            local paid = 0
+            while p.owed >= 1 and paid < MAX_PER_TICK and not isOver(p, now) do
+                p.owed = p.owed - 1
+                paid = paid + 1
+                p.net:animEvent(p.event, p.parameter)
+            end
+        end
+    end
+    for i = #pacers, 1, -1 do
+        if pacers[i].over then table.remove(pacers, i) end
+    end
+end
+
+Events.OnTick.Add(onTick)
 
 local function wrapServerStart(class, kind)
     local previous = class.serverStart
@@ -166,7 +262,20 @@ local function wrapServerStart(class, kind)
             times = times,
             aiming = kind == "rack" and self.character ~= nil and self.character:isAiming(),
         }
+        local paced = PACED[kind]
+        local outerEmulate = emulateAnimEvent
+        if paced and self.netAction then
+            emulateAnimEvent = function(netAction, duration, event, parameter)
+                local period = tonumber(duration)
+                if event == paced.event and netAction == self.netAction and period and period > 0 then
+                    pace(self, period, event, parameter, paced.owedAtStart)
+                    return
+                end
+                return outerEmulate(netAction, duration, event, parameter)
+            end
+        end
         local ok, err = pcall(previous, self)
+        emulateAnimEvent = outerEmulate
         current = nil
         if not ok then error(err) end
     end
@@ -177,3 +286,4 @@ wrapServerStart(ISInsertMagazine, "insert")
 wrapServerStart(ISEjectMagazine, "eject")
 wrapServerStart(ISRackFirearm, "rack")
 wrapServerStart(ISLoadBulletsInMagazine, "magazine")
+wrapServerStart(ISUnloadBulletsFromMagazine, "unload")
