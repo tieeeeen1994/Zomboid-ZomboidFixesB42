@@ -122,6 +122,7 @@ ZomboidFixesB42.CMD_CRAFT_SOUND = "craftSound"
 ZomboidFixesB42.CMD_CLOTHING_WEAR = "clothingWear"
 ZomboidFixesB42.CMD_SERVER_POWER = "serverPower"
 ZomboidFixesB42.CMD_REROLL_CONTAINER = "rerollContainer"
+ZomboidFixesB42.CMD_REMOVE_TILE = "removeTile"
 
 -- server -> clients
 ZomboidFixesB42.CMD_PRINT_MEDIA_READ = "printMediaRead"

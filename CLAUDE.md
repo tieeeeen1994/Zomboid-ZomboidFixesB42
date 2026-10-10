@@ -971,6 +971,14 @@ Where every admin tool lives, and how it runs, so a feature touching "all admin 
   `OnObjectRightMouseButtonUp` fire from one `UIManager.updateMouseButtons` call; the hotbar's pickers end on the
   down and wrap `doRClick` to eat that release's menu. Vanilla's Horde Manager
   (`ISSpawnHordeUI:onSelectNewSquare`) and Tile Picker do not, so picking a square there makes the character walk to it.
+- Removing tiles (42.21): vanilla's Brush Tool right-click "Destroy tile" = `sledgeDestroy(obj)` on a client
+  (`SledgehammerDestroyPacket`: UseDebugContextMenu, refused while server option AllowDestructionBySledgehammer is
+  off, addressed by square + object index only). Server / SP: `square:transmitRemoveItemFromSquare(obj)` (server:
+  `GameServer.RemoveItemFromMap` for every part of a multi-tile object; SP: `RemoveTileObject`; on a client it only
+  removes locally). Attached sprites: `obj:RemoveAttachedAnim(i)` + `transmitUpdatedSpriteToClients()`
+  (UpdateItemSprite carries the attached list); overlay: `setOverlaySprite(nil, true)`. Any `ISBuildingObject`
+  cursor gets the Rotate key through its global `OnKeyPressed` → `getCell():getDrag(0):rotateKey(key)`; the
+  Moveables pick-up cursor cycles `objectIndex` there. `*_RemoveTile.lua` + the hotbar's `painting.removeTile`.
 - Brush Tool painting: `ISBrushToolTileCursor:new(sprite, northSprite, character)` + `setDrag` (what "Choose tile" does)
   never removes itself, so each click places again. In MP its `tryBuild` sends `sendAddObjectToMap(square, sprite)` =
   `AddObjectToMapPacket`, `requiredCapability = AddItem` (not the Brush Tool power); the server runs

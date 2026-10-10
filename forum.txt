@@ -79,6 +79,7 @@ Admins and moderators get a new sidebar button under Admin that opens a floating
 [*]One shortcut can run several actions in a row, each after a delay you choose or all at once (for example pick a square, then spawn a horde and make noise there).
 [*]A picked square can keep picking, so every click on the map runs the shortcut again until right-click or Esc.
 [*]A shortcut can hold a chosen tile and paint it with the Brush Tool on every click.
+[*]A shortcut can remove tiles one at a time: the tile under the mouse is outlined in red, R steps through everything on the square (attached sprites too), a click removes it.
 [*]A shortcut's toggles can each flip on their own, or follow the first one (same state or the opposite), so one click turns a set of cheats on or off together.
 [*]A shortcut can repeat itself every N milliseconds (100 or more), a set number of times, until clicked again, or while its button or key is held.
 [*]Any image in the game can be a shortcut's icon, and shortcuts have key binds in the Key Bindings tab.

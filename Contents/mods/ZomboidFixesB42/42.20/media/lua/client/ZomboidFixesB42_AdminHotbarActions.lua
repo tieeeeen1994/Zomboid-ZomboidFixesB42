@@ -1406,6 +1406,191 @@ register({
     end,
 })
 
+--[[
+    Remove a tile: a cursor that picks one thing on the square under the mouse (the
+    list and how each is removed: shared/ZomboidFixesB42_RemoveTile.lua), highlights
+    its object in red, steps to the next with the Rotate key (R by default, as the
+    Moveables pick-up cursor does through ISBuildingObject's rotateKey) and removes it
+    on a click, through the server (server/ZomboidFixesB42_RemoveTile.lua). It stays up
+    until right-click, Esc or a second click on the slot (Hotbar.holdCursor). A label
+    by the mouse names the pick. ISBuildingObject is in media/lua/server, which is
+    not loaded at the main menu, so the class is made on first use.
+--]]
+local RemoveTile = ZomboidFixesB42.RemoveTile
+local REMOVE_HIGHLIGHT = { r = 1, g = 0.25, b = 0.2, a = 1 }
+-- A second click on the same pick before the server's removal arrives is dropped.
+local REMOVE_REPEAT_MS = 400
+
+local RemoveLabel = ISPanel:derive("ZomboidFixesB42_AdminHotbarRemoveLabel")
+
+function RemoveLabel:new()
+    local o = ISPanel:new(0, 0, 10, 10)
+    setmetatable(o, self)
+    self.__index = self
+    o.background = false
+    o.lines = {}
+    return o
+end
+
+function RemoveLabel:prerender()
+    local font = UIFont.Small
+    local tm = getTextManager()
+    local lineH = tm:getFontHeight(font)
+    local thumb = self.texture and (lineH * 2 + 4) or 0
+    local width = 0
+    for _, line in ipairs(self.lines) do
+        width = math.max(width, tm:MeasureStringX(font, line.text))
+    end
+    local pad = 6
+    self:setWidth(pad * 2 + (thumb > 0 and thumb + pad or 0) + width)
+    self:setHeight(pad * 2 + math.max(thumb, #self.lines * lineH))
+    local x = getMouseX() + 24
+    local y = getMouseY() + 24
+    if x + self.width > getCore():getScreenWidth() then x = getMouseX() - 24 - self.width end
+    if y + self.height > getCore():getScreenHeight() then y = getMouseY() - 24 - self.height end
+    self:setX(x)
+    self:setY(y)
+    self:drawRect(0, 0, self.width, self.height, 0.75, 0.05, 0.05, 0.05)
+    self:drawRectBorder(0, 0, self.width, self.height, 0.8, 0.6, 0.6, 0.6)
+    if self.texture then
+        self:drawTextureScaledAspect(self.texture, pad, pad, thumb, thumb, 1, 1, 1, 1)
+    end
+    local textX = pad + (thumb > 0 and thumb + pad or 0)
+    for i, line in ipairs(self.lines) do
+        local c = line.color or { r = 1, g = 1, b = 1 }
+        self:drawText(line.text, textX, pad + (i - 1) * lineH, c.r, c.g, c.b, 1, font)
+    end
+end
+
+local TileRemover = nil
+
+local function tileRemoverClass()
+    if TileRemover or not ISBuildingObject then return TileRemover end
+    TileRemover = ISBuildingObject:derive("ZomboidFixesB42_TileRemover")
+
+    function TileRemover:new(character)
+        local o = {}
+        setmetatable(o, self)
+        self.__index = self
+        o:init()
+        o.character = character
+        o.player = character:getPlayerNum()
+        o.noNeedHammer = true
+        o.skipBuildAction = true
+        -- A pure picker: tryBuild would otherwise walk the player to the square.
+        o.skipWalk2 = true
+        o.index = 1
+        o.entries = {}
+        o.label = RemoveLabel:new()
+        o.label:initialise()
+        o.label:addToUIManager()
+        o.label:setAlwaysOnTop(true)
+        o.label:setWantMouseEvents(false)
+        o.label:setVisible(false)
+        return o
+    end
+
+    function TileRemover:highlight(object)
+        if self.lit and self.lit ~= object then self.lit:setHighlighted(self.player, false, false) end
+        if object then
+            object:setHighlighted(self.player, true, false)
+            local c = REMOVE_HIGHLIGHT
+            object:setHighlightColor(self.player, c.r, c.g, c.b, c.a)
+        end
+        self.lit = object
+    end
+
+    function TileRemover:updateLabel(entry)
+        local label = self.label
+        if not label then return end
+        if not entry then
+            label:setVisible(false)
+            return
+        end
+        local key = Keyboard.getKeyName(getCore():getKey(KeybindId.ROTATE_BUILDING))
+        local what = entry.sprite
+        if entry.kind == "overlay" then
+            what = txt("RemoveTileOverlay", entry.sprite, entry.parent)
+        elseif entry.kind == "attached" then
+            what = txt("RemoveTileAttached", entry.sprite, entry.parent)
+        end
+        label.texture = tryGetTexture(entry.sprite)
+        label.lines = {
+            { text = "[" .. Hotbar.int(self.index) .. "/" .. Hotbar.int(#self.entries) .. "]  " .. what },
+            { text = txt("RemoveTileHint", key), color = { r = 0.75, g = 0.75, b = 0.75 } },
+        }
+        label:setVisible(true)
+    end
+
+    --- The list for the square under the mouse, kept in range after a removal.
+    function TileRemover:refresh(square)
+        if square ~= self.zfixSquare then
+            self.zfixSquare = square
+            self.index = 1
+        end
+        self.entries = RemoveTile.entries(square)
+        if self.index > #self.entries then self.index = math.max(1, #self.entries) end
+        return self.entries[self.index]
+    end
+
+    function TileRemover:isValid(square)
+        return square ~= nil and #RemoveTile.entries(square) > 0
+    end
+
+    function TileRemover:render(x, y, z, square)
+        local entry = self:refresh(square)
+        self:highlight(entry and entry.object or nil)
+        self:updateLabel(entry)
+        local hc = entry and getCore():getBadHighlitedColor() or getCore():getGoodHighlitedColor()
+        self:getFloorCursorSprite():RenderGhostTileColor(x, y, z, hc:getR(), hc:getG(), hc:getB(), entry and 0.8 or 0.3)
+    end
+
+    function TileRemover:rotateKey(key)
+        if getCore():isKey(KeybindId.ROTATE_BUILDING, key) and #self.entries > 1 then
+            self.index = self.index % #self.entries + 1
+        end
+    end
+
+    function TileRemover:create(x, y, z)
+        local square = self.zfixSquare
+        local entry = self.entries[self.index]
+        if not entry or not square or square:getX() ~= x or square:getY() ~= y or square:getZ() ~= z then return end
+        local key = table.concat({ x, y, z, entry.objectIndex, entry.kind, entry.sprite }, "|")
+        local now = getTimestampMs()
+        if self.lastKey == key and now - (self.lastMs or 0) < REMOVE_REPEAT_MS then return end
+        self.lastKey, self.lastMs = key, now
+        sendClientCommand(self.character, ZomboidFixesB42.MODULE, ZomboidFixesB42.CMD_REMOVE_TILE, {
+            x = x, y = y, z = z, objectIndex = entry.objectIndex, kind = entry.kind,
+            attachedIndex = entry.attachedIndex, sprite = entry.sprite, parent = entry.parent,
+        })
+    end
+
+    function TileRemover:deactivate()
+        self:highlight(nil)
+        if self.label then
+            self.label:removeFromUIManager()
+            self.label = nil
+        end
+        ISBuildingObject.deactivate(self)
+    end
+
+    return TileRemover
+end
+
+register({
+    id = "painting.removeTile",
+    category = "painting",
+    title = txt("RemoveTile"),
+    tooltip = txt("RemoveTileTooltip"),
+    icon = "item:Base.Sledgehammer",
+    available = needs("UseBrushToolManager"),
+    run = function(ctx)
+        local class = tileRemoverClass()
+        if not class or not RemoveTile then return end
+        Hotbar.holdCursor(ctx.admin, class:new(ctx.admin), { slot = ctx.owner })
+    end,
+})
+
 -- 8. Weather and climate ----------------------------------------------------------------------------------
 
 -- ClimateManager's precipitation, the float /startrain drives (index 3).
