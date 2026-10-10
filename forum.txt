@@ -34,7 +34,7 @@ The crafting window ignored the Craft button while one of its crafts was running
 
 [b]Reloads keep pace with the animation (beta)[/b]
 Option: [i][BETA] Reloads Keep Pace With The Animation[/i]
-On a server, shells and rounds go in as the hand moves, and a shotgun pump or a rifle magazine swap is no longer cut off half way.
+On a server, shells and rounds go in as the hand moves, a shotgun pump or a rifle magazine swap is no longer cut off half way, and filling a magazine goes at the hand's pace (it used to put bullets in twice as fast, so about every other one made no sound). Every bullet put into a magazine clicks, in single player too.
 
 [b]Hear other players add ingredients[/b]
 Option: [i]Hear Other Players Add Ingredients[/i]
@@ -88,14 +88,14 @@ Single player gets the hotbar with the -debug launch option.
 
 [b]Body stats editor[/b]
 Option: [i]Body Stats Editor For Admins[/i]
-Admins and moderators can change any online player's hunger, mood, health, nutrition, weight and other body stats, like the debug menu's Body panel, from a Body button in the Player Stats window, the admin panel or the scoreboard. The changes are made on the server, so they stick and the player sees them. A Health button next to Body (new, beta) opens the player's health window straight away, without asking them for a medical check.
+Admins and moderators can change any online player's hunger, mood, health, nutrition, weight and other body stats, like the debug menu's Body panel, from a Body button in the Player Stats window, the admin panel or the scoreboard. The changes are made on the server, so they stick and the player sees them. A Health button next to Body opens the player's health window straight away, without asking them for a medical check.
 
 [b]Body part conditions (beta)[/b]
 Option: [i]Body Stats Editor For Admins[/i]
 A Body part condition shortcut for the admin hotbar: one click turns a bite, scratch, laceration, deep wound, bleeding, glass shards, a lodged bullet, a burn, a fracture, a wound infection or a muscle strain on or off on any body part of any online player, or heals the part. It has the same permission checks and admin log as the body stats editor (vanilla's own health cheat has none in multiplayer). The health window's Cheat menu also gets Full Health, Keep Treatment for a part or the whole body: every injury healed, while bandages, poultices, splints and stitches stay on (vanilla's Full Health takes them off).
 
-[b]Admin chopper controls (beta)[/b]
-Option: [i][BETA] Admin Chopper Controls[/i]
+[b]Admin chopper controls[/b]
+Option: [i]Admin Chopper Controls[/i]
 Admins and moderators can send and stop the chopper from the right-click Debug menu, and the debug menu's chopper buttons work on servers. Stopping it ends today's chopper event, so it does not fly straight back, and it reaches every player, including anyone who still hears a chopper that already left.
 
 [b]Admin spawn protection (off by default)[/b]
@@ -148,12 +148,12 @@ The foraging debug menu can add, move and refresh icons, and added icons can be 
 Option: [i]No Walking When Picking A Square[/i]
 Picking a square in the debug Horde Manager or Tile Picker no longer walks your character over to it.
 
-[b]Server Options tooltip fix (beta)[/b]
-Option: [i][BETA] Server Options Tooltip Fix[/i]
+[b]Server Options tooltip fix[/b]
+Option: [i]Server Options Tooltip Fix[/i]
 The admin Server Options window no longer leaves an option's description stuck on screen, following the mouse around, after the mouse leaves the window or it is closed.
 
-[b]User Panel corner info (beta)[/b]
-Option: [i][BETA] User Panel Corner Info[/i]
+[b]User Panel corner info[/b]
+Option: [i]User Panel Corner Info[/i]
 The User Panel's Show connection info and Show server info are remembered between games instead of resetting every restart. Two more tick boxes there, Show game version and Show coordinates and resolution, hide those lines in the bottom right corner; the rest moves down to fill the space. Each player's choices are saved on their own computer.
 
 [b]Closed chat and Lua console stay closed (beta)[/b]
@@ -230,8 +230,8 @@ In multiplayer, fish fillets showed 205 kcal whatever the fish, until dropped an
 Option: [i][BETA] Max Item Size Checks Each Item[/i]
 Bags with a max item size (ALICE belts and chest rigs, toolboxes, totes, first aid kits...) checked it against everything dragged in at once, so only 1 to 4 magazines went into ALICE webbing per drag. Each item is now checked on its own, when dragging and with the transfer same type button. Picking items up from the floor straight into such a bag still stops at the limit; that check is in Java.
 
-[b]No max item size limit (beta, off by default)[/b]
-Option: [i][BETA] No Max Item Size Limit (Off By Default)[/i]
+[b]No max item size limit (off by default)[/b]
+Option: [i]No Max Item Size Limit (Off By Default)[/i]
 Removes the max item size of every bag that has one, mods' bags included, so only the bag's capacity limits what goes in. A balance change rather than a fix, so it is off unless the server turns it on.
 
 [b]Paper map markings are kept (beta)[/b]
@@ -281,6 +281,10 @@ A new Grab amount... option between Grab one and Grab all takes exactly as many 
 [b]No empty slices in the firearm radial menu[/b]
 Option: [i]No Empty Slices In The Firearm Radial Menu[/i]
 Empty slices are left out of the firearm radial menu, so it only shows what can be done.
+
+[b]Hotbar ignores clicks meant for menus (beta)[/b]
+Option: [i][BETA] Hotbar Ignores Clicks Meant For Menus[/i]
+Clicking a context menu option that lies over the equipment hotbar chooses the option instead of sometimes using the hotbar slot under it. A hotbar slot is only used by a click that starts and ends on the hotbar.
 
 [b]Mod options of unloaded mods are kept[/b]
 (always on)

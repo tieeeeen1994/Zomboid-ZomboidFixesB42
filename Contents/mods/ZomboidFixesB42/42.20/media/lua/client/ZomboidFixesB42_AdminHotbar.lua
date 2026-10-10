@@ -2679,6 +2679,13 @@ end
     already under are left where they are, as are always-on-top elements, tooltips,
     context menus, world icons and anything covering the whole screen (a clear
     full-screen element would otherwise end up over the bar and take its clicks).
+
+    The walk ends at the first element that takes the press (`isConsumeMouseEvents`,
+    as UIManager stops there), even one that never comes to the front. Walking past a
+    context menu open over the bar brought the bar above it between the press and the
+    release, so the release clicked the slot under the option instead of choosing the
+    option (the bar's own right-click menu opens right over it).
+    Tooltips do not take mouse events and are still walked past.
 --]]
 local FOCUS_BUTTONS = { 0, 1 }
 
@@ -2691,10 +2698,14 @@ local function landsOn(ui, mx, my)
     return mx >= x and my >= y and mx < x + ui:getWidth() and my < y + height
 end
 
+local function coversScreen(ui)
+    local core = getCore()
+    return ui:getWidth() >= core:getScreenWidth() and ui:getHeight() >= core:getScreenHeight()
+end
+
 local function takesFocus(ui)
     if ui:isAlwaysOnTop() then return false end
-    local core = getCore()
-    if ui:getWidth() >= core:getScreenWidth() and ui:getHeight() >= core:getScreenHeight() then return false end
+    if coversScreen(ui) then return false end
     local window = ui:getTable()
     return window == nil or isWindowTable(window)
 end
@@ -2719,9 +2730,12 @@ function Bar:updateFocus()
                 return
             end
             barAbove = true
-        elseif landsOn(ui, mx, my) and takesFocus(ui) then
-            if barAbove then ui:bringToTop() end
-            return
+        elseif landsOn(ui, mx, my) then
+            if takesFocus(ui) then
+                if barAbove then ui:bringToTop() end
+                return
+            end
+            if ui:isConsumeMouseEvents() and not coversScreen(ui) then return end
         end
     end
 end

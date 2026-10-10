@@ -41,7 +41,7 @@
     Events due in the same tick fire shortest period or delay first, as they would
     at normal speed: a rack's rackBullet (100 ms) chambers a round before its
     rackingFinished (1200 ms) ends the action, and a magazine's InsertBullet
-    (500 ms) comes before the loadFinished (550 ms) that checks it is full.
+    (500 ms, 1000 with ReloadTiming) comes before a loadFinished (550 ms) due with it.
 
     The extra firings stop the moment the action ends:
 

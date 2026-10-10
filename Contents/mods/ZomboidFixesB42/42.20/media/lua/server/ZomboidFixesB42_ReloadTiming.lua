@@ -36,8 +36,20 @@
     lets the looping animation run ahead of the round count (six shells take about
     seven loading motions), a faster one puts rounds in before the hand gets there,
     and a short rack or magazine timer cuts the animation off half way (the shotgun
-    pump). Loading rounds into a magazine (500 ms, Bob_IdleLoadMagazine 500) already
-    matches.
+    pump).
+
+    Filling a loose magazine (ISLoadBulletsInMagazine) is twice as fast as its animation.
+    Its client clip (InsertBullets, Bob_IdleLoadMagazine) does not play at its own length:
+    m_TrackTimeToVariable ties it to UpdateLoadBulletsTime, which the action's
+    updateLoadingTime advances by getAnimationTimeDelta() (seconds) x ReloadSpeed and wraps
+    at 1.0, so one loop takes 1000 / ReloadSpeed ms, and single player puts one round in
+    per loop (InsertBullet, once per loop by loadedThisLoop). The server fires InsertBullet
+    every getReloadTime(500) ms with no such guard, so in multiplayer two rounds go in per
+    loop while the client's click (InsertBulletSound, also once per loop) sounds for at
+    most one of them. Logged on a server 2026-10-11 at ReloadSpeed 1.8: loops every ~555
+    ms, a round every ~300 ms. So that base time becomes 1000 too (the 500 ms
+    updateLoadingTime event, which the server's copy uses for nothing, with it); the
+    550 ms loadFinished that ends a full magazine is left alone.
 
     This file replaces only those base times: while one of the four actions'
     serverStart runs, ISReloadWeaponAction.getReloadTime answers with the clip
@@ -63,6 +75,7 @@ require "TimedActions/ISReloadWeaponAction"
 require "TimedActions/ISInsertMagazine"
 require "TimedActions/ISEjectMagazine"
 require "TimedActions/ISRackFirearm"
+require "TimedActions/ISLoadBulletsInMagazine"
 
 local function isEnabled()
     local vars = SandboxVars and SandboxVars.ZomboidFixesB42
@@ -86,6 +99,8 @@ local TIMES = {
     insert = {
         boltaction = { from = 1500, to = 1733 },
     },
+    -- Every magazine, whatever the gun (the action has no gun to key by).
+    magazine = { from = 500, to = 1000 },
     eject = {
         handgun = { from = 1200, to = 1500 },
         boltaction = { from = 1200, to = 1733 },
@@ -134,6 +149,7 @@ end
 
 --- What `kind` of this action's gun should be timed with, or nil to keep vanilla.
 local function timesFor(action, kind)
+    if kind == "magazine" then return TIMES.magazine end
     local gun = action.gun
     if not gun or not instanceof(gun, "HandWeapon") then return nil end
     local times = TIMES[kind][tostring(gun:getWeaponReloadType())]
@@ -160,3 +176,4 @@ wrapServerStart(ISReloadWeaponAction, "reload")
 wrapServerStart(ISInsertMagazine, "insert")
 wrapServerStart(ISEjectMagazine, "eject")
 wrapServerStart(ISRackFirearm, "rack")
+wrapServerStart(ISLoadBulletsInMagazine, "magazine")

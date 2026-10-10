@@ -500,6 +500,12 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
   first key) / AnimTicksPerSecond (4800) in `media/anims_X/Bob/<clip>.X`. `*_ReloadTiming.lua` answers `getReloadTime`
   with the clip length while a reload `serverStart` runs. Gunworks (mod id SWMG) times its profiled guns with
   `ReloadAnim.getActionDurationMs` (`require "WeaponSystems/Utils/ReloadAnim"`, `GetHandlerForGun(gun)`).
+  Filling a magazine (`ISLoadBulletsInMagazine`): the InsertBullets node is `m_TrackTimeToVariable`
+  UpdateLoadBulletsTime, advanced by `getAnimationTimeDelta()` (s) × ReloadSpeed and wrapped at 1.0, so a loop is
+  1000 / ReloadSpeed ms; its events (InsertBullet, InsertBulletSound) arrive **every frame**, kept to one per loop
+  by `loadedThisLoop` (the click is lost for a loop when InsertBullet comes first). The server fires InsertBullet
+  every `getReloadTime(500)` with no guard: two rounds per client loop (logged 2026-10-11). `*_ReloadTiming.lua`
+  makes that 1000 (server) and gives the click its own per-loop mark (client).
 
 ### Vehicle parts and batteries
 
@@ -1292,6 +1298,9 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   ~320 of them weapons (no drinks or pills). Plysken Attachments Reborn replaces `activateSlot` outright (equips only
   HandWeapon / InventoryContainer / Radio, wears clothing) and adds ~110 attachable items. TienActionableHotbar wraps
   `activateSlot` at `OnGameStart` to run a context menu option instead.
+  `ISHotbar:onMouseUp` (~631) uses the slot under a release without asking where the press went, so a release
+  reaching it after a context menu over it closed between press and release uses a slot (what closes the menu
+  was not traced: Java dispatch and vanilla Lua look clean); `*_HotbarStrayClicks.lua` needs the press too.
   Look and placement (42.21): an ISPanelJoypad (background 0.5 black, `borderColor` 0.8 grey a 0.8), 60 px slots,
   `margins` = `slotPad` = 10, height 82; `render` draws each slot's border, its number top left, a 0.2 white tint on
   hover (red while dragging an item that cannot go there), the slot name in a dark box **above** the bar (outside its
@@ -1551,7 +1560,7 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   with them from `onRepeatTick` (at most one run a frame, a stall's backlog dropped); `hold`
   starts on `SlotButton:onMouseDown` / `OnKeyStartPressed` and polls `isMouseButtonDown(0)` / `isKeyDown(key)`, and
   falls back to `click` when the first run had to ask or confirm. Keep-picking slots ignore it. Focus (`Bar:updateFocus`): many vanilla windows never `bringToTop` on a
-  click (ISInventoryPage), so on each press the bar brings itself, or the window it covers that was clicked, to the front.
+  click (ISInventoryPage), so on each press the bar brings itself, or the window it covers that was clicked, to the front. The walk stops at the first element that consumes mouse events (a context menu over the bar), else the bar came above the menu between press and release and the release clicked a slot instead of the option.
   Single player: only with `-debug` (`isDebugEnabled()`), every capability assumed, each action has vanilla's single
   player branch, server-only actions greyed out; the sidebar button goes under the lowest button (no Admin button),
   slots saved to `ZomboidFixesB42_AdminHotbar_SinglePlayer.ini`.
