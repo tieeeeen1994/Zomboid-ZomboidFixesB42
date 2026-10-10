@@ -148,6 +148,7 @@
     "IGUI_ZomboidFixesB42_AdminHotbar_CatVehicles": "Vehicles",
     "IGUI_ZomboidFixesB42_AdminHotbar_CatZombies": "Zombies",
     "IGUI_ZomboidFixesB42_AdminHotbar_CatNoiseFire": "Noise, fire and explosions",
+    "IGUI_ZomboidFixesB42_AdminHotbar_CatPainting": "Painting",
     "IGUI_ZomboidFixesB42_AdminHotbar_CatWeather": "Weather and climate",
     "IGUI_ZomboidFixesB42_AdminHotbar_CatMetaEvents": "Meta events",
     "IGUI_ZomboidFixesB42_AdminHotbar_CatStories": "Stories",
@@ -432,5 +433,7 @@
     "IGUI_CheatPanel_ZomboidFixesB42_EndlessSupplies": "Endless Supplies",
     "IGUI_CheatPanel_ZomboidFixesB42_EndlessSupplies_tooltip": "Everything you carry with charges (batteries, lighters, torches, thread, tape, glue) stays full. Turning it on fills them all.",
     "IGUI_ZomboidFixesB42_Reroll": "Reroll",
-    "IGUI_ZomboidFixesB42_Reroll_tooltip": "Throw away everything in this container and fill it again from the loot tables."
+    "IGUI_ZomboidFixesB42_Reroll_tooltip": "Throw away everything in this container and fill it again from the loot tables.",
+    "IGUI_ZomboidFixesB42_UserPanel_ShowVersion": "Show game version",
+    "IGUI_ZomboidFixesB42_UserPanel_ShowCoordinates": "Show coordinates and resolution"
 }

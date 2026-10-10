@@ -151,6 +151,14 @@ Picking a square in the debug Horde Manager or Tile Picker no longer walks your 
 Option: [i][BETA] Server Options Tooltip Fix[/i]
 The admin Server Options window no longer leaves an option's description stuck on screen, following the mouse around, after the mouse leaves the window or it is closed.
 
+[b]User Panel corner info (beta)[/b]
+Option: [i][BETA] User Panel Corner Info[/i]
+The User Panel's Show connection info and Show server info are remembered between games instead of resetting every restart. Two more tick boxes there, Show game version and Show coordinates and resolution, hide those lines in the bottom right corner; the rest moves down to fill the space. Each player's choices are saved on their own computer.
+
+[b]Closed chat and Lua console stay closed (beta)[/b]
+Option: [i][BETA] Closed Chat And Lua Console Stay Closed[/i]
+The chat window no longer opens again on every join after you closed it, and the Lua console (with -debug) no longer opens again at every start. Open them with the chat key or the Toggle Lua Console key. Hiding the interface or the Esc menu does not count as closing.
+
 [b]No fall damage with Fast Move[/b]
 Option: [i]No Fall Damage With Fast Move[/i]
 No fall damage on stairs while Fast Move is on.

@@ -334,6 +334,22 @@ option ZomboidFixesB42.ServerOptionsTooltip
     translation = ZomboidFixesB42_ServerOptionsTooltip,
 }
 
+option ZomboidFixesB42.UserPanelDisplay
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_UserPanelDisplay,
+}
+
+option ZomboidFixesB42.RememberClosedWindows
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_RememberClosedWindows,
+}
+
 option ZomboidFixesB42.VehicleBatteryDrain
 {
     type = boolean,

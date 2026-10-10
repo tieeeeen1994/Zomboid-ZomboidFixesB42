@@ -4,7 +4,9 @@
     A map item (MapItem) keeps its own symbols, saved with the item
     (MapItem.save / load write WorldMapSymbols after the map ID). The map window
     (client/ISUI/Maps/ISMap.lua) edits the client's copy of the item through
-    mapAPI:getSymbolsAPIv2(), and nothing ever sends that to the server:
+    mapAPI:getSymbolsAPI() (mapAPI = getAPIv1(), so V1 symbols; this file reads the
+    same symbols through the element's getAPIv2():getSymbolsAPIv2(), whose V2 symbol
+    getters it needs), and nothing ever sends that to the server:
     SyncItemFieldsPacket has no symbols, and WorldMapClient only shares the symbols
     of the player's own world map (MapItem.getSingleton()). The server keeps and
     saves its copy blank, so the symbols vanish on relog, when the chunk holding the
@@ -36,8 +38,11 @@ local function isEnabled()
     return vars ~= nil and vars.MapSymbolsSave == true
 end
 
+-- ISMap keeps the V1 API (getAPIv1, 42.21), which has no getSymbolsAPIv2; the V2 API
+-- of the same element wraps the same symbols (UIWorldMap.symbols).
 local function symbolsAPIOf(mapUI)
-    local mapAPI = mapUI and mapUI.mapAPI
+    local element = mapUI and mapUI.javaObject
+    local mapAPI = element and element:getAPIv2()
     return mapAPI and mapAPI:getSymbolsAPIv2()
 end
 

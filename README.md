@@ -36,6 +36,8 @@ Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly 
 - Admins get an Endless Supplies admin power, in the Admin Powers window and on the admin hotbar: everything with charges they carry (batteries, lighters, propane torches, thread, duct tape, glue, paint) stays at full charges, and turning it on fills them all at once.
 - Vanilla's Refill Container (right-click a container's button, for admins and the LootZed power) refills the container on servers instead of often only emptying it, and the loot window gets a Reroll button next to Take All that does the same for the same people. The admin hotbar can reroll every container on a picked square.
 - The admin Server Options window no longer leaves an option's description stuck on screen, following the mouse around, after the mouse leaves the window or it is closed (beta).
+- The User Panel remembers Show connection info and Show server info between games, and can also hide the game version and the coordinates and resolution line in the bottom right corner (beta).
+- A closed chat window stays closed when you join again, and with -debug a closed Lua console stays closed at the next start, until you open them again (beta).
 - Vehicle batteries no longer drain twice as fast as intended from headlights, the radio, the lightbar, the siren and the heater (beta).
 - Welding a gas tank that is still on a vehicle finishes the repair instead of using up the materials for nothing (beta).
 - Adding fuel to a generator takes as long as the fuel that actually goes in, not as long as the whole can (beta).

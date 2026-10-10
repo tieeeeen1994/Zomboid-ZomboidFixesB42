@@ -273,7 +273,8 @@ time a vehicle enters the world) ends with `mechanicalId = Rand.Next(100000)` ri
 changes (`RecipeCodeOnCreate.cutFish` fillet values) and the modData record miss the owner
 (`*_MechanicsXP.lua`, `*_CraftResultSync.lua`). `RecipeCodeHelper.addItemToCharacterInventory` sends at once.
 Map items (42.21): `MapItem.save/load` write its `WorldMapSymbols`; `getSymbols` is @HiddenFromLua and the symbols
-API comes from a map UI (`ISMap.mapAPI:getSymbolsAPIv2()`, V2 symbols: `isUserDefined`, `isText/isTexture`,
+API comes from a map UI (`ISMap.mapAPI` is `getAPIv1()`, which has only `getSymbolsAPI()`; the V2 symbols, same
+data, are `javaObject:getAPIv2():getSymbolsAPIv2()`, V2 symbols: `isUserDefined`, `isText/isTexture`,
 `getSymbolID`, `getUntranslatedText` (nil for plain text) / `getTranslatedText`, `getLayerID`, position, RGBA,
 anchor, scale, rotation, zoom range); nothing syncs a map item's symbols (`WorldMapClient` only shares the world map
 singleton's), so the server saves them blank (`*_MapSymbols.lua` keeps them in modData). Print media:
@@ -892,6 +893,17 @@ Body-stat editing belongs to `Capability.CanModifyBodyStats` (admin and moderato
   columns and grows the height downwards, which can push Save and Close off the screen
   (`*_AdminPowersLayout.lua` balances the columns and moves it back; a plain UI correction, so no sandbox option
   and no README / forum / mod.info line).
+- User Panel (`ISUserPanelUI`, MP only, 42.21): Show connection / server info = `setShowConnectionInfo` /
+  `setShowServerInfo`, static fields of `NetworkAIParams` (false at launch, never saved; `Init` resets them only
+  with `-debug`). The corner (`WaterMarkUI:render`) draws, bottom up: version (`revButton`), the `x: .. , y: ..,
+  z: .. ; WxH@fps` line (debug or server option `ShowCoordinates`), server time/ping, `"name" (ip:port)`, cheats
+  (`*_UserPanel.lua` saves the choices and hides version / coordinates, outermost of the three render wrappers).
+- Chat / Lua console start state (42.21): `ISChat.createChat` restores layout.ini (visibility included) and then
+  forces `setVisible(true)`. The Lua console is Java `UIDebugConsole` (`UIManager.getDebugConsole()`, -debug only),
+  rebuilt by `UIManager.init` each game start with debug option `UI.DebugConsole.StartVisible` (debug-options.ini);
+  its key and close button only hide it. Every hide-all (Toggle UI, Esc menu, joypad setup) is
+  `ISUIHandler.setVisibleAllUI`, which keeps what it hid in `ISUIHandler.visibleUI` until it shows them again
+  (Java `UIManager.visibleAllUi` has no getter). `*_ClosedWindows.lua`.
 - Health panel (`client/XpSystem/ISUI/ISHealthPanel.lua`, 42.21): `self.character` is the **patient**, `self.otherPlayer`
   the doctor (nil when looking at yourself). The Cheat submenu (~1830-1860) calls `ISHealthPanel.onCheat(bodyPart, action,
   patient, doctor)`; for another player `onCheatOtherPlayer` (~329) sends `player.onHealthCheat {id = patient}` from the

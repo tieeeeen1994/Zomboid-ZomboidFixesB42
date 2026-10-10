@@ -198,6 +198,7 @@ Hotbar.addCategory("items", txt("CatItems"))
 Hotbar.addCategory("vehicles", txt("CatVehicles"))
 Hotbar.addCategory("zombies", txt("CatZombies"))
 Hotbar.addCategory("noise", txt("CatNoiseFire"))
+Hotbar.addCategory("painting", txt("CatPainting"))
 Hotbar.addCategory("weather", txt("CatWeather"))
 Hotbar.addCategory("meta", txt("CatMetaEvents"))
 Hotbar.addCategory("stories", txt("CatStories"))
@@ -1355,9 +1356,11 @@ fireCommand("noise.fire", "StartFire", "sym:Fire", "addFireOnSquare", false)
 fireCommand("noise.smoke", "MakeSmoke", "item:Base.SmokeBomb", "addSmokeOnSquare", false)
 fireCommand("noise.explosion", "Explosion", "sym:Bomb", "addExplosionOnSquare", true)
 
+-- 7b. Painting (ids keep their old "noise." prefix: saved slots name them) ---------------------------------
+
 register({
     id = "noise.brushTool",
-    category = "noise",
+    category = "painting",
     opensWindow = true,
     title = txt("BrushTool"),
     tooltip = txt("BrushToolTooltip"),
@@ -1379,7 +1382,7 @@ register({
 --]]
 register({
     id = "noise.paintTile",
-    category = "noise",
+    category = "painting",
     title = txt("PaintTile"),
     tooltip = txt("PaintTileTooltip"),
     icon = function(settings)
