@@ -1274,6 +1274,11 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   keysB42.ini is rewritten from scratch with only the binds known right now (`saveKeys` on Apply, `create` after a
   key version upgrade, pzopt's copy of it), so vanilla drops the keys of mods that are not loaded; `*_KeepModOptions.lua`
   wraps the global `getFileWriter` for that file and appends the old lines nobody wrote.
+  A name declared twice in `keyBinding` (42.21; Plysken Attachments Reborn re-adds vanilla's Hotbar 6-8 under
+  `[PARKeys]`) gets two rows: `loadKeys` reads the file into the last row only (`knownKeys`), `keyPressHandler` edits
+  the last, `ISSetKeybindDialog:onClear` the first, so the first row is stuck at its default; Core keeps one binding
+  per name (`keyMaps`, last `addKeyBinding` wins). That mod's `ISHotbar:getSlotForKey` compares `getKey` (ignores
+  modifiers); vanilla's uses `isKey` for 1-8. `*_HotbarKeys.lua` dedupes before `loadKeys` and re-does it with `isKey`.
 - Textures: `tryGetTexture(name)` = `getSharedTexture` (loose files and pack entries) then `media/textures/`, nil if
   missing. Map symbols (`MapSymbolDefinitions.getInstance():getSymbolCount()/getSymbolByIndex(i)`, `getId()`,
   `getTexturePath()`, 91 in 42.20) are white, so they tint. Item icons: script item `getIcon()` (or
