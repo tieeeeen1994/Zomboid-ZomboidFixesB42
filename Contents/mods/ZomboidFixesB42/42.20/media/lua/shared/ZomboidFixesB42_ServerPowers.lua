@@ -18,6 +18,10 @@
     change it, or { power = id } to ask (at game start); the server answers every
     one with CMD_SERVER_POWER_STATE { power = id, on = ... } plus whatever the power
     adds (def.replyExtra). The option shows what the server last said (def.active).
+    The ask waits for the player's online ID: IngameState.enter fires OnGameStart
+    before it sends PlayerConnect, and GameServer.receiveClientCommand drops a
+    command whose connection has no player yet ("receiveClientCommand: player is
+    null"), so an ask from OnGameStart itself never got an answer.
     Single player: the server Lua runs in the same Lua state, sendClientCommand
     reaches its OnClientCommand, and the answer comes back through
     triggerEvent("OnServerCommand") (sendServerCommand does nothing there).
@@ -239,14 +243,27 @@ if not isServer() then
         if def.onState then def.onState(args) end
     end)
 
+    -- True from game start until the server has been asked about every power.
+    local askPending = false
+
     -- Leaving a game and loading another keeps this file's state.
     Events.OnInitWorld.Add(function()
+        askPending = false
         for _, def in pairs(ServerPowers.byId) do
             def.active = false
         end
     end)
 
     Events.OnGameStart.Add(function()
+        askPending = true
+    end)
+
+    -- Asked once the server knows the player (see the header).
+    Events.OnTick.Add(function()
+        if not askPending then return end
+        local player = getPlayer()
+        if not player or (isClient() and player:getOnlineID() < 0) then return end
+        askPending = false
         for _, def in pairs(ServerPowers.byId) do
             if def.hasOption then ask(def) end
         end

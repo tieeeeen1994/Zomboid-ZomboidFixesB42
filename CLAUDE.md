@@ -639,8 +639,10 @@ its CLAUDE.md has the design).
 - Mods add body points by declaring `model FemaleBody { attachment ... }` again in their own scripts; the blocks merge
   into one ModelScript (`ScriptBucket.LoadScripts`), but model scripts carry the default `ScriptType` flags with
   `ResetExisting`, so each block after the first calls `ModelScript.reset()` before `Load`: `isStatic` back to true,
-  mesh / texture / shader null, scale 1 (attachments kept). With such a mod loaded (Plysken Attachments Reborn)
-  `getModelScript("FemaleBody"):isStatic()` is **true**; recognise bodies by name, never by the flag.
+  **`name` null** (`getName()` nil; only `InitLoadPP` at parse time sets it, the bucket finds the script by its own
+  map key), mesh / texture / shader null, scale 1 (attachments kept). With such a mod loaded (Plysken Attachments
+  Reborn) `getModelScript("FemaleBody")` works but its `isStatic()` is **true** and `getName()` nil; recognise bodies
+  as objects (`getModelScript("FemaleBody")`, `chr:getHumanVisual():getModelScript()`), never by flag or name.
 - New points and locations at run time: `ModelAttachment` is exposed (`ModelAttachment.new(id)`, `setBone`,
   `getOffset():set`, `getRotate():set`, `setScale`, `setZOffset`), `ModelScript:addAttachment(a)` /
   `removeAttachment(a)` update the id map, `getScriptManager():getAllModelScripts()` lists them;
@@ -682,6 +684,13 @@ so `client/*_AdminPowersWatermark.lua` draws a line per server power that is on 
 notes it through the panel's `drawTextRight`); Full Bright's own wrapper inside it renames Always Day, and both put
 back whatever `drawTextRight` they found.
 `ServerPowers.eachCarriedItem(player, fn)` walks the main inventory and bags (5 deep).
+Login order (42.21, `IngameState.enter` ~1082): a client fires `OnGameStart` **before** `sendPlayerConnect`, then
+busy-waits for the online ID; a client command sent from `OnGameStart` reaches a server with no player on that
+connection and is dropped (`receiveClientCommand: player is null`), so the powers' state is asked once
+`getOnlineID() >= 0`. Vanilla cheats survive relogs: the server loads them from its own save (`PlayerCheats`), then
+forces god mode / invisible / noclip / admin tag / hear all from the flags byte the client's PlayerConnect carries
+(the client's copy, loaded from the server's bytes), and echoes ExtraInfo to everyone. A rejected capability in
+`ExtraInfoPacket.processServer` stops at that flag: every flag after it is left unapplied.
 
 ### Animals, hutches and animal zones in multiplayer
 
