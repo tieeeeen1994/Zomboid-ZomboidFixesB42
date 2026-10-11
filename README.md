@@ -65,7 +65,7 @@ Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly 
 - Removing a bush clears every bush on its square and no longer ends in an error when something else is on the square (beta).
 - Watering a plant in multiplayer no longer gives it twice the water or empties the can twice as fast (beta).
 - Other players hear you add ingredients in multiplayer: adding an ingredient to a soup, stew, salad or drink is heard by everyone nearby, not only by the cook (crafting sounds are already shared by the game).
-- Reloading in multiplayer keeps pace with the animation: shells and rounds go in as the hand moves, a shotgun pump or a rifle magazine swap is no longer cut off half way, and filling or emptying a magazine goes at the hand's pace with a click for every bullet (beta).
+- Reloading in multiplayer keeps pace with the animation: shells and rounds go in as the hand moves, a shotgun pump or a rifle magazine swap is no longer cut off half way, and filling or emptying a magazine goes at the hand's pace with a click for every bullet.
 - Item transfers the server fails without telling the player repair themselves: items only the player's game still shows on the floor or in a container are removed, items the server moved but the player could not see (until relogging) appear, a transfer the server dropped is tried again, and one that did happen ends instead of hanging for up to 20 seconds (beta).
 - Putting an item back in its bag after eating or using it no longer cancels the actions queued after it when the item is gone, as after Eat All (beta).
 - Clicking Craft several times crafts that many times; the crafting window used to ignore clicks while a craft was running (beta).

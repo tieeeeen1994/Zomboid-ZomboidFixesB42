@@ -32,8 +32,8 @@ Eating or using something from a bag takes it out first and puts it back afterwa
 Option: [i][BETA] Every Craft Click Is Queued[/i]
 The crafting window ignored the Craft button while one of its crafts was running, so clicking Craft several times only crafted the first one or two. Now each click made during a craft is kept and started once the crafts before it are done, with fresh ingredients. Cancelling, picking another recipe or closing the window drops the kept clicks.
 
-[b]Reloads keep pace with the animation (beta)[/b]
-Option: [i][BETA] Reloads Keep Pace With The Animation[/i]
+[b]Reloads keep pace with the animation[/b]
+Option: [i]Reloads Keep Pace With The Animation[/i]
 On a server, shells and rounds go in as the hand moves, a shotgun pump or a rifle magazine swap is no longer cut off half way, and filling or emptying a magazine goes at the hand's pace (it used to move bullets twice as fast, so about every other one made no sound). Every bullet put into or taken out of a magazine clicks, in single player too.
 
 [b]Hear other players add ingredients[/b]

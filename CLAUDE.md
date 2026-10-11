@@ -624,6 +624,42 @@ Traced 2026-10-09 for a planned "attached to a bag weighs like inside it" mod.
   item it moves, so an attached item cannot live inside a bag without rewiring the hotbar. Attaching = shared
   `ISAttachItemHotbar` (server `complete`: `setAttachedItem` + slot fields + `syncItemFields`).
 
+### Attached item models and attachment points (42.21)
+
+Traced 2026-10-11 for per-player Plysken Attachments Reborn positions (`~/Zomboid/Workshop/TienAttachmentPositions`,
+its CLAUDE.md has the design).
+- An attached item's model hangs from a point chosen by name: `chr:getAttachedItems()` entry location →
+  `AttachedLocations.getGroup("Human"):getLocation(loc):getAttachmentName()` → `ModelManager.addStatic(parent, model,
+  name, name)` (~614) stores the name, and `ModelInstanceRenderData` (~196) looks the point up by id in the
+  **body** ModelScript (`Base.FemaleBody` / `Base.MaleBody`, one per gender for the whole process; the item model's own
+  attachment of the same name is applied too) every frame, so moving a point's `getOffset()/getRotate()` moves it on
+  every character of that gender at once (Plysken's Adjust Attachment does that, saved per computer in
+  `Zomboid/Lua/PAR_CalibrateOverrides.cfg`). `makeAttachmentTransform` (~105) applies offset, rotate **and scale**.
+- Body model choice: `HumanVisual.getModelScript()` = `forceModelScript` or FemaleBody / MaleBody by sex.
+- Mods add body points by declaring `model FemaleBody { attachment ... }` again in their own scripts; the blocks merge
+  into one ModelScript (`ScriptBucket.LoadScripts`), but model scripts carry the default `ScriptType` flags with
+  `ResetExisting`, so each block after the first calls `ModelScript.reset()` before `Load`: `isStatic` back to true,
+  mesh / texture / shader null, scale 1 (attachments kept). With such a mod loaded (Plysken Attachments Reborn)
+  `getModelScript("FemaleBody"):isStatic()` is **true**; recognise bodies by name, never by the flag.
+- New points and locations at run time: `ModelAttachment` is exposed (`ModelAttachment.new(id)`, `setBone`,
+  `getOffset():set`, `getRotate():set`, `setScale`, `setZOffset`), `ModelScript:addAttachment(a)` /
+  `removeAttachment(a)` update the id map, `getScriptManager():getAllModelScripts()` lists them;
+  `group:getOrCreateLocation(id):setAttachmentName(name)` (Plysken registers its locations this way). Names go
+  through `ResourceLocation.of` (lowercased, `:` splits a namespace, no other check) for `shouldHideModel`, which hides
+  an item when that name is a body location a worn item hides (vanilla `ShoulderHolster`, `AnkleHolster`); avoid `:`.
+- `setAttachedItem(loc, item)` → `AttachedItems.setItem` → `checkValid` **throws** `no such location` for an unknown
+  location. On a client, a local player's call sends `GameCharacterAttachedItemPacket` (location string + item, not
+  for `bowtie` / `head_hat`); the server runs `setAttachedItem` and relays it to every other connection, whose
+  `processClient` calls `setAttachedItem` on the remote character (throws there if that client lacks the location).
+  Loading (`IsoGameCharacter.readInventory` ~14225, `IsoDeadBody` ~812 / ~2211) **skips** unknown locations
+  instead (the item stays in the inventory, unattached).
+- All attaches come from Lua (`chr:setAttachedItem`: vanilla `ISHotbar:attachItem` ~376, Plysken's
+  `PAR_ISHotbar` ~380 / `PAR_ISAttachItemHotbar`), with `item:setAttachedToModel(loc)` beside it; vanilla Lua reads
+  locations back through `getAttachedItem(slot)` (`ISHotbar:update` re-attaches every frame an item for which
+  `getAttachedItem(item:getAttachedToModel())` is nil, `ISAttachItemHotbar:stop`, `OnBreak.lua` knife locations).
+  Kahlua: a class's `__index` table chains to its superclass's by metatable, so a key set on `IsoPlayer`'s shadows
+  the `IsoGameCharacter` method for players only.
+
 ### Item charges (42.21)
 
 `DrainableComboItem` keeps whole uses, 0..`getMaxUses()` = floor(1 / useDelta) (`getCurrentUses`,
