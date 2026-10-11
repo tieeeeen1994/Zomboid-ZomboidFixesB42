@@ -634,7 +634,8 @@ its CLAUDE.md has the design).
   **body** ModelScript (`Base.FemaleBody` / `Base.MaleBody`, one per gender for the whole process; the item model's own
   attachment of the same name is applied too) every frame, so moving a point's `getOffset()/getRotate()` moves it on
   every character of that gender at once (Plysken's Adjust Attachment does that, saved per computer in
-  `Zomboid/Lua/PAR_CalibrateOverrides.cfg`). `makeAttachmentTransform` (~105) applies offset, rotate **and scale**.
+  `Zomboid/Lua/PAR_CalibrateOverrides.cfg`). `makeAttachmentTransform` (~105) applies offset, rotate **and scale**; rotate is JOML `rotateXYZ` (degrees → radians,
+  Rx · Ry · Rz, so a point with Y at ±90 has X and Z on one axis: adding degrees to them is not a usable "turn").
 - Body model choice: `HumanVisual.getModelScript()` = `forceModelScript` or FemaleBody / MaleBody by sex.
 - Mods add body points by declaring `model FemaleBody { attachment ... }` again in their own scripts; the blocks merge
   into one ModelScript (`ScriptBucket.LoadScripts`), but model scripts carry the default `ScriptType` flags with
@@ -687,7 +688,9 @@ back whatever `drawTextRight` they found.
 Login order (42.21, `IngameState.enter` ~1082): a client fires `OnGameStart` **before** `sendPlayerConnect`, then
 busy-waits for the online ID; a client command sent from `OnGameStart` reaches a server with no player on that
 connection and is dropped (`receiveClientCommand: player is null`), so the powers' state is asked once
-`getOnlineID() >= 0`. Vanilla cheats survive relogs: the server loads them from its own save (`PlayerCheats`), then
+`getOnlineID() >= 0`. That gate alone is not enough: TienAttachmentPositions 0.1.6 (2026-10-12) saw the ID already
+set at `OnGameStart`, and its first command (frame 0) still got no answer while a retry 3.5 s later was answered at
+once, so repeat such a request until the reply comes. Vanilla cheats survive relogs: the server loads them from its own save (`PlayerCheats`), then
 forces god mode / invisible / noclip / admin tag / hear all from the flags byte the client's PlayerConnect carries
 (the client's copy, loaded from the server's bytes), and echoes ExtraInfo to everyone. A rejected capability in
 `ExtraInfoPacket.processServer` stops at that flag: every flag after it is left unapplied.
