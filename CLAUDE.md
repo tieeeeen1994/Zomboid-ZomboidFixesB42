@@ -1414,7 +1414,11 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   bounds), `item:getTexture()` at its own size, `media/ui/icon.png` bottom right when equipped, an empty slot's
   provider texture at 0.25; `update` shows an `ISToolTipInv` for the hovered item. `update` calls
   `setSizeAndPosition()` **every update** (centred at the bottom of the player's screen), so moving it means wrapping
-  that. `getSlotIndexAt` maps any point inside the bar, margins included, to the nearest slot (never -1 inside). It
+  that. `getSlotIndexAt` maps any point inside the bar, margins included, to the nearest slot (never -1 inside).
+  The whole geometry is the instance fields `slotWidth` / `slotHeight` (60), `slotPad` / `margins` (10), read by
+  `render`, `getSlotIndexAt` and `setSizeAndPosition`, but the height is set only in `new`, and item icons are drawn
+  at native size at `slotX + w / 2` (centred only by chance at 60 px), so scaling it means setting the fields, the
+  height, and redrawing icons scaled (TienCustomizableHotbar; Item Condition Overlay 3641048285 has its own scale). It
   has no `onMouseDown`; ISPanelJoypad's does nothing while `moveWithMouse` is off. TienCustomizableHotbar makes it
   draggable.
   Slot order (42.21): `availableSlot[i]` (attachment points, `slotType`) is saved in player modData `hotbar` (slot
