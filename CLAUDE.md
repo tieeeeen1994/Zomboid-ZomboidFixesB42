@@ -663,6 +663,55 @@ its CLAUDE.md has the design).
   Kahlua: a class's `__index` table chains to its superclass's by metatable, so a key set on `IsoPlayer`'s shadows
   the `IsoGameCharacter` method for players only.
 
+### 3D gizmos from Lua (42.21)
+
+Traced 2026-10-12 for a drag-handle editor in TienAttachmentPositions.
+- World gizmos (Extended 3D Placement, `ISExtendedPlacementUI`): `Gizmos.getInstance():getTranslateGizmo(playerNum)` /
+  `getRotateGizmo`, then `setWorldPosition(x, y, z)` (world tiles), `setRotation(rx, ry, rz)`, `setVisible(true)`,
+  `setTable(luaTable)`, `Gizmos.getInstance():setGizmo(playerNum, gizmo)` every `prerender` (nil to remove). Nothing
+  ties them to world items: `IsoWorld.render` draws the player's gizmo after the cell, and
+  `UIManager.updateMouseButtons` gives the left button to `Gizmos.hitTest` first (it consumes the click while
+  dragging). Java calls `table.onTranslateGizmo(table, Vector3f)` (the new **world** position) and
+  `onRotateGizmo(table, Vector3f)` (absolute Euler degrees, x/z/y order swapped back). Axes are world axes
+  (`TransformMode` Global; local = the rotation set).
+- Lua cannot place one on a bone: `AnimationPlayer`, `Model.boneToWorldCoords`, `CombatManager.getBoneWorldPos` are not
+  exposed (`IsoGameCharacter:getAnimationPlayer()` returns an object with no callable methods), so an attachment
+  point's world position and the bone's axes are unknown to Lua. The only workaround is a fixed pose computed
+  offline (tried for TienAttachmentPositions on 2026-10-12, then dropped because the real body keeps moving): the JRE
+  has no javac, but ECJ (`org.eclipse.jdt:ecj:3.45.0` from Maven, `-25`) compiles a harness against
+  `projectzomboid.jar`, and the game's JRE run from `Contents/Java` (`-Djava.library.path=.` for `libjassimp.dylib`)
+  imports `models_X/Skinned/MaleBody.x` + `anims_X/Bob/Bob_Idle.X` through `JAssImpImporter` / `ProcessedAiScene`
+  (package-private fields read by reflection) and multiplies keyframes as `AnimationPlayer.updateModelTransformsInternal`
+  does (`Matrix4f.mul(local, parent)`). Male and female share the pose; idle torso bones move < 1 cm / 3 degrees.
+  Model to world = `Model.vectorToWorldCoords`: x' = -x, `Vector3.rotatey(getRenderedAngle())` (= `getAnimAngle
+  Radians() + pi/2`), world x/y += 1.5 x'/z', height += 1.5 y / 2.44949 levels.
+- An attached item's model (`AnimatedModelInstanceRenderData.transformToParent`) = parent xfrm · bone model
+  transform · parent attachment (the body point) · the item model's own attachment of the same name (inverted only
+  with the static `ModelInstanceRenderData.invertAttachmentSelfTransform`) · mesh transform · instance scale; the
+  mesh bounds are not readable from Lua, so a handle can sit on the item's origin but not on its visual centre.
+- `UI3DScene` (exposed; `ISUI3DScene` in `Vehicles/ISUI` wraps it as a UI element: drag = `dragView`, wheel = `zoom`)
+  is the vanilla Attachment Editor's viewport: `fromLua1("createCharacter", id)` (a naked, bald, 0.5-alpha mannequin,
+  `setCharacterFemale`, `setCharacterState` + `setCharacterAnimationClip`, `setCharacterAlpha`), `createModel(id,
+  modelScript)`, `setObjectParent(child, childAttach, parent, parentAttach)` (character attachments are looked up by
+  name in `FemaleBody` / `MaleBody`, so a run-time point copy works), `setGizmoOrigin("bone", charId, bone)`,
+  `setGizmoPos(offset)`, `setGizmoRotate(rotate)`, `setGizmoVisible("translate" | "rotate" | "scale" | "none")`,
+  `setTransformMode`; it calls the Lua table's `onGizmoStart`, `onGizmoChanged(delta)` (bone space: the editor adds a
+  translate delta to the offset and feeds a rotate delta to `fromLua2("applyDeltaRotation", rotate, delta)`),
+  `onGizmoAccept`, `onGizmoCancel`. No `Core.debug` gate in `fromLua*`; vanilla only uses it in separate game states
+  (AttachmentEditorState, AnimationViewerState...), so it has not been seen inside an in-game window.
+
+- Character preview in a window: `UI3DModel` (`ISUI3DModel`; vanilla's Character screen and make-up mirror use it).
+  `setCharacter(chr)` copies the human visual, worn items **and attached items** (`AttachedModelNames.initFrom`, a
+  snapshot: call it again after an item moves to another location; point offsets themselves are read from the body
+  script every frame). Camera: `setDirection(IsoDirections)` only (8 yaw steps; `AnimatedModel.setAngle` is not
+  reachable), `setIsometric(true|false)` = the game's downward view or eye level (no other pitch), `setZoom(z)`
+  (view size 22 / 25 minus z), `setXOffset` / `setYOffset` pan; `setState("idle")`, `setAnimate`. The camera
+  (`AnimatedModel$UIModelCamera.Begin`) is an ortho view: isometric = tilt 30 degrees about X then yaw angle + 45, else
+  yaw only; the yaw is the model's own angle, forced to the `IsoDirections` vector on every update (`SetForceDir`), so
+  there is no free orbit or pitch. The only free-orbit 3D view is `UI3DScene` (`setViewRotation`, `dragView`, `zoom`),
+  whose character is a bare mannequin with no command to dress it; item models can be added there (`createModel` +
+  `setObjectParent` to a body point by name).
+
 ### Item charges (42.21)
 
 `DrainableComboItem` keeps whole uses, 0..`getMaxUses()` = floor(1 / useDelta) (`getCurrentUses`,
