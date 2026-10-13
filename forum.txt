@@ -190,6 +190,14 @@ Adding fuel to a generator takes as long as the fuel that actually goes in. It u
 Option: [i][BETA] Washing Time Fix[/i]
 Being unhappy or drunk, having sore hands or arms, or being too hot or cold slows every timed action down. Washing clothes counted all of that twice, so the slowdowns multiplied with themselves: a very unhappy and very drunk character washed 16 times slower instead of 4. Now washing is slowed down once, like everything else.
 
+[b]Less lag with many items (beta)[/b]
+Option: [i][BETA] Less Lag With Many Items[/i]
+With hundreds or thousands of items in your inventory or a nearby container, the inventory windows rebuilt their lists item by item whenever almost anything nearby changed, on every step and turn, and aged every item of a food stack every frame, and right-clicking a big stack could freeze the game for seconds. Now rebuilds that take long wait for each other for a moment, big food stacks age a slice at a time, and the right-click menu does its checks once per stack instead of once per item. The windows show the same things.
+
+[b]Smoother crafting window (beta)[/b]
+Option: [i][BETA] Smoother Crafting Window[/i]
+The crafting window checks every recipe against every item nearby, and did it again for every change around you, every step with the window pinned and every item of a batch craft, so it stuttered with many items nearby. Now it refreshes once things have settled and once after a batch of crafts, and stops redoing some work every frame. The build window waits for the last change the same way.
+
 [b]Water dispenser bottle duplication fix (beta)[/b]
 Option: [i][BETA] Water Dispenser Bottle Duplication Fix[/i]
 Taking the bottle off an office water dispenser twice in a row, or two players taking it at once, no longer gives a second full bottle and a second dispenser on the same tile, and putting a bottle on from a bag no longer leaves the full bottle in the bag.

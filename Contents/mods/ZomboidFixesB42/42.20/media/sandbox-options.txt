@@ -616,6 +616,22 @@ option ZomboidFixesB42.AnimalZoneResync
     translation = ZomboidFixesB42_AnimalZoneResync,
 }
 
+option ZomboidFixesB42.InventoryPerformance
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_InventoryPerformance,
+}
+
+option ZomboidFixesB42.CraftingPerformance
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_CraftingPerformance,
+}
+
 option ZomboidFixesB42.ReturnKeepsQueue
 {
     type = boolean,

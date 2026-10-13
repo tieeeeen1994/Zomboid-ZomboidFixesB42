@@ -128,6 +128,17 @@ game, and a test scenario in the Beta section below).
       the bar takes about base time x the moodle factor once (unhappy level 4 = x2, not x4); with no moodles the
       time is unchanged; on a server the bar ends without sitting at 100%; with fast forward on a server washing
       still speeds up once (not speed squared).
+- [ ] InventoryPerformance, single player and a server, with 1000 nails, 1000 rounds and 300 apples in the inventory
+      and a crate of 1000 items next to you: walking, turning and opening doors with both windows open no longer
+      stutters; a transfer of the 1000 nails into the crate finishes without the game hitching on each batch and both
+      windows show the right counts at the end; the apple stack still splits into stale ones when they go stale;
+      right-click on each stack: same options as with the option off, no freeze; Consolidate with many half-used
+      drainables (thread, glue) opens quickly and its submenu is wide enough for every line; Place Item (3D) still
+      offered (greyed with a favourite in the stack); dragging a stack still works.
+- [ ] CraftingPerformance, with the same crate: open the crafting window, move items in and out (and have a
+      second player drop items nearby on a server): the list refreshes within a second, without stutter in between;
+      craft a batch of 10: the window refreshes once at the end and the craft count is right; cancel a batch half
+      way: the window refreshes; pin it and walk: no stutter, the list follows; the build window the same.
 
 ## Decided against, or not fixable from Lua
 

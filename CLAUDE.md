@@ -1478,6 +1478,43 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   read or run its options; `createMenu` returns early (nil)
   while paused or in the tutorial, and returns nil with the menu hidden when no item applies.
 
+### What costs time with many items (42.21, traced 2026-10-13)
+
+- Inventory windows: `ISInventoryPage.OnContainerUpdate` only sets `ISInventoryPage.renderDirty`; Java's
+  `setInvPageDirty` does the same through `IsoPlayer`; `ISInventoryPage:prerender` (~688) then runs `dirtyUI` =
+  `refreshBackpacks` on both pages of every local player (buttons, the floor container rebuilt with `AddItem` per
+  world item of the 3x3, `refreshContainer`, `updateItemCount`) and sets `ISHandCraftPanel.drawDirty` /
+  `ISBuildPanel.drawDirty`. Java fires OnContainerUpdate for world items added / removed (MP packets, any square
+  loaded), doors, windows, curtains, trees, vehicle parts, food freshness (`Food.updateAge` ~773), drying, item field
+  syncs; MP `ISInventoryTransferAction` perform after every batch. The loot page's `update` (~501) runs
+  `refreshBackpacks` on every direction or square change. `renderdetails` runs `refreshContainer` whenever the
+  container's `isDrawDirty()` (any add / remove). `refreshContainer` = `getName(player)` (+ hidden, herbalist,
+  weight) per item, sort, `table.insert(items, 1, dummy)` per stack. `renderdetails` (prerender and render) calls
+  `updateAge` on every item of a collapsed **food** stack every frame (~2567); `Food.updateAge` searches
+  `getProcessItems()` (ArrayList.contains) when heat differs (SP). Stack rows show `v.count`, not `#v.items`.
+  Expanded stacks draw at most `MAX_ITEMS_IN_STACK_TO_RENDER` (50) rows.
+- Right-click (`ISInventoryPaneContextMenu.createMenu`): a collapsed stack arrives as `{ group }` and the big test loop
+  sees one item; per-item work is in `getActualItems` (about six flattenings), `doPlace3DItemOption`
+  (`getWorldStaticItem` creates empty modData; with a script world model it is never nil), `canUnpack` (two
+  `contains` per item; line 739's `#moveItems and` is always true), `doReloadMenuForBullets` (the whole inventory,
+  `getItems()` twice per item), the inline eat / pills loops, joypad `canMoveTo` / `hasRoomForAny`.
+  `ISContextMenu:addOption` calls `setWidth(calcWidth())` and `calcWidth` measures every option: K options =
+  K^2/2 `MeasureStringX` (Consolidate lists every partly used drainable of the type: seconds for 1000).
+  `CraftRecipeManager.getUniqueRecipeItems` + `addNewCraftingDynamicalContextMenu` (a `HandcraftLogic` per craftable
+  recipe) scale with every nearby item.
+- Crafting window: `HandcraftLogic.rebuildCachedRecipeInfo` = every handcraft recipe (~670) x `canPerform` over every
+  item of `getContainers` (accepted types x items, recipe `OnTest` and an `ISTimedActionQueue` walk per match), on
+  every `setContainers` that sees a different item set, `setRecipes`, and each craft's `onStopCraft`
+  (`updateContainers`, `sortRecipeList`, `refresh`). `ISHandCraftPanel:update` refreshes on `drawDirty` after a
+  frame counter (1 or 10 updates); `updateContainers` also feeds two tooltip logics this window never shows
+  (`recipesPanel.noTooltip`); `ISCraftInventoryPanel:populate` runs twice per change; `FindCraftSurface` (~35
+  squares) and `ISCraftRecipePanel:updateTitleWidget` (layout, plus an O(items) recipe-at-hand scan) every update.
+  Panels bind `onStopCraft` at `new` (`logic:addEventListener`). `ISHandcraftAction:stop` calls onCancel and
+  onComplete after `resetQueue`. `HandcraftLogic` shadows the base class's `cachedRecipeInfos` fields, so every
+  rebuild appends ~670 entries to a base list that is never cleared (Java leak). Never refresh the window logic
+  while `isCraftActionInProgress()`; the action uses its own logic. `ISBuildPanel:update` runs `updateContainers`
+  the same frame on `drawDirty` or a square change. `*_InventoryPerformance.lua`, `*_CraftingPerformance.lua`.
+
 ### UI API cheat sheet (vanilla signatures, 42.20)
 
 - Any `addChild` instantiates the child (and the parent) if needed; `getChildren()` is a table keyed by id; a child's
@@ -1744,6 +1781,11 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   index so index-addressed removals line up, or part-eaten food corrected) and trough ghosts, and re-sends its trough
   items (`sendReplaceItemInContainer`) and water (`sendSyncEntity`). The answer is applied 1.5 s late, to what is
   still there, so packets in flight land first.
+- `*_InventoryPerformance.lua` / `*_CraftingPerformance.lua` (client, options `InventoryPerformance`,
+  `CraftingPerformance`): rebuilds held back by their own measured cost (next one after cost x 8 ms, max 300 ms;
+  crafting: quiet period, max 1 s latency), requests merged by taking the dirty flags back and setting them again;
+  big collapsed food stacks get a sliced `v.items` during `renderdetails` (not while dragging); context menu
+  helpers rewritten with the same output; `calcWidth` incremental only inside `addOption` on menus over 30 options.
 - `*_ZombieCarDamage.lua` (client/server, option `ZombieCarDamageSync`): the client snapshots door / bodywork
   conditions of every vehicle a known player sits in each tick; a drop while a zombie it owns is in "attackvehicle"
   for someone in that car goes to the server (`zombieCarDamage`), which checks the owner (`getOwnerPlayer`), the
