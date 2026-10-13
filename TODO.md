@@ -71,7 +71,8 @@ game, and a test scenario in the Beta section below).
 - [ ] BodyStatsEditor extras: the hotbar's body part toggles (each condition on another player, flip), the Health
       button next to Body in Player Stats (opens the window without asking; player must be loaded on the admin's
       client), and the health window's Full Health, Keep Treatment for a part and for the body (bandage,
-      poultices, splint and stitches stay).
+      poultices, splint and stitches stay) Right-click a body part in that window: the Cheat
+      menu opens (it did not before the fix) and its Full Health / Keep Treatment entries work.
 - [ ] AnimalGenderChange: all four branches (world, hutch, trailer, carried animal).
 - [ ] RepairLostEntities: a killed server and a restored backup with rain collectors, drying racks and a bucket on
       the floor; chunk re-saves while a backup runs.

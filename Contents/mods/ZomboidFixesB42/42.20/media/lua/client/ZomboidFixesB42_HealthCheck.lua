@@ -23,6 +23,10 @@
     Health cheat admin power) is on; for a window opened here that is held on for
     the duration of the update only.
 
+    Right-clicking a body part builds its menu from a mouse handler, outside update, so
+    ISHealthPanel.cheat is off there and vanilla leaves out the Cheat submenu. The admin
+    view turns the flag on for that one build (doBodyPartContextMenu), for a viewer who
+    may open the window.
     Heal, keep treatment. The health window's Cheat menu (ISHealthPanel.cheat) has
     Full Health for a part and for the body, which call BodyPart.RestoreToFullHealth:
     it also takes off the bandage, the poultices, the splint and the stitches. Two
@@ -206,11 +210,18 @@ function ISHealthPanel:doBodyPartContextMenu(bodyPart, x, y)
         context = vanillaGet(...)
         return context
     end
+    -- The right-click menu is built from a mouse handler, outside ISHealthPanel:update, so
+    -- ISHealthPanel.cheat is off here and vanilla leaves out its Cheat submenu. For an admin
+    -- view held by a viewer who may open it, the flag is on for this one build only.
+    local cheat = ISHealthPanel.cheat
+    local adminView = isEnabled() and self.zfixAdminView and hasCapability(adminOf(self), "CanMedicalCheat")
+    if adminView then ISHealthPanel.cheat = true end
     local ok, err = pcall(vanillaBodyPartMenu, self, bodyPart, x, y)
+    ISHealthPanel.cheat = cheat
     ISContextMenu.get = vanillaGet
     if not ok then error(err) end
 
-    if not context or not ISHealthPanel.cheat or not bodyPart or not canHeal(self) then return end
+    if not context or not (cheat or adminView) or not bodyPart or not canHeal(self) then return end
     local cheatMenu = subMenuOf(context, getText("ContextMenu_Cheat"))
     if not cheatMenu then return end
     -- Each one right after vanilla's Full Health it stands beside, which is last.
