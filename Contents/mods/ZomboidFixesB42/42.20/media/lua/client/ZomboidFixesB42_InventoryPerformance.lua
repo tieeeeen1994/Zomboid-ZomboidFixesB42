@@ -24,11 +24,12 @@
        or removed in it), and the loot window's update runs refreshBackpacks every
        time the player turns or steps onto another square.
 
-    2. Food aging every frame. renderdetails (prerender and render, so twice a
-       frame) calls updateAge on every item of a collapsed food stack ("so they
-       separate when freshness changes", ISInventoryPane.lua ~2567): 1000 apples are
-       2000 calls into Java per frame. In single player Food.updateAge can also
-       search the cell's process list (getProcessItems().contains) for each.
+    2. Food aging every frame is left alone. renderdetails calls updateAge on every
+       item of a collapsed food stack ("so they separate when freshness changes",
+       ISInventoryPane.lua ~2567). An earlier version aged only a slice of a big
+       stack per frame to save those calls, and food icons flickered: stacks are
+       grouped by display name, which carries the freshness, so ages that were not
+       updated yet put items into the wrong stack on alternate frames.
 
     What this does, without changing what the windows show:
 
@@ -41,9 +42,6 @@
         update. A container that changes (another one selected) or a pane with no
         list yet is refreshed at once. The loot window's step / turn refresh waits
         the same way. Small containers cost under a millisecond and are never held.
-      - A collapsed food stack of more than FOOD_SLICE_MIN items is aged a slice at
-        a time: each frame's prerender ages 1 / FOOD_ROUND_FRAMES of it, the render
-        pass none, so every item is still aged about twice a second.
 
     3. Right-clicking a big stack (ISInventoryPaneContextMenu.createMenu). Most of
        its tests already look at one item, but several helpers walk the whole
@@ -93,8 +91,6 @@ end
 local MIN_COST_MS = 2
 local COST_FACTOR = 8
 local MAX_DELAY_MS = 300
-local FOOD_SLICE_MIN = 30
-local FOOD_ROUND_FRAMES = 30
 local BIG_MENU = 30
 
 local function delayFor(costMs)
@@ -196,60 +192,7 @@ function ISInventoryPane:update(...)
 end
 
 -- ---------------------------------------------------------------------------
--- 2. Food aging in collapsed stacks
--- ---------------------------------------------------------------------------
-
-local vanillaRenderdetails = ISInventoryPane.renderdetails
-function ISInventoryPane:renderdetails(doDragged, ...)
-    if not isEnabled() then
-        return vanillaRenderdetails(self, doDragged, ...)
-    end
-    -- What vanilla does first, so the stacks below are the ones it will draw.
-    if doDragged == false and self.inventory and self.inventory:isDrawDirty() then
-        self:refreshContainer()
-    end
-    -- A drag in progress reads the dragged stacks' items while drawing.
-    if not self.itemslist or not self.collapsed or ISMouseDrag.dragging ~= nil then
-        return vanillaRenderdetails(self, doDragged, ...)
-    end
-
-    -- Each big collapsed food stack gets a short items list for this call: the
-    -- header (items[1], which vanilla draws) and the slice to age. The real list
-    -- is put back right after; the count shown comes from v.count.
-    local swapped = nil
-    for _, v in ipairs(self.itemslist) do
-        local items = v.items
-        local n = items and (#items - 1) or 0
-        if n > FOOD_SLICE_MIN and self.collapsed[v.name] and instanceof(items[1], "Food") then
-            local slice = { items[1] }
-            if doDragged == false then
-                local per = math.ceil(n / FOOD_ROUND_FRAMES)
-                local cursor = v.zfixAgeCursor or 1
-                for _ = 1, per do
-                    cursor = cursor + 1
-                    if cursor > n + 1 then cursor = 2 end
-                    slice[#slice + 1] = items[cursor]
-                end
-                v.zfixAgeCursor = cursor
-            end
-            swapped = swapped or {}
-            swapped[v] = items
-            v.items = slice
-        end
-    end
-
-    if not swapped then
-        return vanillaRenderdetails(self, doDragged, ...)
-    end
-    local ok, err = pcall(vanillaRenderdetails, self, doDragged, ...)
-    for v, items in pairs(swapped) do
-        v.items = items
-    end
-    if not ok then error(err) end
-end
-
--- ---------------------------------------------------------------------------
--- 3. Context menus of big stacks
+-- 2. Context menus of big stacks
 -- ---------------------------------------------------------------------------
 
 --- ISContextMenu:calcWidth's own formula around the widest option text.
