@@ -41,6 +41,11 @@
       - During a batch of crafts, a finished craft with more of the batch still
         queued (two or more ISHandcraftAction in the queue) skips the window's
         refresh; the last one does the full refresh as before.
+      - The last craft's refresh (the rebuild of every recipe, the expensive part
+        with thousands of items) waits until crafting has been quiet for
+        STOP_DELAY_MS and the window is on screen, then runs as vanilla does. The
+        list shows the state from before the craft until then. Closed window: no
+        rebuild at all until it is opened.
       - The tooltip logics get the containers when a tooltip is about to show.
       - The manual-input column is marked dirty instead of being rebuilt on the
         spot (its prerender rebuilds it once).
@@ -69,6 +74,10 @@ local MAX_LATENCY_MS = 1000
 local BUILD_QUIET_MS = 200
 local SURFACE_TTL_MS = 500
 local TITLE_MS = 200
+local STOP_DELAY_MS = 1500
+
+-- Vanilla's craft-finish handler: it rebuilds every recipe's can-craft state.
+local vanillaHandStopCraft = ISHandCraftPanel.onStopCraft
 
 local function quietFor(costMs)
     if not costMs or costMs < MIN_COST_MS then return 0 end
@@ -97,8 +106,21 @@ end
 -- The panel whose update is running, for the FindCraftSurface cache.
 local updatingPanel = nil
 
+--- Runs the deferred craft-finish refresh once crafting has been quiet for
+--- STOP_DELAY_MS and the window is on screen (or at once when the option is off).
+local function runDeferredStop(panel, now)
+    if not panel.zfixStopPending then return end
+    if isEnabled() and (panel.logic:isCraftActionInProgress() or not panel:isReallyVisible()
+        or now - panel.zfixStopPending < STOP_DELAY_MS) then
+        return
+    end
+    panel.zfixStopPending = nil
+    vanillaHandStopCraft(panel)
+end
+
 local vanillaHandUpdate = ISHandCraftPanel.update
 function ISHandCraftPanel:update(...)
+    runDeferredStop(self, getTimestampMs())
     if not isEnabled() then
         return vanillaHandUpdate(self, ...)
     end
@@ -168,14 +190,19 @@ end
 
 -- Panels bind onStopCraft when they are created (logic:addEventListener), after
 -- this file has loaded.
-local vanillaHandStopCraft = ISHandCraftPanel.onStopCraft
 function ISHandCraftPanel:onStopCraft(...)
-    if isEnabled() and moreCraftsQueued(self.player) then
+    if not isEnabled() then
+        return vanillaHandStopCraft(self, ...)
+    end
+    if moreCraftsQueued(self.player) then
         -- The next craft of the batch starts now; the last one refreshes (a
         -- cancelled batch too: ISBaseTimedAction.stop clears the queue first).
         return
     end
-    return vanillaHandStopCraft(self, ...)
+    -- The refresh waits in update: until crafting has been quiet for a moment and
+    -- the window is on screen, so a finished craft does not stall the game while
+    -- nobody is looking at the list.
+    self.zfixStopPending = getTimestampMs()
 end
 
 -- ---------------------------------------------------------------------------

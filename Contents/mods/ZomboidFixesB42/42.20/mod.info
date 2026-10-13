@@ -48,6 +48,7 @@ description=- Vehicle batteries no longer drain twice as fast as intended (beta)
 description=- Welding a gas tank still on a vehicle repairs it instead of wasting the materials (beta).
 description=- Refuelling a generator takes as long as the fuel that goes in, not the whole can (beta).
 description=- Washing clothes is no longer slowed down twice by moodles, sore hands and body temperature (beta).
+description=- A room you built yourself shelters you from corpse smell like a map house does, instead of counting every corpse nearby (beta).
 description=- Less lag with many items in your inventory or nearby, and no freeze when right-clicking a big stack (beta).
 description=- The crafting and build windows no longer stutter with many items nearby (beta).
 description=- Water dispenser bottles can no longer be duplicated (beta).

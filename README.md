@@ -44,6 +44,7 @@ Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly 
 - Welding a gas tank that is still on a vehicle finishes the repair instead of using up the materials for nothing (beta).
 - Adding fuel to a generator takes as long as the fuel that actually goes in, not as long as the whole can (beta).
 - Washing clothes is slowed down by unhappiness, drunkenness, sore hands and body temperature once, like every other action, instead of twice, which multiplied the slowdowns with themselves (beta).
+- A room you built yourself, with no map building behind it, shelters you from corpse smell the way a map house does: no Bad Smell moodle and no corpse sickness in it, instead of the full count of corpses nearby as if you were in the street (beta).
 - Less lag with hundreds or thousands of items in your inventory or nearby: the inventory windows no longer rebuild their lists for every little change, every step and every frame, and right-clicking a big stack no longer freezes the game (beta).
 - The crafting and build windows no longer stutter with many items nearby: they refresh once things settle and once per batch of crafts instead of over and over (beta).
 - Water dispenser bottles can no longer be duplicated by taking the bottle twice or putting one on from a bag (beta).

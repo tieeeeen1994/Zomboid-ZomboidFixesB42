@@ -624,6 +624,14 @@ option ZomboidFixesB42.InventoryPerformance
     translation = ZomboidFixesB42_InventoryPerformance,
 }
 
+option ZomboidFixesB42.RoomShelterFromCorpses
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_RoomShelterFromCorpses,
+}
+
 option ZomboidFixesB42.CraftingPerformance
 {
     type = boolean,
