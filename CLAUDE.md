@@ -552,9 +552,14 @@ Traced 2026-10-08 for God Vehicle (`*_AdminGodVehicle.lua`).
   condition (window health = part condition) and at 0 drops the glass (`setInventoryItem(null)`), adds broken glass.
   `hit` (ISSmashVehicleWindow `complete`) = damage(all) + condition 0.
 - Java only: `applyDamageToPart` (weapons / bullets, server, `transmitPart*`), `Thump` (lightbar + the thumper's
-  part), `tryStartEngine` (-0.025 battery per start). `AttackVehicleState` (zombie at a car, network state
-  `attackvehicle`, runs on every client animating it): a window hit sends damageWindow from **each** such client;
-  a door / body part hit is `setCondition` on that client only (transmit* do nothing on a client), never synced.
+  part), `tryStartEngine` (-0.025 battery per start). `AttackVehicleState` (zombie at a car) runs **only on the
+  zombie's owner** (re-checked 2026-10-13): other clients take the actiongroup's `attackvehicle-network` node
+  (`bClient` = `GameClient.client && isRemoteZombie()`), registered as `GenericDefaultState`, which has no anim
+  events. Its `ThumpFrame` (at `End` of `Zombie_DoorBang` / `Zombie_DoorShoulder`) hits the seat's window (one
+  damageWindow command, fine) or, with no hittable window, the closed passenger door or `getNearestBodyworkPart`
+  (category `door` / `bodywork`, condition > 0): `setCondition(c - zombie.strength)` (public field, no getter: 5 / 3
+  / 1 by sandbox Strength, random 1-4) on the owner only, never synced (`*_ZombieCarDamage.lua` reports it). Lua sees
+  the state as `zombie:getCurrentActionContextStateName()` = "attackvehicle" (owner) / "attackvehicle-network".
 - `transmitPartCondition/Item/ModData/UsedDelta/Window` only set update flags on the server. A part's
   `getContainerContentAmount` is fuel / tire air for parts without an item container, but the item weight for
   trunks, seats and the glove box (set by the container packets and `ItemUser`).
@@ -769,7 +774,15 @@ forces god mode / invisible / noclip / admin tag / hear all from the flags byte 
   `DesignationZoneAnimal.doMeta` replays those hours on its own copy of the loose animals (`updateStatsAway`): hens lay
   ground eggs, feathers drop, ground food is eaten, all local and never sent. `streamed`/`hourLastSeen` have no setter
   (`getClassFieldVal` reads them only with `-debug`), so Lua can only repair afterwards. Hutched hens are not in
-  the zone's animal list and are not affected.
+  the zone's animal list and are not affected. Detail (42.21, traced 2026-10-13): `IsoGridSquare.AddWorldInventoryItem`
+  transmits only on the server and appends to `getObjects()`; `checkPoop` (daily `growUp`), `dropFeather` (1% an
+  hour), `addEgg(true)` drop on `getRandomSquareInZone` (any connected zone); `eatAndDrinkAfterMeta` → `eatItem`
+  removes ground food (`removeWorldObject`), lowers a part-eaten Food's `setHungChange`, `Use()`s drainable feed,
+  takes trough items out (adding ReplaceOnUse leftovers locally) and `removeWater`s the trough's FluidContainer;
+  `checkKilledByMetaPredator` can kill the client's copy (sandbox AnimalMetaPredator). A `SyncZonePacket` sets the
+  client's `hourLastSeen` to the server's. `AddItemToMapPacket.processClient` does **not** dedupe by ID (a broadcast
+  re-send duplicates the item on clients that have it), `ReplaceInventoryItemInContainerPacket` removes by ID then adds
+  (safe to broadcast), the client's `ItemContainer.DoRemoveItem` is local. `*_AnimalZoneResync.lua`.
 - A client world item keeps the server's item ID (chunk data and AddItemToMap serialise it), and
   `IsoGridSquare.removeWorldObject` is local only, so a client can drop an item the server does not have by ID.
 
@@ -1721,6 +1734,17 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   send floor hints (`encodeFloorHints`, `findItemOnGroundNear`), log why they decline, and fall back to a vanilla
   transaction for declined items still at the source. Not fixable from Lua: a real floor item the client lost to a
   wrong-index removal (no way to send one world item to one client), and the cross-player Reject of vanilla cancels.
+- `*_AnimalZoneResync.lua` (client/server/shared, option `AnimalZoneResync`): the client mirrors `checkStreamed`
+  per animal zone every second; a zone back after an hour boundary is checked 5 s later with its connected zones,
+  in 10x10 blocks (`animalZoneCheck`: world items `x,y,id,fingerprint`, troughs' water and items). The server
+  answers ghosts (dropped locally), records (missing items rebuilt with `setID` and inserted at the server's object
+  index so index-addressed removals line up, or part-eaten food corrected) and trough ghosts, and re-sends its trough
+  items (`sendReplaceItemInContainer`) and water (`sendSyncEntity`). The answer is applied 1.5 s late, to what is
+  still there, so packets in flight land first.
+- `*_ZombieCarDamage.lua` (client/server, option `ZombieCarDamageSync`): the client snapshots door / bodywork
+  conditions of every vehicle a known player sits in each tick; a drop while a zombie it owns is in "attackvehicle"
+  for someone in that car goes to the server (`zombieCarDamage`), which checks the owner (`getOwnerPlayer`), the
+  part and rates and applies it like `AttackVehicleState`. God Vehicle's held cars are skipped on both sides.
 - `*_ClothingWear.lua` (client/server, option `ClothingWearRework`, played on a server 2026-10-06; replaced `ZombieAttacksWearClothing` and
   `SyncBrokenClothing`): queued per-swing events. The victim's client watches every zombie targeting a local player
   (own or remote) for `getAttackOutcome()` turning `"success"` (set at `SetAttackOutcome`, end of the `start` anim; the

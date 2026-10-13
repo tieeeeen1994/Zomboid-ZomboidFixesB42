@@ -29,7 +29,7 @@
         vehicle takes no crash at all: its occupants are not hurt by crashes
         either. In single player Java calls crash directly; there only the hold
         below applies and occupants are hurt as usual.
-      - Windows: VehicleCommands.damageWindow (sent by every client whose zombie
+      - Windows: VehicleCommands.damageWindow (sent by the client whose zombie
         thumps a window, VehicleWindow.damage on a client) and ISSmashVehicleWindow
         (VehicleWindow.hit) call into VehicleWindow from Lua; wrapped the same way.
         At 0 VehicleWindow.damage drops the glass item.
@@ -39,9 +39,12 @@
         by the hold every tick, and sent to the clients (transmitPart*: the server
         only flags the part; the vehicle update packet carries it).
       - Client only: AttackVehicleState's ThumpFrame lowers a door or body part's
-        condition on every client animating the zombie and sends nothing, so the
-        server never sees it. Every client holds its own copy of each held vehicle
-        for that (the list of held vehicle IDs is broadcast whenever it changes).
+        condition on the client that owns the zombie and sends nothing (other
+        clients run attackvehicle-network, GenericDefaultState, which has no anim
+        events), so the server never sees it. That client holds its own copy of
+        each held vehicle for that (the list of held vehicle IDs is broadcast
+        whenever it changes); ZombieCarDamageSync sends such hits to the server
+        and skips held vehicles.
 
     The power is kept by the server per admin, saved with the world
     (shared/ZomboidFixesB42_ServerPowers.lua: gate, protocol, admin log), and
@@ -67,6 +70,9 @@ local held = {}
 local function isHeld(vehicle)
     return vehicle ~= nil and held[vehicle:getId()] ~= nil and ServerPowers.isEnabled(power)
 end
+
+-- For other files that change a vehicle (server/ZomboidFixesB42_ZombieCarDamage.lua).
+GodVehicle.isHeld = isHeld
 
 --- The vehicles to hold now: each one a powered admin sits in, and what it tows.
 local function wantedVehicles()

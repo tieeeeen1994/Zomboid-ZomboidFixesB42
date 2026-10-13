@@ -123,6 +123,8 @@ ZomboidFixesB42.CMD_CLOTHING_WEAR = "clothingWear"
 ZomboidFixesB42.CMD_SERVER_POWER = "serverPower"
 ZomboidFixesB42.CMD_REROLL_CONTAINER = "rerollContainer"
 ZomboidFixesB42.CMD_REMOVE_TILE = "removeTile"
+ZomboidFixesB42.CMD_ZOMBIE_CAR_DAMAGE = "zombieCarDamage"
+ZomboidFixesB42.CMD_ANIMAL_ZONE_CHECK = "animalZoneCheck"
 
 -- server -> clients
 ZomboidFixesB42.CMD_PRINT_MEDIA_READ = "printMediaRead"
@@ -136,6 +138,7 @@ ZomboidFixesB42.CMD_TRANSFER_RESYNC_RESULT = "transferResyncResult"
 ZomboidFixesB42.CMD_CRAFT_SOUND_RELAY = "craftSoundRelay"
 ZomboidFixesB42.CMD_SERVER_POWER_STATE = "serverPowerState"
 ZomboidFixesB42.CMD_GOD_VEHICLES = "godVehicles"
+ZomboidFixesB42.CMD_ANIMAL_ZONE_FIX = "animalZoneFix"
 
 -- The single player speed buttons, as zombie.ui.SpeedControls sets them: play,
 -- fast forward, faster forward and wait. Multiplayer fast forward offers exactly

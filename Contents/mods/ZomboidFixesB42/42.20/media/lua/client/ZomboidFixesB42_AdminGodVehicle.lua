@@ -9,8 +9,8 @@
 
     Every multiplayer client also holds its own copy of each vehicle the server
     holds: a zombie thumping a car door (AttackVehicleState) lowers the condition
-    only on the clients animating it and sends nothing, so without this the car
-    would look dented to them while the server's stays whole. The server
+    only on the client that owns the zombie and sends nothing, so without this the
+    car would look dented to that player while the server's stays whole. The server
     broadcasts the held vehicle IDs whenever they change (CMD_GOD_VEHICLES, and with
     every answer about the power); a client starts holding a vehicle SETTLE_MS
     after it shows up there, so the conditions the server sends when it starts
@@ -46,6 +46,11 @@ local function setNamed(ids)
     for _, id in ipairs(gone) do
         mirrored[id] = nil
     end
+end
+
+--- True while the server names this vehicle as held (client/ZomboidFixesB42_ZombieCarDamage.lua).
+function GodVehicle.isNamed(id)
+    return named[id] ~= nil
 end
 
 ZomboidFixesB42.ServerPowers.addOption(GodVehicle.power)

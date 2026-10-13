@@ -24,6 +24,14 @@ The Fast Timed Actions cheat makes item transfers and grabbing items off the gro
 Option: [i][BETA] Failed Item Transfers Repair Themselves[/i]
 Sometimes the server fails a transfer without telling you. Now the game checks with the server and fixes what you see: items only your game still shows on the floor or in a container are removed, items the server moved but you could not see (until relogging) appear, a transfer the server dropped is tried again, and one that did happen ends instead of hanging for up to 20 seconds.
 
+[b]Zombie car damage for everyone (beta)[/b]
+Option: [i][BETA] Zombie Car Damage For Everyone[/i]
+A zombie banging on a car someone sits in dented the door or body panel only on the screen of the player whose game runs that zombie. The server's car stayed whole, nobody else saw it, and the dent was gone once the car loaded again. Now each hit goes to the server and damages the car for everyone, as in single player. Windows already worked.
+
+[b]Animal pens resync (beta)[/b]
+Option: [i][BETA] Animal Pens Resync[/i]
+When you come back to an animal pen, the game makes up the time it was out of range, and in multiplayer your own game did that too, on its own copy: you saw about twice the eggs, feathers and dung, half of them fake and impossible to pick up, and food and trough water missing that was still there. Now your game checks each pen it made up time for with the server: fake items go, food and trough contents are put back as the server has them, and items on those squares line up with the server again.
+
 [b]Putting items back never cancels the queue (beta)[/b]
 Option: [i][BETA] Putting Items Back Never Cancels The Queue[/i]
 Eating or using something from a bag takes it out first and puts it back afterwards. When the item is gone by then (Eat All, used up), putting it back failed and cancelled everything queued after it, so eating all of one thing and queueing another never ate the second. Now the put-back just ends and the queue carries on.

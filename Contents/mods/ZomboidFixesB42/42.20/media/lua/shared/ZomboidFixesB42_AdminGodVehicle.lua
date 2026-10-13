@@ -6,8 +6,8 @@
     (server/ZomboidFixesB42_AdminGodVehicle.lua); every multiplayer client holds its
     own copy of the vehicles the server names as held
     (client/ZomboidFixesB42_AdminGodVehicle.lua), because some damage is only ever
-    made on clients (zombies thumping a car, AttackVehicleState, runs on every client
-    that animates the zombie and sends nothing for parts without a window).
+    made on clients (zombies thumping a car, AttackVehicleState, runs on the client
+    that owns the zombie and sends nothing for parts without a window).
 
     What is held, per part (VehiclePart):
       - condition (getCondition; windows keep their health in it too, VehicleWindow

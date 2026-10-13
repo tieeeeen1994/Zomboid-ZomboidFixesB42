@@ -115,6 +115,15 @@ game, and a test scenario in the Beta section below).
       relog: gone; stash maps' printed annotations are not doubled.
 - [ ] PrintMediaSync, on a server: read a brochure: its icon is on the world map's print media layer at once,
       locations revealed only with the auto-reveal option on; open a paper map, relog: still counted as read.
+- [ ] ZombieCarDamageSync, on a server with a second player watching: sit in a car with the doors shut and the
+      windows already smashed (or a car with no glass on that side), let zombies bang on it: the door and body
+      panel conditions drop on both screens (mechanics window) and stay after relogging; windows still break as
+      before; with God Vehicle on nothing drops; the server log has no Lua errors from zombieCarDamage.
+- [ ] AnimalZoneResync, on a server: a pen with hens (outside the hutch), a feeding trough with feed and water and
+      some feed on the ground; walk far enough that the pen unloads, wait 3+ game hours, come back: no egg,
+      feather or dung that hangs when picked up; trough contents and water match a second player's view; the
+      server log shows "animal pen resync" lines with the fake counts; picking up items on those squares
+      afterwards removes the right ones; nothing changes for the second player standing at the pen meanwhile.
 
 ## Decided against, or not fixable from Lua
 

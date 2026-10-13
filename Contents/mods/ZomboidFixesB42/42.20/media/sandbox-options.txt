@@ -592,6 +592,22 @@ option ZomboidFixesB42.TransferResync
     translation = ZomboidFixesB42_TransferResync,
 }
 
+option ZomboidFixesB42.ZombieCarDamageSync
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_ZombieCarDamageSync,
+}
+
+option ZomboidFixesB42.AnimalZoneResync
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_AnimalZoneResync,
+}
+
 option ZomboidFixesB42.ReturnKeepsQueue
 {
     type = boolean,
