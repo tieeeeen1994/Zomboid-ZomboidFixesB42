@@ -428,8 +428,11 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
   `endTime = serverTimeMs + adjustMaxTime(getDuration()) * 20`, real milliseconds, **no multiplier**; completed when
   `getServerTimeMills()` passes it, then a Done packet ends the client's copy. The server calls `adjustMaxTime` only
   there (the table is built with `Type.new(args)` and gets `netAction` = the Java action; `create()` is client side),
-  except where Lua calls it itself: `ISWashClothing:getDuration` returns `self:adjustMaxTime(...)` (~215, so it is
-  adjusted twice on the server), and some `new`s compute `animSpeed` with it (no `netAction` yet).
+  except where Lua calls it itself: `ISWashClothing:getDuration` returns `self:adjustMaxTime(...)` (~215; the only
+  vanilla action that does), and its `new` sets `maxTime = getDuration()`, so washing is adjusted twice on **both**
+  sides (client `create`, single player too, and the server's `NetTimedAction`): client and server agree, but the
+  moodle / hand pain / temperature factors are squared (`*_WashingTime.lua`). Some `new`s compute `animSpeed` with
+  it (no `netAction` yet).
   PZ's `KahluaTableImpl.rawget` falls back to the metatable, so class methods are found. `netAction:setDuration(ms)`
   moves a running action's end (`endTime = startTime + ms`).
 - Items on a server update only every 5 real s (`IsoCell` ProcessItems) with a real-time step

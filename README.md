@@ -43,6 +43,7 @@ Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly 
 - Vehicle batteries no longer drain twice as fast as intended from headlights, the radio, the lightbar, the siren and the heater (beta).
 - Welding a gas tank that is still on a vehicle finishes the repair instead of using up the materials for nothing (beta).
 - Adding fuel to a generator takes as long as the fuel that actually goes in, not as long as the whole can (beta).
+- Washing clothes is slowed down by unhappiness, drunkenness, sore hands and body temperature once, like every other action, instead of twice, which multiplied the slowdowns with themselves (beta).
 - Water dispenser bottles can no longer be duplicated by taking the bottle twice or putting one on from a bag (beta).
 - Make-up in multiplayer: removing it deletes it on the server instead of leaving it hidden in your inventory, applying new make-up deletes the make-up it replaces, and applied make-up no longer comes off after two seconds with the clothing wear rework on (beta).
 - A second medical check on a player whose health window is still open no longer resets their hunger, thirst, tiredness, pain, panic, stress and other stats in multiplayer (beta).

@@ -382,6 +382,14 @@ option ZomboidFixesB42.GeneratorRefuelTime
     translation = ZomboidFixesB42_GeneratorRefuelTime,
 }
 
+option ZomboidFixesB42.WashingTimeFix
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_WashingTimeFix,
+}
+
 option ZomboidFixesB42.WaterDispenserCheck
 {
     type = boolean,

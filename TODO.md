@@ -124,6 +124,10 @@ game, and a test scenario in the Beta section below).
       feather or dung that hangs when picked up; trough contents and water match a second player's view; the
       server log shows "animal pen resync" lines with the fake counts; picking up items on those squares
       afterwards removes the right ones; nothing changes for the second player standing at the pen meanwhile.
+- [ ] WashingTimeFix, single player and a server: wash a dirty shirt at a sink while very unhappy (or drunk):
+      the bar takes about base time x the moodle factor once (unhappy level 4 = x2, not x4); with no moodles the
+      time is unchanged; on a server the bar ends without sitting at 100%; with fast forward on a server washing
+      still speeds up once (not speed squared).
 
 ## Decided against, or not fixable from Lua
 

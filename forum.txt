@@ -186,6 +186,10 @@ Welding a gas tank that is still on a vehicle finishes the repair. The game stop
 Option: [i][BETA] Generator Refuel Time Fix[/i]
 Adding fuel to a generator takes as long as the fuel that actually goes in. It used to take as long as emptying the whole can, so topping up a nearly full generator from a full can took as long as filling an empty one.
 
+[b]Washing time fix (beta)[/b]
+Option: [i][BETA] Washing Time Fix[/i]
+Being unhappy or drunk, having sore hands or arms, or being too hot or cold slows every timed action down. Washing clothes counted all of that twice, so the slowdowns multiplied with themselves: a very unhappy and very drunk character washed 16 times slower instead of 4. Now washing is slowed down once, like everything else.
+
 [b]Water dispenser bottle duplication fix (beta)[/b]
 Option: [i][BETA] Water Dispenser Bottle Duplication Fix[/i]
 Taking the bottle off an office water dispenser twice in a row, or two players taking it at once, no longer gives a second full bottle and a second dispenser on the same tile, and putting a bottle on from a bag no longer leaves the full bottle in the bag.

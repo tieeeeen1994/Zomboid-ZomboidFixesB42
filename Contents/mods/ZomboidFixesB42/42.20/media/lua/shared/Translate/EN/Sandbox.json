@@ -129,6 +129,8 @@
 
     "Sandbox_ZomboidFixesB42_GeneratorRefuelTime": "[BETA] Generator Refuel Time Fix",
     "Sandbox_ZomboidFixesB42_GeneratorRefuelTime_tooltip": "Adding fuel to a generator takes as long as the whole can would take to empty, even when only a little fits and the rest stays in the can, so topping up a nearly full generator from a full can takes as long as filling an empty one. Tick this so it takes as long as the fuel that actually goes in.",
+    "Sandbox_ZomboidFixesB42_WashingTimeFix": "[BETA] Washing Time Fix",
+    "Sandbox_ZomboidFixesB42_WashingTimeFix_tooltip": "Being unhappy or drunk, having sore hands or arms, or being too hot or cold makes every timed action take longer. Washing clothes counts all of that twice, so the slowdowns multiply with themselves: a very unhappy and very drunk character washes 16 times slower instead of 4 times. Tick this so washing is slowed down once, like everything else. Washing at full health and mood takes as long as before. Untick it to go back to vanilla.",
 
     "Sandbox_ZomboidFixesB42_WaterDispenserCheck": "[BETA] Water Dispenser Bottle Duplication Fix",
     "Sandbox_ZomboidFixesB42_WaterDispenserCheck_tooltip": "The game never checks whether an office water dispenser still has its bottle when taking it off, or still lacks one when putting one on. Taking the bottle twice in a row (or two players at once) gives a second full bottle and stacks a second dispenser on the tile, and a bottle put on from a bag fills the dispenser but stays in the bag. Tick this so a second take or put-on simply stops, and the bottle put on leaves whichever bag it was in. Untick it to go back to the unchecked actions.",

@@ -35,8 +35,7 @@
     there is stopped with forceStop, the same path as a server Reject: the client
     tells the server it cancelled, the queue is cleared, and the player can act
     again. The extra "as long again" leaves room for actions the server legitimately
-    times longer than the client (ISWashClothing adjusts its time twice there) and
-    for a lagging server, since stopping an action the server was about to finish
+    times longer than the client and for a lagging server, since stopping an action the server was about to finish
     would throw away its work.
 
     Not covered: an action whose client time is -1 (no end of its own, reloading for
