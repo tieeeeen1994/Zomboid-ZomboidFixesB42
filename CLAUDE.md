@@ -720,6 +720,14 @@ becomes its ReplaceOnDeplete item (`sendReplaceItemInContainer`), stays (KeepOnD
 `InventoryItem`'s uses are whole items (`getMaxUses()` = 1). `SyncItemFieldsPacket` carries `uses` and the whole
 FluidContainer.
 
+Item names (42.21): `InventoryItem.getName` (= `getDisplayName`) for an item with a FluidContainer is
+`FluidContainer.getUiName()`: `Fluid_HoldingOneType` "%2 (%1)" = liquid (translated `Fluid_Container_<ContainerName>`),
+e.g. "Cow's Milk (Carton)", plus " (Sealed)" / " (Tainted)", "Empty %1" (just the container with tag
+`OmitEmptyFromName`), two liquids "%2 and %3 (%1)", more = "Mixed Beverages" / "Cocktail" / "Mixed Liquids". `Food.getName`
+prefixes "Fresh, " / "Stale, " / "Rotten, " / "Burnt, " / "Cooked, " / "Frozen"... So a display name is no stable key;
+compare liquids with `getFluidContainer():getPrimaryFluid():getFluidTypeString()` (vanilla FireFighting.lua does;
+`isPrimaryFluidType` is overloaded String / FluidType, so avoid it from Lua), `Fluid.Get(str)`, `getTranslatedName()`.
+
 ### Admin powers kept by the server
 
 `shared/ZomboidFixesB42_ServerPowers.lua`: Admin Powers this mod adds that the server acts on (God Vehicle, No
