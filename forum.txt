@@ -28,8 +28,8 @@ Sometimes the server fails a transfer without telling you. Now the game checks w
 Option: [i][BETA] Zombie Car Damage For Everyone[/i]
 A zombie banging on a car someone sits in dented the door or body panel only on the screen of the player whose game runs that zombie. The server's car stayed whole, nobody else saw it, and the dent was gone once the car loaded again. Now each hit goes to the server and damages the car for everyone, as in single player. Windows already worked.
 
-[b]Animal pens resync (beta)[/b]
-Option: [i][BETA] Animal Pens Resync[/i]
+[b]Animal pens resync[/b]
+Option: [i]Animal Pens Resync[/i]
 When you come back to an animal pen, the game makes up the time it was out of range, and in multiplayer your own game did that too, on its own copy: you saw about twice the eggs, feathers and dung, half of them fake and impossible to pick up, and food and trough water missing that was still there. Now your game checks each pen it made up time for with the server: fake items go, food and trough contents are put back as the server has them, and items on those squares line up with the server again.
 
 [b]Putting items back never cancels the queue (beta)[/b]

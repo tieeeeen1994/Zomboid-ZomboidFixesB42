@@ -169,11 +169,6 @@ game, and a test scenario in the Beta section below).
       windows already smashed (or a car with no glass on that side), let zombies bang on it: the door and body
       panel conditions drop on both screens (mechanics window) and stay after relogging; windows still break as
       before; with God Vehicle on nothing drops; the server log has no Lua errors from zombieCarDamage.
-- [ ] AnimalZoneResync, on a server: a pen with hens (outside the hutch), a feeding trough with feed and water and
-      some feed on the ground; walk far enough that the pen unloads, wait 3+ game hours, come back: no egg,
-      feather or dung that hangs when picked up; trough contents and water match a second player's view; the
-      server log shows "animal pen resync" lines with the fake counts; picking up items on those squares
-      afterwards removes the right ones; nothing changes for the second player standing at the pen meanwhile.
 - [ ] WashingTimeFix, single player and a server: wash a dirty shirt at a sink while very unhappy (or drunk):
       the bar takes about base time x the moodle factor once (unhappy level 4 = x2, not x4); with no moodles the
       time is unchanged; on a server the bar ends without sitting at 100%; with fast forward on a server washing

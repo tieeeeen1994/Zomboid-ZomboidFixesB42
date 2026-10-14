@@ -786,6 +786,16 @@ forces god mode / invisible / noclip / admin tag / hear all from the flags byte 
   client's `hourLastSeen` to the server's. `AddItemToMapPacket.processClient` does **not** dedupe by ID (a broadcast
   re-send duplicates the item on clients that have it), `ReplaceInventoryItemInContainerPacket` removes by ID then adds
   (safe to broadcast), the client's `ItemContainer.DoRemoveItem` is local. `*_AnimalZoneResync.lua`.
+  Raking (42.21, `ISPickDungCursor` → shared `ISPickupDung`, 250 ticks, 1 with `isTimedActionInstant`): server
+  `complete` runs `square:removeAllDung()` (world items whose script `isDung`; feathers and eggs are not) on each
+  square of the radius, local removals, adds the items to the raker with `sendAddItemsToContainer`, then
+  `sendServerCommand("animal", "removeDung", {x, y, z, radius})` to every client, whose `ServerCommands.lua`
+  handler runs `removeAllDung` on its own copy. So each side removes the dung it has, by type, not by ID. Only the
+  dung items carry `IsDung = true` (food.txt): a rake never takes feathers or eggs, by design. The menu is Java
+  (`ISWorldObjectContextMenuLogic` ~1111: submenu `ContextMenu_Rake` with `ContextMenu_RakeDung` → Lua
+  `ISWorldObjectContextMenu.onRakeDung`, offered for any unbroken item tagged TakeDung, no square test); the cursor's
+  `isValidArea` wants a square with `checkHaveDung()`. Animal drops: `AnimalDefinitions.animals[a].eggType`,
+  `AnimalDefinitions.breeds[a].breeds[b].featherItem`.
 - A client world item keeps the server's item ID (chunk data and AddItemToMap serialise it), and
   `IsoGridSquare.removeWorldObject` is local only, so a client can drop an item the server does not have by ID.
 
@@ -1780,7 +1790,10 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   answers ghosts (dropped locally), records (missing items rebuilt with `setID` and inserted at the server's object
   index so index-addressed removals line up, or part-eaten food corrected) and trough ghosts, and re-sends its trough
   items (`sendReplaceItemInContainer`) and water (`sendSyncEntity`). The answer is applied 1.5 s late, to what is
-  still there, so packets in flight land first.
+  still there, so packets in flight land first. Missing items are put back only on squares whose signature (object
+  count + world item IDs in order) is the one sent with the check; a changed square (a rake in between) is left
+  alone and the block re-checked 3 s later, up to 3 tries (a stale index would misalign the square for later
+  index-addressed pickups; a guard from reading the code, not from a bug seen in game).
 - `*_InventoryPerformance.lua` / `*_CraftingPerformance.lua` (client, options `InventoryPerformance`,
   `CraftingPerformance`): rebuilds held back by their own measured cost (next one after cost x 8 ms, max 300 ms;
   crafting: quiet period, max 1 s latency), requests merged by taking the dirty flags back and setting them again;

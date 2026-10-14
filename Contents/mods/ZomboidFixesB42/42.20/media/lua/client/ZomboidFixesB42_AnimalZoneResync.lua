@@ -46,7 +46,14 @@
 
     The answer is applied APPLY_DELAY_MS after it arrives and only to what is still
     the same then, so a floor item the server picked up or added in the meantime
-    (its own packet lands first) is not touched twice.
+    (its own packet lands first) is not touched twice. Items are put back only on
+    squares whose objects are still the ones listed in the check: a change there
+    while the check was under way (a rake: ISPickupDung removes the dung on the
+    server and then on each client by command, both locally, so the server's index
+    for a missing item no longer fits) leaves that square alone and the block is
+    checked again RETRY_MS later, up to MAX_TRIES times. Putting an item back at a
+    stale index would misalign the square, and later pickups there would remove
+    the wrong item for this player.
 
     Left alone: hutches (the server syncs every hutch every 3.5 s), the animals'
     own data that the replay ages here (AnimalPacket brings hunger, thirst, milk,
@@ -69,6 +76,10 @@ local SETTLE_MS = 5000
 local ZONE_GAP_MS = 60000
 local SEND_GAP_MS = 100
 local APPLY_DELAY_MS = 1500
+local RETRY_MS = 3000
+local MAX_TRIES = 3
+-- A check whose answer has not come by then is forgotten (no answer = no change).
+local IN_FLIGHT_MS = 30000
 
 -- [zone id] = { loaded = bool, leftHour = whole world hour it unloaded, lastCheck = ms }
 local zones = {}
@@ -78,6 +89,10 @@ local pending = {}
 local blocks = {}
 -- answers waiting for APPLY_DELAY_MS: { due, args }
 local answers = {}
+-- blocks sent and not answered yet: [x,y,z] = block (+ sentAt, signatures)
+local inFlight = {}
+-- blocks to check again: { due, block }
+local retries = {}
 
 local lastCheckMs = 0
 local lastSendMs = 0
@@ -191,16 +206,32 @@ local function findTrough(square)
     return nil
 end
 
+local function blockKey(x, y, z)
+    return string.format("%d,%d,%d", x, y, z)
+end
+
+--- What the square's objects are: their count and the world items' IDs in order.
+local function squareSignature(square)
+    local parts = { tostring(square:getObjects():size()) }
+    local worldObjects = square:getWorldObjects()
+    for i = 0, worldObjects:size() - 1 do
+        local item = worldObjects:get(i):getItem()
+        parts[#parts + 1] = item and tostring(item:getID()) or "-"
+    end
+    return table.concat(parts, ",")
+end
+
 local function sendBlock(block)
     local player = getPlayer()
     local cell = getCell()
     if not player or not cell then return end
 
-    local items, troughs = {}, {}
+    local items, troughs, signatures = {}, {}, {}
     for x = block.x, block.x + block.w - 1 do
         for y = block.y, block.y + block.h - 1 do
             local square = cell:getGridSquare(x, y, block.z)
             if square then
+                signatures[Resync.key(x, y)] = squareSignature(square)
                 local worldObjects = square:getWorldObjects()
                 for i = 0, worldObjects:size() - 1 do
                     local item = worldObjects:get(i):getItem()
@@ -226,6 +257,10 @@ local function sendBlock(block)
     end
     if #items > Resync.MAX_ENTRIES then return end
 
+    block.sentAt = getTimestampMs()
+    block.signatures = signatures
+    block.tries = (block.tries or 0) + 1
+    inFlight[blockKey(block.x, block.y, block.z)] = block
     sendClientCommand(player, ZomboidFixesB42.MODULE, ZomboidFixesB42.CMD_ANIMAL_ZONE_CHECK, {
         x = block.x, y = block.y, z = block.z, w = block.w, h = block.h,
         items = table.concat(items, ";"),
@@ -318,6 +353,25 @@ local function apply(args)
     local z = tonumber(args.z)
     if not cell or not z then return end
 
+    -- Squares changed since the check was sent, worked out before this answer
+    -- changes anything.
+    local block
+    local x0, y0 = tonumber(args.x), tonumber(args.y)
+    if x0 and y0 then
+        local key = blockKey(x0, y0, z)
+        block = inFlight[key]
+        inFlight[key] = nil
+    end
+    local stale = {}
+    if block and block.signatures then
+        for key, signature in pairs(block.signatures) do
+            local x, y = string.match(key, "^(%-?%d+),(%-?%d+)$")
+            local square = cell:getGridSquare(tonumber(x), tonumber(y), z)
+            if not square or squareSignature(square) ~= signature then stale[key] = true end
+        end
+    end
+    local retry = false
+
     eachEntry(args.ghosts, "^(%-?%d+),(%-?%d+),(%-?%d+)$", function(x, y, id)
         local square = cell:getGridSquare(x, y, z)
         if square then dropGhost(square, id) end
@@ -355,11 +409,19 @@ local function apply(args)
                 if worldObject then
                     pcall(setValues, worldObject:getItem(), rec, false)
                 elseif rec.missing and type(rec.type) == "string" then
-                    rec.id = id
-                    addBack(square, rec)
+                    if stale[Resync.key(x, y)] then
+                        retry = true
+                    else
+                        rec.id = id
+                        addBack(square, rec)
+                    end
                 end
             end
         end
+    end
+
+    if retry and block.tries < MAX_TRIES then
+        table.insert(retries, { due = getTimestampMs() + RETRY_MS, block = block })
     end
 end
 
@@ -376,9 +438,16 @@ local function onTick()
         answers = keep
     end
 
+    local expired = {}
+    for key, block in pairs(inFlight) do
+        if now - block.sentAt > IN_FLIGHT_MS then expired[#expired + 1] = key end
+    end
+    for _, key in ipairs(expired) do inFlight[key] = nil end
+
     if not Resync.isEnabled() then
         pending = {}
         blocks = {}
+        retries = {}
         return
     end
 
@@ -393,6 +462,14 @@ local function onTick()
             if now >= entry.due then queuePenNetwork(entry.zone, now) else keep[#keep + 1] = entry end
         end
         pending = keep
+    end
+
+    if #retries > 0 then
+        local keep = {}
+        for _, entry in ipairs(retries) do
+            if now >= entry.due then table.insert(blocks, entry.block) else keep[#keep + 1] = entry end
+        end
+        retries = keep
     end
 
     if #blocks > 0 and now - lastSendMs >= SEND_GAP_MS then
@@ -415,4 +492,6 @@ Events.OnInitWorld.Add(function()
     pending = {}
     blocks = {}
     answers = {}
+    inFlight = {}
+    retries = {}
 end)
