@@ -81,6 +81,14 @@ option ZomboidFixesB42.ClothingWearRework
     translation = ZomboidFixesB42_ClothingWearRework,
 }
 
+option ZomboidFixesB42.SpikedArmorHurtsZombies
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_SpikedArmorHurtsZombies,
+}
+
 option ZomboidFixesB42.RescueHutchAnimals
 {
     type = boolean,

@@ -242,6 +242,14 @@ hitting it calls `Clothing.removePatch`, which (patch `hasHole`) re-adds the hol
 `Clothing.ClothingPatch` fields (tailorLvl, fabricType) have no getters, so a removed patch cannot be rebuilt from Lua.
 `Clothing.setCondition(int)` unwears (and drops) at 0 when `isRemoveOnBroken`; the inherited
 `setCondition(int, boolean doSound)` never does. `Rand.NextBool(n)` = `Next(n) == 0`.
+Spiked armor (42.21): `bodyPartIsSpiked` / `bodyPartIsSpikedBehind(part)` = a worn Clothing with tag `base:spiked` /
+`base:spikedbehind` covering the part with no hole. A player shoving or knifing a spiked target gets
+`spikePart(hand or foot)` = an ice pick `DamageFromWeapon` (`CombatManager.resolveSpikedArmorDamage`). A zombie's
+scratch / laceration on a spiked part (before the defense roll) and a blocked bite call `zombie.spikePart`, which for a
+character without BodyDamage is `Hit(IcePick, cell.getFakeZombieForHit(), 0, false, 0)`: blood and sound, **0 damage**
+(only a bite that gets through also `Kill`s it; on an MP client that branch returns at `sendZombieHit` first, so only the
+server's re-roll can). Lua sees it as `OnHitZombie` with that wielder (`getFakeAttacker()`; trap explosions use it too,
+with the trap as weapon) and a `Base.IcePick` (`*_SpikedArmor.lua` adds the ice pick's damage on the owner).
 `SyncVisualsPacket` (client `player:syncVisuals()` sends SyncClothing, SyncVisuals and HumanVisual, all reliability 3,
 ordering 0, as is ItemStats) carries every worn item's holes, patches, dirt, blood **and condition** by position in
 the worn list; the server applies them (`setConditionNoSound`, no unwear) and relays to the other clients, but parses

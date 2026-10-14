@@ -194,6 +194,10 @@ Being unhappy or drunk, having sore hands or arms, or being too hot or cold slow
 Option: [i][BETA] Rooms You Build Shelter From Corpse Smell[/i]
 A map house shelters you from the Bad Smell moodle because the game counts the corpses in the building you stand in. A room you build yourself has no map building, so the game counted every corpse nearby as if you stood in the street. Now a room with no map building counts as a shelter, like a map house: no corpse sickness and no moodle in it. A room is a square where you can plumb a sink. Map buildings are unchanged.
 
+[b]Spiked armor hurts zombies (beta)[/b]
+Option: [i][BETA] Spiked Armor Hurts Zombies[/i]
+When a zombie scratched or bit a part of you covered by spiked armor (with no hole there), the game made it spike itself, with blood and the sound of a hit, but took no health from it; only a bite that got through killed it. Now each spike takes what an ice pick hit would, 0.6 to 0.9 health, so two or three spikes kill a zombie of normal toughness. In multiplayer the game running the zombie applies it, so everyone sees it fall.
+
 [b]Less lag with many items (beta)[/b]
 Option: [i][BETA] Less Lag With Many Items[/i]
 With hundreds or thousands of items in your inventory or a nearby container, the inventory windows rebuilt their lists item by item whenever almost anything nearby changed, on every step and turn, and aged every item of a food stack every frame, and right-clicking a big stack could freeze the game for seconds. Now rebuilds that take long wait for each other for a moment, big food stacks age a slice at a time, and the right-click menu does its checks once per stack instead of once per item. The windows show the same things.
