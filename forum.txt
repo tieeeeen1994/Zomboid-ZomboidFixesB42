@@ -78,6 +78,10 @@ Changing an animal's gender in the animal info window also changes its model and
 
 [h2]Admin tools[/h2]
 
+[b]Carry all animals of a kind (beta)[/b]
+Option: [i][BETA] Admins Carry All Animals of a Kind[/i]
+Moving a flock used to mean carrying animals one at a time. Admins (Animal Cheats permission) can now right-click an animal and pick up every loose animal of the same type and breed in its animal zone, and the zones joined to it, into their inventory at once: every Rhode Island Red hen, for example. A carried animal's menu then puts all of that kind down around the admin at once. Animals in hutches, tied up or on a rope stay put. Carried animals are heavy (about 20 per hen), so turn on Unlimited Carry first, and put them down soon: they still get hungry and thirsty, and hens lay eggs into your inventory.
+
 [b]Admin hotbar[/b]
 Option: [i]Admin Hotbar[/i]
 Admins and moderators get a new sidebar button under Admin that opens a floating bar of one-click shortcuts to every admin tool: admin powers, admin panel windows, the Tools and Debug menus, weather and climate, meta events, foraging and player actions.
@@ -117,7 +121,7 @@ The admin tag over an admin's head shows for every admin panel cheat, not only s
 [b]Full Bright admin power[/b]
 Option: [i]Full Bright Admin Power[/i]
 Options: [i]Full Bright Light Spacing[/i] (8 tiles by default), [i]Full Bright Light Radius[/i] (20 tiles by default, the most the game allows)
-Always Day only lights the outdoors, so rooms stay dark inside. Full Bright, next to Always Day in the Admin Powers window and on the admin hotbar, turns Always Day on and lights every room around the admin as well. Only the admin sees it; nothing changes for anyone else.
+Always Day only lights the outdoors, so rooms stay dark inside. Full Bright, next to Always Day in the Admin Powers window and on the admin hotbar, turns Always Day on and lights every room around the admin as well. Below ground, where Always Day does not reach, it also lights the tunnels around the admin (sewers and other underground mods included). Only the admin sees it; nothing changes for anyone else.
 
 [b]God Vehicle admin power[/b]
 Option: [i]God Vehicle Admin Power[/i]

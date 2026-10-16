@@ -16,6 +16,14 @@ option ZomboidFixesB42.AnimalGenderChange
     translation = ZomboidFixesB42_AnimalGenderChange,
 }
 
+option ZomboidFixesB42.AnimalCarryAll
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_AnimalCarryAll,
+}
+
 option ZomboidFixesB42.ForagingDebugFixes
 {
     type = boolean,

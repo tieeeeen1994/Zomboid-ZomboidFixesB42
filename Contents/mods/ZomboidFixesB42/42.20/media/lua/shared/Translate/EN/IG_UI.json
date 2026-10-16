@@ -430,7 +430,7 @@
     "IGUI_ZomboidFixesB42_GrabAmount_Invalid": "Enter a whole number from 1 to %1",
     "IGUI_ZomboidFixesB42_ActionStuck": "The server never finished that action",
     "IGUI_CheatPanel_ZomboidFixesB42_FullBright": "Full Bright",
-    "IGUI_CheatPanel_ZomboidFixesB42_FullBright_tooltip": "Always Day, and every room around you lit as well. Only you see it.",
+    "IGUI_CheatPanel_ZomboidFixesB42_FullBright_tooltip": "Always Day, and every room around you lit as well, tunnels below ground too. Only you see it.",
     "IGUI_CheatPanel_ZomboidFixesB42_GodVehicle": "God Vehicle",
     "IGUI_CheatPanel_ZomboidFixesB42_GodVehicle_tooltip": "The vehicle you are in, and what it tows, never wears down: no damage, no fuel used, no air lost, no battery drain.",
     "IGUI_CheatPanel_ZomboidFixesB42_NoWear": "No Wear",
@@ -440,5 +440,13 @@
     "IGUI_ZomboidFixesB42_Reroll": "Reroll",
     "IGUI_ZomboidFixesB42_Reroll_tooltip": "Throw away everything in this container and fill it again from the loot tables.",
     "IGUI_ZomboidFixesB42_UserPanel_ShowVersion": "Show game version",
-    "IGUI_ZomboidFixesB42_UserPanel_ShowCoordinates": "Show coordinates and resolution"
+    "IGUI_ZomboidFixesB42_UserPanel_ShowCoordinates": "Show coordinates and resolution",
+    "IGUI_ZomboidFixesB42_AnimalCarryAll": "Pick up all %1 in this pen (%2)",
+    "IGUI_ZomboidFixesB42_AnimalCarryAll_tooltip": "Every loose animal of this type and breed in this animal zone and the zones joined to it goes into your inventory. Animals in hutches, tied up or on a rope stay.",
+    "IGUI_ZomboidFixesB42_AnimalCarryAll_confirm": "Pick up %1 %2 into your inventory?\nTogether they weigh about %3: turn on Unlimited Carry first.",
+    "IGUI_ZomboidFixesB42_AnimalCarryAll_noZone": "This animal is not in an animal zone.",
+    "IGUI_ZomboidFixesB42_AnimalCarryAll_gone": "That animal is no longer loose in the world.",
+    "IGUI_ZomboidFixesB42_AnimalCarryAll_noSpace": "There is no floor round you to put animals down on.",
+    "IGUI_ZomboidFixesB42_AnimalCarryAll_none": "No animals were moved.",
+    "IGUI_ZomboidFixesB42_AnimalDropAll": "Put down all %1 here (%2)"
 }

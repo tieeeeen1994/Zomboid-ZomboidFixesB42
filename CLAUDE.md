@@ -806,6 +806,20 @@ forces god mode / invisible / noclip / admin tag / hear all from the flags byte 
   `AnimalDefinitions.breeds[a].breeds[b].featherItem`.
 - A client world item keeps the server's item ID (chunk data and AddItemToMap serialise it), and
   `IsoGridSquare.removeWorldObject` is local only, so a client can drop an item the server does not have by ID.
+- Carried animals (42.21, traced 2026-10-16): `AnimalInventoryItem` ("Base.Animal"), weight
+  `adef.baseEncumbrance × getAnimalSize()` (hen ~20, cow ~130; Lua: `AnimalDefinitions.animals[t].baseEncumbrance`);
+  `ItemContainer.isItemAllowed` lets it into "floor" only (no bags), the main inventory takes any number, and only
+  held ones are force-dropped (`isForceDropHeavyItem`). `sendPickupAnimal` goes to clients near the **player** and
+  each acts only if its `AnimalInstanceManager` knows the ID (a far animal's item never shows); send the item with
+  `sendAddItemToContainer` instead (vanilla `ISHutchGrabAnimal`). Carried, the server keeps updating the animal
+  (ProcessItems every 5 s: hunger, eggs into the inventory unsynced, births at the old spot). Put down:
+  `square:AddWorldInventoryItem(item, x, y, h, true)` builds a new IsoAnimal on the square (`copyFrom`, same online
+  ID, `addToWorld`, DropAnimal to nearby clients). Zone lists hold loaded loose animals only (hutched ones are in
+  `hutch:getAnimalInside()`); `zone:getAnimalsConnected()` returns a new list; animals in unloaded chunks are
+  `VirtualAnimal`s Lua cannot reach. Vanilla pick-up: `canBePicked` (chick, hen, cockerel, calves, piglet, lamb,
+  poult, mice, rats, raccoons) or any animal with Unlimited Carry / god mode. Every loose animal costs a client a full
+  update and blended animation each frame (`IsoPlayer.getMinimumSimulationLevel` = FULL, no invisible skips, no
+  blending cap in `IsoWorld.sceneCullAnimals`); a hutched one is out of the world.
 
 ### Animal AI, animal sync and animals vs zombies (42.21)
 
@@ -1792,6 +1806,11 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   send floor hints (`encodeFloorHints`, `findItemOnGroundNear`), log why they decline, and fall back to a vanilla
   transaction for declined items still at the source. Not fixable from Lua: a real floor item the client lost to a
   wrong-index removal (no way to send one world item to one client), and the cross-player Reject of vanilla cancels.
+- `*_AnimalCarryAll.lua` (client/server, option `AnimalCarryAll`, beta): an admin's animal submenu (wrapped
+  `AnimalContextMenu.doMenu`, submenu found by the option index noted before the call) picks up every loose animal
+  of the clicked one's type and breed in its connected zones into the main inventory, 20 a server tick, the way
+  `ISPickupAnimal:complete` does but sent with `sendAddItemToContainer`; a carried animal's inventory menu
+  (`doInventoryMenu`) puts all of a kind down over the 3x3 round the admin with `AddWorldInventoryItem`.
 - `*_AnimalZoneResync.lua` (client/server/shared, option `AnimalZoneResync`): the client mirrors `checkStreamed`
   per animal zone every second; a zone back after an hour boundary is checked 5 s later with its connected zones,
   in 10x10 blocks (`animalZoneCheck`: world items `x,y,id,fingerprint`, troughs' water and items). The server
@@ -1840,6 +1859,9 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   loaded area, `removeLamppost(light)` = life 0; each square is lit on its own, so a short radius shows as steps across
   a two-tile object) every `AdminFullBrightSpacing` tiles (radius `AdminFullBrightRadius`) through the rects of the rooms near the player
   (`getMetaGrid():getRoomsIntersecting(x, y, w, h, list)`, `RoomDef:getRects()`), client only.
+  Below ground (z < 0) Always Day lights nothing and tunnels are no rooms (Sewars strips them on the server and has
+  none on clients unless an admin marked the ground indoors), so on the player's level one light per spacing-sized
+  block goes on the room-less floor square nearest the block's centre, within 24 tiles (blocks cached 20 s).
   It borrows the Always Day cheat flag (`CheatType.ALWAYS_DAY`; the cheat set is saved with the player by
   `IsoGameCharacter.save`, on the server in MP, locally in SP). `sendPlayerExtraInfo` (synchronous:
   `ExtraInfoPacket.set` reads every flag at the call) carries it to the server, which echoes the packet to

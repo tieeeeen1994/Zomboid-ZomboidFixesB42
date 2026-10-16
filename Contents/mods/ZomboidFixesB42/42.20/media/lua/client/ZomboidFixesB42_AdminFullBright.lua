@@ -27,7 +27,14 @@
     player, on squares that are loaded, each reaching AdminFullBrightRadius tiles. The
     native lighting lights each square on its own, so a short reach shows as steps
     between neighbouring squares (one half of a two-tile table darker than the other);
-    a longer reach or closer lights even it out. The set is rebuilt when the player has
+    a longer reach or closer lights even it out.
+    Below the street (level -1 and lower) Always Day does nothing and a dug tunnel or a
+    sewer (Sewers Under Every Town / Sewars) is no room, so there the player's own level
+    is cut into blocks of AdminFullBrightSpacing tiles within BELOW_RANGE and each block
+    gets one light on its floor square nearest the block's centre that has no room
+    (rooms are lit as above). A block's choice is kept and looked at again after
+    BELOW_RECHECK_MS, a few blocks per refresh, since digging changes it; a block not
+    wholly loaded is never kept. The set is rebuilt when the player has
     moved MOVE_TILES or changed floor, and every REFRESH_MS, which also puts back
     lights the engine dropped and follows a change of either option.
     Always Day keeps its own tick: while Full Bright is on, the Always Day option
@@ -78,6 +85,13 @@ local MAX_RADIUS = 20
 local MOVE_TILES = 4
 -- ...or this often.
 local REFRESH_MS = 3000
+-- Below the street: how far, in tiles, floor squares are lit (each block is up to
+-- spacing x spacing squares looked up, so this is smaller than RANGE), how long a
+-- block's chosen square is kept, and how many kept blocks are looked at again per
+-- refresh (blocks never looked at are always done).
+local BELOW_RANGE = 24
+local BELOW_RECHECK_MS = 20000
+local BELOW_RECHECKS = 6
 
 local function isEnabled()
     local vars = SandboxVars and SandboxVars.ZomboidFixesB42
@@ -119,6 +133,68 @@ local lights = {}
 local lightsCell = nil
 local lightsRadius = nil
 local lastX, lastY, lastZ, lastRefresh = nil, nil, nil, 0
+-- Below the street: ["bx,by,z"] = { at = ms, loaded = bool, x, y } (x nil: no floor
+-- in the block), for blocks of belowStep tiles.
+local belowBlocks = {}
+local belowStep = nil
+
+-- The floor square without a room nearest the centre of block bx, by at level z, as
+-- x, y (nil if none), and whether the whole block is loaded (else it is not kept).
+local function pickBelow(cell, bx, by, z, step)
+    local x0, y0 = bx * step, by * step
+    local x1, y1 = x0 + step - 1, y0 + step - 1
+    local loaded = cell:getChunkForGridSquare(x0, y0, 0) ~= nil and cell:getChunkForGridSquare(x1, y0, 0) ~= nil
+        and cell:getChunkForGridSquare(x0, y1, 0) ~= nil and cell:getChunkForGridSquare(x1, y1, 0) ~= nil
+    local cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    local bestX, bestY, bestD = nil, nil, nil
+    for x = x0, x1 do
+        for y = y0, y1 do
+            local sq = cell:getGridSquare(x, y, z)
+            if sq and sq:getFloor() and not sq:getRoom() then
+                local d = (x - cx) * (x - cx) + (y - cy) * (y - cy)
+                if not bestD or d < bestD then
+                    bestX, bestY, bestD = x, y, d
+                end
+            end
+        end
+    end
+    return bestX, bestY, loaded
+end
+
+-- Adds to `wanted` one light per block of the player's level below the street.
+local function addBelow(cell, px, py, pz, step, wanted)
+    if step ~= belowStep then
+        belowBlocks = {}
+        belowStep = step
+    end
+    local now = getTimestampMs()
+    local bx0, bx1 = math.floor((px - BELOW_RANGE) / step), math.floor((px + BELOW_RANGE) / step)
+    local by0, by1 = math.floor((py - BELOW_RANGE) / step), math.floor((py + BELOW_RANGE) / step)
+    local rechecks = 0
+    local keep = {}
+    for bx = bx0, bx1 do
+        for by = by0, by1 do
+            local key = bx .. "," .. by .. "," .. pz
+            local block = belowBlocks[key]
+            -- A partly loaded block is looked at again on every refresh.
+            local redo = not block or not block.loaded
+            if not redo and now - block.at >= BELOW_RECHECK_MS and rechecks < BELOW_RECHECKS then
+                rechecks = rechecks + 1
+                redo = true
+            end
+            if redo then
+                local x, y, loaded = pickBelow(cell, bx, by, pz, step)
+                block = { at = now, loaded = loaded, x, y }
+            end
+            keep[key] = block
+            if block[1] then
+                wanted[block[1] .. "," .. block[2] .. "," .. pz] = { block[1], block[2], pz }
+            end
+        end
+    end
+    -- Blocks out of range (or on another level) are dropped.
+    belowBlocks = keep
+end
 
 local function clearLights()
     local cell = getCell()
@@ -137,6 +213,7 @@ local function refresh(player)
     -- Leaving a game and starting another keeps this file's state, not the old cell.
     if cell ~= lightsCell then
         lights = {}
+        belowBlocks = {}
         lightsCell = cell
     end
     -- A light's radius is fixed once added, so a new radius means new lights.
@@ -175,6 +252,9 @@ local function refresh(player)
                 end
             end
         end
+    end
+    if pz < 0 then
+        addBelow(cell, px, py, pz, step, wanted)
     end
 
     local gone = {}
@@ -380,6 +460,7 @@ Events.OnInitWorld.Add(function()
     lights = {}
     lightsCell = nil
     lightsRadius = nil
+    belowBlocks = {}
     lastX = nil
 end)
 
