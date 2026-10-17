@@ -306,7 +306,9 @@ so a live change reaches the owner's copy only by re-sending the item or by the 
 / `getEffectiveCapacity` at 50 - the bag's script weight (`actualWeight`, not contents), but only the inner
 container's is enforced (`ItemContainer.hasRoomFor`, the loot window's weight bar); the item's lower number shows
 only in vanilla's tooltip Capacity row, and `InventoryContainer.setCapacity` stores past it with a logged warning;
-WR is clamped 0..100 on set. Dynamic Backpack Upgrades (workshop
+WR is clamped 0..100 on set. `ISClothingExtraAction.createItemNew` (fanny pack front / back, the only
+vanilla containers with `ClothingItemExtra`) copies contents, name, condition and modData onto a fresh item but
+not capacity or WR (TienBagUpgrades re-applies them). Dynamic Backpack Upgrades (workshop
 2996978365, 42.20 folder) assumes capacity is not saved and re-applies it from modData every game minute, on every
 tooltip frame and every context menu.
 Craft inputs that consume an `InventoryContainer` delete its contents; `flags[IsEmpty]` refuses a non-empty one
@@ -671,7 +673,15 @@ its CLAUDE.md has the design).
   for `bowtie` / `head_hat`); the server runs `setAttachedItem` and relays it to every other connection, whose
   `processClient` calls `setAttachedItem` on the remote character (throws there if that client lacks the location).
   Loading (`IsoGameCharacter.readInventory` ~14225, `IsoDeadBody` ~812 / ~2211) **skips** unknown locations
-  instead (the item stays in the inventory, unattached).
+  instead (the item stays in the inventory, unattached). `ConnectedPacket.parse` (how a client builds another player,
+  on joining and whenever that player is re-sent) does **not** skip: it runs `new IsoPlayer(cell, desc, x, y, z)`
+  (the constructor already adds it to the square's moving objects), sets name and role, then calls `setAttachedItem`
+  for the server's attached list, and only then `IDToPlayerMap.put`. An unknown location throws there and leaves a
+  ghost: nametag and collision where the player stood, no animated body (never in the cell's update list), while the
+  next player packet's `PlayerDataRequest` builds the real one. So the server's copy of a player must only hold
+  locations every client knows from the start (TienAttachmentPositions 0.1.10 keeps base names there).
+  Client remote players: `GameClient.timeoutRemotePlayers` drops one after 5 s without a PlayerPacket
+  (`receivePlayerTimeout`: removeFromWorld + removeFromSquare + map), and the next packet rebuilds it the same way.
 - All attaches come from Lua (`chr:setAttachedItem`: vanilla `ISHotbar:attachItem` ~376, Plysken's
   `PAR_ISHotbar` ~380 / `PAR_ISAttachItemHotbar`), with `item:setAttachedToModel(loc)` beside it; vanilla Lua reads
   locations back through `getAttachedItem(slot)` (`ISHotbar:update` re-attaches every frame an item for which

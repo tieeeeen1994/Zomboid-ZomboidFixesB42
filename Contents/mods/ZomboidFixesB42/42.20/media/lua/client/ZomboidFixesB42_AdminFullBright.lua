@@ -31,8 +31,8 @@
     Below the street (level -1 and lower) Always Day does nothing and a dug tunnel or a
     sewer (Sewers Under Every Town / Sewars) is no room, so there the player's own level
     is cut into blocks of AdminFullBrightSpacing tiles within BELOW_RANGE and each block
-    gets one light on its floor square nearest the block's centre that has no room
-    (rooms are lit as above). A block's choice is kept and looked at again after
+    gets one light per quarter, on the floor square nearest that quarter's centre that
+    has no room (rooms are lit as above). A block's choice is kept and looked at again after
     BELOW_RECHECK_MS, a few blocks per refresh, since digging changes it; a block not
     wholly loaded is never kept. The set is rebuilt when the player has
     moved MOVE_TILES or changed floor, and every REFRESH_MS, which also puts back
@@ -138,27 +138,39 @@ local lastX, lastY, lastZ, lastRefresh = nil, nil, nil, 0
 local belowBlocks = {}
 local belowStep = nil
 
--- The floor square without a room nearest the centre of block bx, by at level z, as
--- x, y (nil if none), and whether the whole block is loaded (else it is not kept).
+-- The floor squares without a room nearest the centre of each quarter of block bx,
+-- by at level z, as { {x, y}, ... } (empty if none), and whether the whole block is
+-- loaded (else it is not kept). One light per quarter: a single light per block left
+-- its far corners dim, and walls cut it off from the tunnel next door.
 local function pickBelow(cell, bx, by, z, step)
     local x0, y0 = bx * step, by * step
     local x1, y1 = x0 + step - 1, y0 + step - 1
     local loaded = cell:getChunkForGridSquare(x0, y0, 0) ~= nil and cell:getChunkForGridSquare(x1, y0, 0) ~= nil
         and cell:getChunkForGridSquare(x0, y1, 0) ~= nil and cell:getChunkForGridSquare(x1, y1, 0) ~= nil
-    local cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
-    local bestX, bestY, bestD = nil, nil, nil
-    for x = x0, x1 do
-        for y = y0, y1 do
-            local sq = cell:getGridSquare(x, y, z)
-            if sq and sq:getFloor() and not sq:getRoom() then
-                local d = (x - cx) * (x - cx) + (y - cy) * (y - cy)
-                if not bestD or d < bestD then
-                    bestX, bestY, bestD = x, y, d
+    local points = {}
+    for qx = 0, 1 do
+        for qy = 0, 1 do
+            local qx0 = x0 + math.floor(qx * step / 2)
+            local qx1 = x0 + math.floor((qx + 1) * step / 2) - 1
+            local qy0 = y0 + math.floor(qy * step / 2)
+            local qy1 = y0 + math.floor((qy + 1) * step / 2) - 1
+            local cx, cy = (qx0 + qx1) / 2, (qy0 + qy1) / 2
+            local bestX, bestY, bestD = nil, nil, nil
+            for x = qx0, qx1 do
+                for y = qy0, qy1 do
+                    local sq = cell:getGridSquare(x, y, z)
+                    if sq and sq:getFloor() and not sq:getRoom() then
+                        local d = (x - cx) * (x - cx) + (y - cy) * (y - cy)
+                        if not bestD or d < bestD then
+                            bestX, bestY, bestD = x, y, d
+                        end
+                    end
                 end
             end
+            if bestX then points[#points + 1] = { bestX, bestY } end
         end
     end
-    return bestX, bestY, loaded
+    return points, loaded
 end
 
 -- Adds to `wanted` one light per block of the player's level below the street.
@@ -183,12 +195,12 @@ local function addBelow(cell, px, py, pz, step, wanted)
                 redo = true
             end
             if redo then
-                local x, y, loaded = pickBelow(cell, bx, by, pz, step)
-                block = { at = now, loaded = loaded, x, y }
+                local points, loaded = pickBelow(cell, bx, by, pz, step)
+                block = { at = now, loaded = loaded, points = points }
             end
             keep[key] = block
-            if block[1] then
-                wanted[block[1] .. "," .. block[2] .. "," .. pz] = { block[1], block[2], pz }
+            for _, p in ipairs(block.points) do
+                wanted[p[1] .. "," .. p[2] .. "," .. pz] = { p[1], p[2], pz }
             end
         end
     end
