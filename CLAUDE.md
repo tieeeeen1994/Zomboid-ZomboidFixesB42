@@ -998,6 +998,30 @@ vehicle stories and road foraging use. Vanilla, Raven Creek and NagaCity ship on
   `AimingMod` / `IsAimedHandWeapon` do nothing. A weapon part on a model with no matching attachment point is drawn at the
   gun's origin (`AnimatedModel.transformToParent`).
 
+### Throwing pipe bombs and Molotovs (42.21)
+
+Traced 2026-10-18 for `*_Throwables.lua`.
+- `CombatManager.attackCollisionCheck` fires `OnWeaponSwingHitPoint(owner, weapon)`, then `owner.Throw(weapon)` when
+  `weapon.getPhysicsObject() != null`, then `weapon.Use()`. `HandWeapon.setPhysicsObject` is public and the field is
+  not saved, so clearing it in that event for one frame skips the throw (Gunworks does it every `OnPlayerUpdate`).
+- `IsoGameCharacter.Throw` (~7932) aims at `attackTargetSquare` (set when the swing starts from `UIManager.getPicked()`:
+  the picked tile's square or character; joypad = MaxRange ahead), clamps dx and dy each to MaxRange, spawns an
+  `IsoMolotovCocktail` (or `IsoBall` for physics object "Ball", unused in vanilla) at +0.6 height with velocity
+  0.4 x distance, + a random -0.2..0.2 per axis; ends with `setAttackAnimThrowTimer(0)`. `IsoPhysicsObject.update`:
+  velZ starts at 0, 10% drag a frame, steps scaled by 30 / `PerformanceSettings.getLockFPS()` (server 10).
+  `triggerExplosionTimer` (30 fps ticks) explodes after the timer, 0 on first wall / floor / character contact.
+- `Explode` on a client: only for a local thrower, `square:syncIsoTrap(weapon, player)` = `AddExplosiveTrapPacket`
+  with the item's bytes (LoginOnServer). Server: `IsoTrap(attacker, weapon, ...)`, `AddTileObject`, map log line,
+  instant → AddExplosiveTrap to everyone + `triggerExplosion`, else `transmitCompleteItemToClients`. `IsoTrap:place()`
+  does the same from Lua (always sends AddExplosiveTrap). `HandWeapon.isInstantExplosion` = no explosion timer, no
+  sensor range, no remote ID, not CanBeRemote. The trap copies remote ID, timer, sensor range from the weapon.
+- The client's `Use()` is local; the server's copy keeps the thrown item until something removes it (Gunworks'
+  server `RemoveOneOf`, `*_Throwables.lua`'s `DoRemoveItem` by ID).
+- Gunworks' `ExplosivesSystems` (client/server/shared, `OrdnanceFactory.Register(fullType, params)`) is what Guns of
+  Marz grenades use: arc from `computeLaunchVelocity`, one Euler step scaled by frame time (tunnels through walls at
+  a server's 10 Hz), game-time based, aim = `screenToIsoX/Y` + 1.5 tiles, detonation = `instanceItem(type)` forced
+  instant (would break remote / sensor items).
+
 ### Hands, hand models and attacks (42.20)
 
 - Primary = **right** hand: `getPrimaryHandItem()` returns a field named `leftHandItem` (`IsoGameCharacter` ~3205), but its
@@ -1627,7 +1651,10 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
 - Drawing on the floor from Lua: **not possible with the B42 renderer.** Only the legacy `IsoCell` render path (~1086)
   fires `Events.OnPostFloorLayerDraw(z)` (and OnPostFloorSquareDraw / OnPostTileDraw / OnPostWallSquareDraw /
   OnPostCharactersSquareDraw); the default 42.x renderer, `zombie/iso/fboRenderChunk/FBORenderCell`, fires no Lua
-  event at all (confirmed in game: an arrow drawn from OnPostFloorLayerDraw never showed). FBORenderCell does render
+  event of those (confirmed in game: an arrow drawn from OnPostFloorLayerDraw never showed); its only Lua event is
+  `RenderOpaqueObjectsInWorld(playerIndex, x, y, z, square)` (`renderOpaqueObjectsEvent`, skipped while a mouse
+  player's `UIManager.getPickedTile()` is nil), where `Render3DItem` draws 3D items (ISPlace3DItemCursor, Gunworks'
+  and `*_Throwables.lua`'s flying items). FBORenderCell does render
   `WorldMarkers` grid square markers. So a mod draws world-anchored things in the UI pass: `Events.OnPreUIDraw`
   (UIManager, before the UI, after the world) with `isoToScreenX/Y(playerNum, x, y, z)` (forage icons use it) and
   `getRenderer():renderPoly(tex, x1, y1, ..., y4, r, g, b, a)` (screen coordinates; textured, u0/v0 at vertex 1, then
@@ -1836,6 +1863,12 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   crafting: quiet period, max 1 s latency), requests merged by taking the dirty flags back and setting them again;
   big collapsed food stacks get a sliced `v.items` during `renderdetails` (not while dragging); context menu
   helpers rewritten with the same output; `calcWidth` incremental only inside `addOption` on menus over 30 options.
+- `*_Throwables.lua` (shared/client/server, option `ThrowableBallistics`, beta): Gunworks' throw physics in fixed
+  1/60 s steps on real time, for every item whose script has a non-Ball PhysicsObject and that Gunworks does not
+  register. The thrower's client picks bounces / rotation / spin, flies its copy at once and sends `throwable {item
+  ID, origin, destination, token}`; the server takes the item out by ID, flies the same path (same numbers, same
+  steps, so the same landing), broadcasts `throwableFly` / `throwableEnd`, and ends it with
+  `IsoTrap.new(thrower, item, ...):place()`. Single player: the client calls `Throwables.launch` directly.
 - `*_ZombieCarDamage.lua` (client/server, option `ZombieCarDamageSync`): the client snapshots door / bodywork
   conditions of every vehicle a known player sits in each tick; a drop while a zombie it owns is in "attackvehicle"
   for someone in that car goes to the server (`zombieCarDamage`), which checks the owner (`getOwnerPlayer`), the

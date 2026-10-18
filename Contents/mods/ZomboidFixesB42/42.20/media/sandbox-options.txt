@@ -97,6 +97,14 @@ option ZomboidFixesB42.SpikedArmorHurtsZombies
     translation = ZomboidFixesB42_SpikedArmorHurtsZombies,
 }
 
+option ZomboidFixesB42.ThrowableBallistics
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_ThrowableBallistics,
+}
+
 option ZomboidFixesB42.RescueHutchAnimals
 {
     type = boolean,
