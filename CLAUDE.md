@@ -52,6 +52,11 @@ or methods exist.
   `lupa.LuaRuntime().execute('loadfile([[harness.lua]])([[mod.lua]])')`. Mocks are plain Lua tables with methods
   (Python objects do not take `obj:method()` calls). An earlier server-side `ZombieAttacksWearClothing` was checked that
   way, against a Lua port of vanilla's attack code.
+- Line endings on Windows: most files in these repos are CRLF in the working tree (git autocrlf), and two common edits
+  silently rewrite a whole file to LF: Git Bash's `sed -i`, and Python reading in text mode then writing with
+  `newline=''`. Git hides it (`git diff` shows only the real lines, plus an "LF will be replaced by CRLF" warning).
+  Use the Edit tool, or Python in binary mode (`open(p, 'rb')`, edit, write back with `\r\n`), and check with
+  `b.count(b'\r\n')`.
 - A mod folder in `~/Zomboid/Workshop/<mod>` takes precedence over the same mod id subscribed on Steam, so a stale
   local copy hides the subscribed version (Nick's Inventory Selection Fix 1.0.0 vs 1.0.1, which ships
   `NISF_ShiftRange.lua`; this mod's own copy of that fix was dropped).
@@ -1556,8 +1561,11 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   `refreshBackpacks` on every direction or square change. `renderdetails` runs `refreshContainer` whenever the
   container's `isDrawDirty()` (any add / remove). `refreshContainer` = `getName(player)` (+ hidden, herbalist,
   weight) per item, sort, `table.insert(items, 1, dummy)` per stack. `renderdetails` (prerender and render) calls
-  `updateAge` on every item of a collapsed **food** stack every frame (~2567); `Food.updateAge` searches
-  `getProcessItems()` (ArrayList.contains) when heat differs (SP). Stack rows show `v.count`, not `#v.items`.
+  `updateAge` on every item of a collapsed **food** stack every frame (~2567). `Food.updateAge` (~742, any side) runs
+  `getCell():getProcessItems().contains(this)` (a linear scan of every item the cell is heating, cooling or drying)
+  whenever the food's heat differs from its outermost container's temperature and under 20 game minutes have passed
+  since `lastAged`, so a mod that sets food heat (a cooler's chill) pays that scan on every call; it fires
+  `OnContainerUpdate` only when the food turns stale or rotten. Stack rows show `v.count`, not `#v.items`.
   Expanded stacks draw at most `MAX_ITEMS_IN_STACK_TO_RENDER` (50) rows.
 - Right-click (`ISInventoryPaneContextMenu.createMenu`): a collapsed stack arrives as `{ group }` and the big test loop
   sees one item; per-item work is in `getActualItems` (about six flattenings), `doPlace3DItemOption`
@@ -1711,7 +1719,13 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   items into the fake `GetFloorContainer(playerNum)` (bags on the floor get their own button), corpses from
   `getStaticMovingObjects()` (an **animal** corpse `break`s the loop, skipping the rest of that square's static objects),
   every `getContainerByIndex(i)` of every object, then an adjacent vehicle's parts, then the Floor button.
-  `OnRefreshInventoryWindowContainers(page, "begin" | "beforeFloor" | "buttonsAdded" | "end")` fires during it.
+  `OnRefreshInventoryWindowContainers(page, "begin" | "beforeFloor" | "buttonsAdded" | "end")` fires during it,
+  for **both** pages (`page.onCharacter` is true for the inventory page). Putting a piece of clothing on or taking it
+  off marks the pages dirty many times over, so the inventory page rebuilds again and again; a handler that walks
+  every `page.backpacks[i].inventory` recursively reaches a nested bag once per button that leads to it (the main
+  inventory, the bag holding it, and its own button when a nested-containers mod adds one, e.g. ExtraSauce Quality of
+  Life), times two pages. Tien's Coolers froze for 3-5 s per change of clothes that way (fixed in its 1.5.4 by
+  skipping `onCharacter` pages and a same-game-time guard).
 - A bag inside a container gets no button and is never shown in line; its contents are visible only once it is on the
   floor, in a vehicle seat or trunk, or equipped. `ISInventoryPane.refreshContainer` lists `inventory:getItems()` only
   (not recursive); it reruns when `inventory:isDrawDirty()`, so MP contents arriving after
