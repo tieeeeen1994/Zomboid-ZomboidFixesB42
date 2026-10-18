@@ -79,6 +79,7 @@ description=- Watering a plant in multiplayer no longer waters it twice or empti
 description=- Other players hear you add ingredients to soups, stews and drinks in multiplayer.
 description=- Reloading in multiplayer keeps pace with the animation (no more cut-off pumps, shells running ahead or silent bullets when filling or emptying a magazine).
 description=- Failed item transfers repair themselves: ghost items on the floor go, items hidden until relogging appear, and stuck transfers retry or end (beta).
+description=- Bags in a car's trunk, glove box or seats show what the server put in or took out (no more hanging fast transfers into a cooler in the trunk) (beta).
 description=- Zombies denting a car with someone in it damage it for everyone, and the damage stays (beta).
 description=- No fake eggs, feathers or dung, or missing food and trough water, when coming back to an animal pen in multiplayer.
 description=- Putting an eaten or used-up item back no longer cancels the rest of the queue (beta).

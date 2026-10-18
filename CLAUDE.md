@@ -184,6 +184,14 @@ or methods exist.
   nested in it) goes to **that player only**; otherwise to clients near the container's parent object or world item.
   So the server can move an item from one player's inventory into another's with `DoRemoveItem` +
   `sendRemoveItemFromContainer` and `AddItem` + `sendAddItemToContainer` (TienGiveItemMP does).
+  A bag lying in a vehicle part or a crate has neither (42.21): its container's parent is only set by
+  `IsoObject.setContainer` (an object's own containers; a dropped bag's world object, which stays its parent after
+  pick-up until recycled), so those sends reach **nobody** (or the bag's old floor spot). The packet's address is
+  fine for a bag directly in a vehicle part (`ContainerID.set` → `ObjectInVehicle` from the outermost container:
+  vehicle ID, part index, bag ID, looked up in the part's container only); a bag in a crate gets `ObjectContainer`
+  with `getContainerIndex` = -1 (`getContainerByIndex(-1)` = nil on both ends, so even vanilla transactions into it
+  fail on the server). Java transactions send with `sendToRelative` at the ContainerID's x, y and are fine.
+  `*_BagContentsSync.lua` wraps the five globals (parent = the vehicle during the call; else re-send the outermost bag).
 - Sounds (42.21): on a client `character:playSound(name)` (`CharacterSoundEmitter.playSound` -> `FMODSoundEmitter.playSound`,
   same in pzopt's copy) plays locally **and sends a `PlaySoundPacket`** for that character (none for an invisible player),
   and `stopSound` / `stopOrTriggerSound` send a `StopSoundPacket` by sound name; the server relays both to the other
@@ -1000,7 +1008,11 @@ vehicle stories and road foraging use. Vanilla, Raven Creek and NagaCity ship on
   `media/models_X`; texture from `media/textures`). A new mesh written into a copy of a vanilla file with only the
   Geometry replaced loads like the vanilla one: TienBagUpgrades `scripts/fbx_bin.py` / `make_models.py`.
 - In 42.21 `HandWeapon.getAimingMod()` returns 1.0 and `IsoPlayer.IsUsingAimHandWeapon` is never called: the item script
-  `AimingMod` / `IsAimedHandWeapon` do nothing. A weapon part on a model with no matching attachment point is drawn at the
+  `AimingMod` / `IsAimedHandWeapon` do nothing. `AimingTime` (default 0) is the cap of the post-shot aiming delay
+  (`CombatManager.setAimingDelay`, clamped to 0..AimingTime), so higher is worse and multiplying a 0 does nothing.
+  Per gun and saved: `HandWeapon.weaponSprite` (the model; written when it differs from the script); per item but
+  **not** saved: `InventoryItem.attachmentType` (from the script at `InstanceItem`), so a per-gun holster type must be
+  answered by wrapping `getAttachmentType` (GoMExtensionGunsOfTien `SawnStock.lua`). A weapon part on a model with no matching attachment point is drawn at the
   gun's origin (`AnimatedModel.transformToParent`).
 
 ### Throwing pipe bombs and Molotovs (42.21)
@@ -1857,6 +1869,12 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   send floor hints (`encodeFloorHints`, `findItemOnGroundNear`), log why they decline, and fall back to a vanilla
   transaction for declined items still at the source. Not fixable from Lua: a real floor item the client lost to a
   wrong-index removal (no way to send one world item to one client), and the cross-player Reject of vanilla cancels.
+- `server/ZomboidFixesB42_BagContentsSync.lua` (option `BagContentsSync`, beta): wraps `sendAdd/RemoveItem(s)…`
+  and `sendReplaceItemInContainer`; for a bag lying directly in a vehicle part the bag's container is parented to
+  the vehicle for the call (client keeps the same object, so a fast transfer waiting for arrival sees it); a bag
+  deeper in a car or in a crate is re-sent whole once per tick, and the fast transfer's `batchMoved` decodes the
+  destination again when the old object lacks the item. Reported 2026-10-19: eggs into a Tien's Coolers cooler in a
+  trunk with fast forward / Fast Timed Actions hung 10 s and the cooler kept showing its old contents.
 - `*_AnimalCarryAll.lua` (client/server, option `AnimalCarryAll`, beta): an admin's animal submenu (wrapped
   `AnimalContextMenu.doMenu`, submenu found by the option index noted before the call) picks up every loose animal
   of the clicked one's type and breed in its connected zones into the main inventory, 20 a server tick, the way

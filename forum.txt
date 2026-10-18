@@ -24,6 +24,10 @@ The Fast Timed Actions cheat makes item transfers and grabbing items off the gro
 Option: [i][BETA] Failed Item Transfers Repair Themselves[/i]
 Sometimes the server fails a transfer without telling you. Now the game checks with the server and fixes what you see: items only your game still shows on the floor or in a container are removed, items the server moved but you could not see (until relogging) appear, a transfer the server dropped is tried again, and one that did happen ends instead of hanging for up to 20 seconds.
 
+[b]Bags in cars show what the server changed (beta)[/b]
+Option: [i][BETA] Bags In Cars Show What The Server Changed[/i]
+Whatever the server itself puts into or takes out of a bag lying in a car (a cooler or a backpack in the trunk, the glove box or a seat) was never shown to anyone. Items moved with Fast Timed Actions or during fast forward stayed where they were on screen while the transfer hung for 10 seconds, and other mods' changes in such a bag (spent ice in a cooler, for one) never appeared. Now they reach the players near the car. Normal transfers were not affected.
+
 [b]Zombie car damage for everyone (beta)[/b]
 Option: [i][BETA] Zombie Car Damage For Everyone[/i]
 A zombie banging on a car someone sits in dented the door or body panel only on the screen of the player whose game runs that zombie. The server's car stayed whole, nobody else saw it, and the dent was gone once the car loaded again. Now each hit goes to the server and damages the car for everyone, as in single player. Windows already worked.

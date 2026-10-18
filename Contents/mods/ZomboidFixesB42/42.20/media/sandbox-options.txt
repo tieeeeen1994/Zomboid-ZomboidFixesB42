@@ -624,6 +624,14 @@ option ZomboidFixesB42.TransferResync
     translation = ZomboidFixesB42_TransferResync,
 }
 
+option ZomboidFixesB42.BagContentsSync
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_BagContentsSync,
+}
+
 option ZomboidFixesB42.ZombieCarDamageSync
 {
     type = boolean,

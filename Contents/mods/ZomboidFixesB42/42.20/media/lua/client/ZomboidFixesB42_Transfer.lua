@@ -238,16 +238,27 @@ local function batchMoved(self)
     -- Dropping to the ground has no destination container to watch, and "gone from
     -- the source" is not observable either: sendRemoveItemFromContainer sends
     -- nothing at all when the source has no character, no parent object and no
-    -- world item, which is any bag in your own inventory. So the server's
-    -- acknowledgement is the signal. Safe here because nothing queues a follow-up
-    -- action against an item lying on the floor.
+    -- world item, which is any bag in a car or a crate (a bag in your own inventory
+    -- is reached through getCharacter; server/ZomboidFixesB42_BagContentsSync.lua
+    -- routes the car's). So the server's acknowledgement is the signal. Safe here
+    -- because nothing queues a follow-up action against an item lying on the floor.
     if self.zfixDst == ZomboidFixesB42.FLOOR then
         return self.zfixAcked == true
     end
 
-    -- Everywhere else, wait to actually see it arrive.
+    -- Everywhere else, wait to actually see it arrive. A bag the server could only
+    -- update by sending the whole bag again (one inside another bag, or in a crate:
+    -- see BagContentsSync) is a new object here once it has, so look the destination
+    -- up again by its address before deciding the item has not arrived.
+    local dest = self.destContainer
+    local fresh = nil
     for _, item in ipairs(self.zfixPending) do
-        if not self.destContainer:containsID(item:getID()) then return false end
+        if not dest:containsID(item:getID()) then
+            if fresh == nil then
+                fresh = ZomboidFixesB42.decodeContainer(self.zfixDst, self.character) or false
+            end
+            if not fresh or not fresh:containsID(item:getID()) then return false end
+        end
     end
     return true
 end
