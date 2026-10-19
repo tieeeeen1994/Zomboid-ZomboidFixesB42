@@ -1008,8 +1008,15 @@ vehicle stories and road foraging use. Vanilla, Raven Creek and NagaCity ship on
   `media/models_X`; texture from `media/textures`). A new mesh written into a copy of a vanilla file with only the
   Geometry replaced loads like the vanilla one: TienBagUpgrades `scripts/fbx_bin.py` / `make_models.py`.
 - In 42.21 `HandWeapon.getAimingMod()` returns 1.0 and `IsoPlayer.IsUsingAimHandWeapon` is never called: the item script
-  `AimingMod` / `IsAimedHandWeapon` do nothing. `AimingTime` (default 0) is the cap of the post-shot aiming delay
-  (`CombatManager.setAimingDelay`, clamped to 0..AimingTime), so higher is worse and multiplying a 0 does nothing.
+  `AimingMod` / `IsAimedHandWeapon` do nothing. `AimingTime` (default 0; script keys match case-insensitively,
+  GoM writes `Aimingtime`) is the aim-in delay: raising the gun sets the character's aiming delay to it (×0.8
+  Dextrous, ×1.2 All Thumbs, ×1.5 in a vehicle; `IsoGameCharacter.resetAimingDelay` ~10840), which drops 0.625 ×
+  `GameTime.getMultiplier()` × (1 + 0.05 × Aiming, + 0.1 Marksman) per update while aiming with the recoil settled
+  (`updateAimingDelay`); each shot adds RecoilDelay × 0.25 + AimingTime × 0.05, capped at AimingTime
+  (`CombatManager.setAimingDelay` ~4044, from `SwipeStatePlayer.doAttack`), and the hit chance loses what remains,
+  scaled by distance (`CombatManager` ~2731). Higher is worse. Gunworks fires through vanilla's attack hook (its RPM
+  gate and RecoilDelay 1 in auto / burst sit in front), so this holds for GoM guns too (GoMExtensionGunsOfTien
+  CLAUDE.md, "Sawn-off stocks").
   Per gun and saved: `HandWeapon.weaponSprite` (the model; written when it differs from the script); per item but
   **not** saved: `InventoryItem.attachmentType` (from the script at `InstanceItem`), so a per-gun holster type must be
   answered by wrapping `getAttachmentType` (GoMExtensionGunsOfTien `SawnStock.lua`). A weapon part on a model with no matching attachment point is drawn at the
