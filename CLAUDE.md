@@ -1316,7 +1316,9 @@ called from a shared action's `complete`/`animEvent` error on a server (42.20's 
 42.21 moved it to the shared `ItemUtils.checkWeapon`). The server's table is `Type.new(...)` called with the client
 table's values of `new`'s **parameter names** (`NetTimedAction.set` reads the prototype's locvars), so anything the
 client sets in `new` under another name or in `start()` (`ISRemoveBush.weapon`) is missing there; set it in `serverStart`
-(`ISChopTreeAction.axe` does). Single player runs `start`, the real anim events and `complete` (Java
+(`ISChopTreeAction.axe` does). So a wrapper of a timed action's `new` must name every vanilla parameter: with
+`function(self, a, ...)` everything after `a` arrives nil on the server (GoMExtensionGunsOfTien's `SawnStock.lua`
+broke every server handcraft that way, `setContainers(nil)` NPE in `ISHandcraftAction:serverStart`). Single player runs `start`, the real anim events and `complete` (Java
 `LuaTimedActionNew.complete` when not a client), so overriding a shared action's `complete` on an MP client does
 nothing; vanilla `ISForageAction:complete` grants forage items on the server (`forageServer.onPickup`, icons in
 `forageServer.byId[user]` only). Anim events with no `m_EventName` (the RemoveBushAxe/Knife/LongBlade
