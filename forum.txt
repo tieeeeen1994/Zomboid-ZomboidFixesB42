@@ -42,7 +42,7 @@ Eating or using something from a bag takes it out first and puts it back afterwa
 
 [b]Every craft click is queued (beta)[/b]
 Option: [i][BETA] Every Craft Click Is Queued[/i]
-The crafting window ignored the Craft button while one of its crafts was running, so clicking Craft several times only crafted the first one or two. Now each click made during a craft is kept and started once the crafts before it are done, with fresh ingredients. Cancelling, picking another recipe or closing the window drops the kept clicks.
+The crafting window greyed out the Craft button while one of its crafts was running, so clicking Craft several times only crafted the first one or two. Now the button stays clickable, and each click made during a craft is kept (the button shows how many, such as Craft (+2)) and started once the crafts before it are done, with fresh ingredients. Cancelling, picking another recipe or closing the window drops the kept clicks.
 
 [b]Reloads keep pace with the animation[/b]
 Option: [i]Reloads Keep Pace With The Animation[/i]
@@ -172,8 +172,8 @@ The admin Server Options window no longer leaves an option's description stuck o
 Option: [i]User Panel Corner Info[/i]
 The User Panel's Show connection info and Show server info are remembered between games instead of resetting every restart. Two more tick boxes there, Show game version and Show coordinates and resolution, hide those lines in the bottom right corner; the rest moves down to fill the space. Each player's choices are saved on their own computer.
 
-[b]Closed chat and Lua console stay closed (beta)[/b]
-Option: [i][BETA] Closed Chat And Lua Console Stay Closed[/i]
+[b]Closed chat and Lua console stay closed[/b]
+Option: [i]Closed Chat And Lua Console Stay Closed[/i]
 The chat window no longer opens again on every join after you closed it, and the Lua console (with -debug) no longer opens again at every start. Open them with the chat key or the Toggle Lua Console key. Hiding the interface or the Esc menu does not count as closing.
 
 [b]No fall damage with Fast Move[/b]
@@ -198,16 +198,16 @@ Adding fuel to a generator takes as long as the fuel that actually goes in. It u
 Option: [i][BETA] Washing Time Fix[/i]
 Being unhappy or drunk, having sore hands or arms, or being too hot or cold slows every timed action down. Washing clothes counted all of that twice, so the slowdowns multiplied with themselves: a very unhappy and very drunk character washed 16 times slower instead of 4. Now washing is slowed down once, like everything else.
 
-[b]Corpse smell and rooms you build (beta)[/b]
-Option: [i][BETA] Rooms You Build Shelter From Corpse Smell[/i]
+[b]Corpse smell and rooms you build[/b]
+Option: [i]Rooms You Build Shelter From Corpse Smell[/i]
 A map house shelters you from the Bad Smell moodle because the game counts the corpses in the building you stand in. A room you build yourself has no map building, so the game counted every corpse nearby as if you stood in the street. Now a room with no map building counts as a shelter, like a map house: no corpse sickness and no moodle in it. A room is a square where you can plumb a sink. Map buildings are unchanged.
 
-[b]Spiked armor hurts zombies (beta)[/b]
-Option: [i][BETA] Spiked Armor Hurts Zombies[/i]
+[b]Spiked armor hurts zombies[/b]
+Option: [i]Spiked Armor Hurts Zombies[/i]
 When a zombie scratched or bit a part of you covered by spiked armor (with no hole there), the game made it spike itself, with blood and the sound of a hit, but took no health from it; only a bite that got through killed it. Now each spike takes what an ice pick hit would, 0.6 to 0.9 health, so two or three spikes kill a zombie of normal toughness. In multiplayer the game running the zombie applies it, so everyone sees it fall.
 
-[b]Throwables land where you aim (beta)[/b]
-Option: [i][BETA] Throwables Land Where You Aim[/i]
+[b]Throwables land where you aim[/b]
+Option: [i]Throwables Land Where You Aim[/i]
 Pipe bombs, Molotovs, aerosol bombs, smoke bombs, noise makers, firecrackers and their remote, sensor and timer versions used to aim at whatever tile was under the mouse when the swing began (a wall or a tall object could stand in for the floor behind it), could be thrown further on diagonals than straight, got a random push that made a one-tile throw miss by half its length, and landed elsewhere depending on your frame rate. Now they are thrown the way Guns of Marz throws its grenades: in an arc to the point under the mouse (straight ahead on a controller), up to the item's range in any direction, bouncing off walls, closed doors, windows and ceilings, dropping off ledges, and rolling a little before they stop. Pipe bombs and Molotovs still go off on impact, smoke bombs, noise makers and aerosol bombs after their fuse, and remote and sensor bombs still lie down to wait for their signal. In multiplayer the server decides where it lands and everyone sees it fly. Grenades that Guns of Marz or another Gunworks mod already throws are left to that mod.
 
 [b]Less lag with many items (beta)[/b]

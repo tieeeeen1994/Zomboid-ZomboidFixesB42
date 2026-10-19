@@ -122,6 +122,10 @@ function ISUserPanelUI:create(...)
         box:instantiate()
         box.selected[1] = selected
         box:addOption(text)
+        -- Vanilla's tick boxes keep the width they are made with (autoWidth is never set);
+        -- size this one like vanilla sizes its own: box, gap, label, the same spare margin.
+        local needed = box.boxSize + box.textGap * 2 + getTextManager():MeasureStringX(box.font, text)
+        if needed > box:getWidth() then box:setWidth(needed) end
         self:addChild(box)
         y = y + box:getHeight() + spacing
         return box

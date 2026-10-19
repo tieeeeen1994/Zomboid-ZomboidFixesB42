@@ -1916,7 +1916,7 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   crafting: quiet period, max 1 s latency), requests merged by taking the dirty flags back and setting them again;
   big collapsed food stacks get a sliced `v.items` during `renderdetails` (not while dragging); context menu
   helpers rewritten with the same output; `calcWidth` incremental only inside `addOption` on menus over 30 options.
-- `*_Throwables.lua` (shared/client/server, option `ThrowableBallistics`, beta): Gunworks' throw physics in fixed
+- `*_Throwables.lua` (shared/client/server, option `ThrowableBallistics`): Gunworks' throw physics in fixed
   1/60 s steps on real time, for every item whose script has a non-Ball PhysicsObject and that Gunworks does not
   register. The thrower's client picks bounces / rotation / spin, flies its copy at once and sends `throwable {item
   ID, origin, destination, token}`; the server takes the item out by ID, flies the same path (same numbers, same

@@ -9,7 +9,10 @@
     the clicks that land before the first craft starts (usually two: the first,
     and one more while its ingredients are carried out of a bag) and silently drops
     every later one. A quantity typed in the box is not affected: all of it is
-    queued by one click.
+    queued by one click. Its prerender also sets buttonCraft.enable = false while the
+    craft it started is queue[1] of the player's queue, so ISButton:onMouseUp drops a
+    click before startHandcraft is ever called; the button is kept enabled here while
+    a craft runs, with the number of kept clicks in its title ("Craft (+2)").
 
     The check is there for a reason: while a craft runs, the window's recipe data
     holds that craft's own ingredients (startCraftAction -> populateInputs with the
@@ -84,6 +87,26 @@ local function replayNext(self)
     local ok, err = pcall(vanillaStart, self, click.force)
     self.zfixReplaying = nil
     if not ok then error(err) end
+end
+
+-- Vanilla greys the button out while the window's craft is the running action, so the
+-- click above never came. Keep it clickable then, and show how many clicks are kept.
+local vanillaPrerender = ISWidgetHandCraftControl.prerender
+
+function ISWidgetHandCraftControl:prerender()
+    vanillaPrerender(self)
+    local button = self.buttonCraft
+    if not button then return end
+    if isEnabled() and self.logic and self.logic:isCraftActionInProgress() then
+        button.enable = true
+    end
+    if not self.zfixCraftTitle then self.zfixCraftTitle = button.title end
+    local kept = self.zfixPending and #self.zfixPending or 0
+    if kept > 0 then
+        button.title = self.zfixCraftTitle .. " (+" .. string.format("%d", kept) .. ")"
+    else
+        button.title = self.zfixCraftTitle
+    end
 end
 
 local vanillaUpdate = ISWidgetHandCraftControl.update
