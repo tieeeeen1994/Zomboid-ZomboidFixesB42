@@ -1464,7 +1464,13 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   `fontSize` option, 1x-4x), padding = `MeasureStringX(font, "0")` left/right, half that top/bottom. Fixed pixel
   heights break past 1x: Plysken's attachment slot box did (`*_TooltipStacking.lua` redraws it). `getNumClassFields` / `getClassField` / `getClassFieldVal` throw "Not in debug" without `-debug`
   (`LuaManager.validateReflectionAccess`). `item:DoTooltipEmbedded(tooltip, layout, 0)` fills a layout without drawing
-  it; the caller renders it at the y worked out again by hand (`*_GoMTooltips.lua`). A gun's ammo row (`HandWeapon.DoTooltip`)
+  it; the caller renders it at the y worked out again by hand (`*_GoMTooltips.lua`). Guns of Marz's Information block
+  (`MarzWeapons/CustomItemTooltips.lua`) is a second layout of plain labels from `tooltipsPergun[fullType]` (Guns of
+  Tien adds to that table) appended after `item:DoTooltip` at `tooltip:getHeight() - padBottom`, one label per line,
+  so a long line widens the whole tooltip; its render also installs, lazily on its first such item, the same block on
+  the crafting slot tooltip `ISToolTipItemSlot` (flag `ISToolTipItemSlot._TooltipHooked`). `*_GoMTooltips.lua` (2026-10-19)
+  draws every item with such lines itself, wraps each line to the width the game's rows gave the tooltip (taken in
+  the measure-only pass), and installs the slot hook in GoM's place. A gun's ammo row (`HandWeapon.DoTooltip`)
   is shown only while `getMaxAmmo() > 0` and is labelled with `getMagazineType()`'s display name, cached per item in a private
   `bulletName`. Gunworks' insert (its `ISInsertMagazine:loadAmmo`, on the server) sets the gun's MagazineType/MaxAmmo and saves
   `modData.MagazineType`, and its `complete` attaches the magazine as a `Clip` (or `Magazine`) weapon part;

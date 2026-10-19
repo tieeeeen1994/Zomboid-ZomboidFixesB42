@@ -75,6 +75,11 @@ game, and a test scenario in the Beta section below).
 
 ## Beta features: what playing each one should check
 
+- [ ] GoMTooltipLineLength, Information lines (2026-10-19): with Guns of Tien, hover a Double Barrel (its sawn-off stock
+      line), an M60 (its bipod line) and a 7.62x39 US round: every Information line wraps to the width of the item's own
+      rows (a round's at least 40 digits wide), carried-over lines indented, nothing cut off; a scope's gun list still
+      wraps; a gun with a magazine in still shows the corrected magazine line; a crafting window slot holding such an
+      item shows one Information block, wrapped; option 0 gives Guns of Marz's own unwrapped tooltips back.
 - [ ] TooltipStacking, with Dynamic Backpack Upgrades loaded before Plysken Attachments Reborn: hover a bag with
       attachment slots and an upgrade slot line; the attachment slot box sits under the upgrade lines, nothing
       overlaps, on the first frame after moving between items too; tick it off and the overlap is back.

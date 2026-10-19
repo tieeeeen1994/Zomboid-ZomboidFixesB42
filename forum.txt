@@ -414,7 +414,7 @@ These only do something when that mod is installed.
 
 [b]Guns of Marz tooltip line length[/b]
 Option: [i]Guns of Marz Tooltip Line Length[/i] (200 characters by default)
-Guns of Marz attachment tooltips wrap instead of stretching across the screen.
+Guns of Marz tooltips wrap instead of stretching across the screen: the list of guns an attachment fits, and every line of the Information block (Guns of Marz's own and those of mods that add to it, such as Guns of Tien), which is kept as wide as the item's own rows.
 
 [b]Guns of Marz magazine tooltip[/b]
 Option: [i]Guns of Marz Magazine Tooltip[/i]

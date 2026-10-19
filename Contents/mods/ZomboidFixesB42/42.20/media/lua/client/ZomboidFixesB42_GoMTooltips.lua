@@ -99,12 +99,25 @@
     whether the cached name is right cannot be read, and the MagazineType and MaxAmmo
     it could be checked against may be the stale ones.
 
-    Only weapon parts and such guns go through any of this. Everything else is handed
-    to whichever render was already installed, which leaves Guns of Marz's tooltip
-    drawing, and the equipment slot hook it installs from inside it, working as they
-    do now. The items drawn here would lose the "Information" block it appends, since
-    its render no longer runs for them, so the same block is rebuilt here from the
-    same table.
+    The Information block. Guns of Marz appends its tooltipsPergun lines (and so do
+    mods that add to that table, such as Guns of Tien) one label each, so a long one
+    widens the tooltip the same way. Every item with such lines is drawn here while the
+    line length option is above 0, and the block goes in a layout of its own under the
+    game's rows, each line broken on spaces to the width those rows already gave the
+    tooltip (measured in the first, measure-only pass and kept for the second), never
+    narrower than INFO_MIN_CHARS digits and never more than the option's characters;
+    a word is never split. Lines carried over are indented, so they read as the rest
+    of the line above.
+
+    Guns of Marz's render also installs, the first time it draws such an item, the
+    same block for the crafting window's item slot tooltips (ISToolTipItemSlot).
+    Since its render no longer runs for those items, that hook is installed here
+    instead, with the same wrapping, and its flag set so Guns of Marz does not add a
+    second one.
+
+    Weapon parts, such guns and items with Information lines go through this; when
+    the option is 0 only the magazine line does. Everything else is handed to
+    whichever render was already installed.
 
     Runs on each client, because tooltips are drawn there. Does nothing unless Guns
     of Marz is loaded: the require below fails harmlessly without it.
@@ -125,6 +138,11 @@ local INFO_HEADING = "Information"
 -- Below this the game pads the tooltip out to a fixed width, so wrapping any harder
 -- only makes it taller. Matches InventoryItem.DoTooltipEmbedded.
 local MIN_TOOLTIP_WIDTH = 150
+
+-- The narrowest an Information line is wrapped to, in widths of a "0" (the unit the
+-- tooltip's own padding is measured in), so an item with few rows of its own, such
+-- as a round, does not get a column of one-word lines.
+local INFO_MIN_CHARS = 40
 
 -- The column minimums DoTooltipEmbedded gives a layout it makes itself; one handed
 -- in as an override has to be given them by the caller.
@@ -148,39 +166,31 @@ local function magazineLineEnabled()
     return vars ~= nil and vars.GoMMagazineTooltip == true
 end
 
---- Break text on spaces. Words are never split: one longer than the limit gets a
--- line to itself and overhangs, which is better than a tooltip full of hyphens and
--- cannot loop forever.
-local function wrapWords(text, limit)
-    if limit < 1 then limit = 1 end
-
+--- Break text on spaces into lines no wider than width pixels in font, the lines
+-- after the first measured with indent in front. Words are never split: one wider
+-- than the line gets a line to itself and overhangs, which cannot loop forever.
+local function wrapToWidth(text, font, width, indent)
+    local tm = getTextManager()
     local lines = {}
     local line = nil
 
     for word in string.gmatch(text, "%S+") do
         if not line then
             line = word
-        elseif #line + 1 + #word <= limit then
-            line = line .. " " .. word
         else
-            lines[#lines + 1] = line
-            line = word
+            local candidate = line .. " " .. word
+            local prefix = #lines == 0 and "" or indent
+            if tm:MeasureStringX(font, prefix .. candidate) <= width then
+                line = candidate
+            else
+                lines[#lines + 1] = line
+                line = word
+            end
         end
     end
 
     if line then lines[#lines + 1] = line end
     return lines
-end
-
---- Add one piece of text to the layout, over as many lines as it needs. The first
--- line and the ones after it are indented separately: a note carries on under
--- itself, while a list already sitting under a heading stays flush with itself.
-local function addWrapped(layout, text, limit, firstIndent, restIndent, r, g, b, a)
-    local lines = wrapWords(text, limit - math.max(#firstIndent, #restIndent))
-    for i = 1, #lines do
-        local prefix = i == 1 and firstIndent or restIndent
-        layout:addItem():setLabel(prefix .. lines[i], r, g, b, a)
-    end
 end
 
 --- The lines of one Guns of Marz tooltip entry. It accepts either a list of lines
@@ -326,12 +336,39 @@ local function layoutTop(tooltip, item, padTop)
     return y
 end
 
+--- How wide the Information lines may be: as wide as the game's own rows made the
+-- tooltip, less its padding, but never narrower than INFO_MIN_CHARS digits nor, with
+-- the option above 0, wider than its number of characters.
+local function infoWidth(baseWidth, padSide, limit)
+    local width = math.max((baseWidth or 0) - 2 * padSide, INFO_MIN_CHARS * padSide)
+    if limit > 0 then width = math.min(width, limit * padSide) end
+    return width
+end
+
+--- The Guns of Marz block in a layout of its own from top: its heading, then each
+-- line wrapped to width (or left whole when limit is 0). Returns the y below it.
+local function addInfoBlock(tooltip, lines, limit, width, padSide, top)
+    local layout = tooltip:beginLayout()
+    layout:addItem():setLabel(INFO_HEADING, 1, 0.02, 0.02, 1)
+    local font = tooltip:getFont()
+    for _, line in ipairs(lines) do
+        local pieces = limit > 0 and wrapToWidth(line, font, width, CONTINUATION) or { line }
+        for i = 1, #pieces do
+            layout:addItem():setLabel((i == 1 and "" or CONTINUATION) .. pieces[i], 1.0, 1.0, 1.0, 1.0)
+        end
+    end
+    local y = layout:render(padSide, top, tooltip)
+    tooltip:endLayout(layout)
+    return y
+end
+
 --- Fill the tooltip's layout the way the game would, with a weapon part's mount
 -- list broken onto lines when limit is above 0 and a gun's magazine line corrected
--- when magazine is given, add the Guns of Marz block (wrapped only when limit is
--- above 0), then render. The two halves of DoTooltipEmbedded that the layout
--- override skips -- the render and the minimum width -- are repeated here.
-local function drawTooltip(tooltip, item, gomLines, limit, magazine)
+-- when magazine is given, render it, then add the Guns of Marz block under it. The
+-- two halves of DoTooltipEmbedded that the layout override skips -- the render and
+-- the minimum width -- are repeated here. state carries the width of the game's rows
+-- from the measuring pass, where it is taken, to the drawing pass.
+local function drawTooltip(tooltip, item, gomLines, limit, magazine, state)
     local types = nil
     if limit > 0 and instanceof(item, "WeaponPart") then
         types = mountTypes(item)
@@ -361,19 +398,13 @@ local function drawTooltip(tooltip, item, gomLines, limit, magazine)
             addMagazineLine(layout, item, magazine)
         end
 
-        if gomLines then
-            layout:addItem():setLabel(INFO_HEADING, 1, 0.02, 0.02, 1)
-            for _, line in ipairs(gomLines) do
-                if limit > 0 then
-                    addWrapped(layout, line, limit, "", CONTINUATION, 1.0, 1.0, 1.0, 1.0)
-                else
-                    layout:addItem():setLabel(line, 1.0, 1.0, 1.0, 1.0)
-                end
-            end
-        end
-
         local y = layout:render(padSide, layoutTop(tooltip, item, padEnd), tooltip)
         tooltip:endLayout(layout)
+        if state.baseWidth == nil then state.baseWidth = tooltip:getWidth() end
+
+        if gomLines then
+            y = addInfoBlock(tooltip, gomLines, limit, infoWidth(state.baseWidth, padSide, limit), padSide, y)
+        end
 
         tooltip:setHeight(y + padEnd)
         if tooltip:getWidth() < MIN_TOOLTIP_WIDTH then
@@ -411,9 +442,10 @@ local function renderTooltip(self, item, gomLines, limit, magazine)
     tooltip:setX(mx)
     tooltip:setY(my)
 
+    local state = {}
     tooltip:setWidth(50)
     tooltip:setMeasureOnly(true)
-    drawTooltip(tooltip, item, gomLines, limit, magazine)
+    drawTooltip(tooltip, item, gomLines, limit, magazine, state)
     tooltip:setMeasureOnly(false)
 
     local core = getCore()
@@ -451,7 +483,70 @@ local function renderTooltip(self, item, gomLines, limit, magazine)
 
     self:drawRect(0, 0, self.width, self.height, self.backgroundColor.a, self.backgroundColor.r, self.backgroundColor.g, self.backgroundColor.b)
     self:drawRectBorder(0, 0, self.width, self.height, self.borderColor.a, self.borderColor.r, self.borderColor.g, self.borderColor.b)
-    drawTooltip(tooltip, item, gomLines, limit, magazine)
+    drawTooltip(tooltip, item, gomLines, limit, magazine, state)
+end
+
+--- The crafting window's item slot tooltip with the Guns of Marz block wrapped: the
+-- slot draws the item (itemSlot:drawTooltip, which sets the tooltip's height), then
+-- the block goes under it. state as in drawTooltip.
+local function drawSlotTooltip(tooltip, itemSlot, gomLines, limit, state)
+    itemSlot:drawTooltip(tooltip)
+    if state.baseWidth == nil then state.baseWidth = tooltip:getWidth() end
+    local padSide, padEnd = padding(tooltip)
+    local y = addInfoBlock(tooltip, gomLines, limit, infoWidth(state.baseWidth, padSide, limit), padSide,
+                           tooltip:getHeight() - padEnd)
+    tooltip:setHeight(y + padEnd)
+end
+
+--- ISToolTipItemSlot:render (vanilla's, as Guns of Marz copies it) with its two
+-- drawTooltip calls replaced.
+local function renderSlotTooltip(self, gomLines, limit)
+    local tooltip = self.tooltip
+    local mx = getMouseX() + 24
+    local my = getMouseY() + 24
+    if not self.followMouse then
+        mx = self:getX()
+        my = self:getY()
+        if self.anchorBottomLeft then
+            mx = self.anchorBottomLeft.x
+            my = self.anchorBottomLeft.y
+        end
+    end
+
+    tooltip:setX(mx)
+    tooltip:setY(my)
+
+    local state = {}
+    tooltip:setWidth(50)
+    tooltip:setMeasureOnly(true)
+    if self.itemSlot then drawSlotTooltip(tooltip, self.itemSlot, gomLines, limit, state) end
+    tooltip:setMeasureOnly(false)
+
+    local core = getCore()
+    local maxX = core:getScreenWidth()
+    local maxY = core:getScreenHeight()
+    local tw = tooltip:getWidth()
+    local th = tooltip:getHeight()
+
+    tooltip:setX(math.max(0, math.min(mx, maxX - tw - 1)))
+    if not self.followMouse and self.anchorBottomLeft then
+        tooltip:setY(math.max(0, math.min(my - th, maxY - th - 1)))
+    else
+        tooltip:setY(math.max(0, math.min(my, maxY - th - 1)))
+    end
+
+    self:setX(tooltip:getX())
+    self:setY(tooltip:getY())
+    self:setWidth(tw)
+    self:setHeight(th)
+
+    if self.followMouse then
+        self:adjustPositionToAvoidOverlap({ x = mx - 48, y = my - 48, width = 48, height = 48 })
+    end
+
+    self:drawRect(0, 0, self.width, self.height, self.backgroundColor.a, self.backgroundColor.r, self.backgroundColor.g, self.backgroundColor.b)
+    self:drawRectBorder(0, 0, self.width, self.height, self.borderColor.a, self.borderColor.r, self.borderColor.g, self.borderColor.b)
+    if self.itemSlot then drawSlotTooltip(tooltip, self.itemSlot, gomLines, limit, state) end
 end
 
 --- Replace ISToolTipInv:render with one that wraps weapon part tooltips, corrects
@@ -476,6 +571,10 @@ local function install(module)
         if not item then return previousRender(self) end
 
         local limit = lineLength()
+        local entry = module.tooltipsPergun[item:getFullType()]
+        local gomLines = entry and toLines(entry) or nil
+        if gomLines and #gomLines == 0 then gomLines = nil end
+
         local fix = nil
         local magazine = nil
         if instanceof(item, "WeaponPart") then
@@ -484,8 +583,8 @@ local function install(module)
             magazine = attachedMagazine(item)
             if magazine then
                 fix = "magazine"
-                -- Guns are not wrapped: Guns of Marz draws their block as it is.
-                limit = 0
+            elseif limit > 0 and gomLines then
+                fix = "wrap"
             end
         end
         if not fix or broken[fix] then
@@ -493,10 +592,6 @@ local function install(module)
         end
 
         if ISContextMenu.instance and ISContextMenu.instance.visibleCheck then return end
-
-        local entry = module.tooltipsPergun[item:getFullType()]
-        local gomLines = entry and toLines(entry) or nil
-        if gomLines and #gomLines == 0 then gomLines = nil end
 
         if checked[fix] then
             return renderTooltip(self, item, gomLines, limit, magazine)
@@ -509,6 +604,33 @@ local function install(module)
             broken[fix] = true
             print("ZomboidFixesB42: Guns of Marz tooltip fix '" .. fix .. "' turned off, " .. tostring(err))
             return previousRender(self)
+        end
+    end
+
+    -- The crafting slot tooltips: Guns of Marz installs its block there from inside
+    -- its own render, which no longer runs for these items, so it is done here (and
+    -- its flag set so it never adds a second block). With the option at 0 the block
+    -- is drawn whole, as Guns of Marz would.
+    if ISToolTipItemSlot and not ISToolTipItemSlot._TooltipHooked then
+        ISToolTipItemSlot._TooltipHooked = true
+        local previousSlotRender = ISToolTipItemSlot.render
+
+        function ISToolTipItemSlot:render()
+            local item = self.item
+            local entry = item and module.tooltipsPergun[item:getFullType()]
+            local gomLines = entry and toLines(entry) or nil
+            if not gomLines or #gomLines == 0 or broken.slot then return previousSlotRender(self) end
+            if ISContextMenu.instance and ISContextMenu.instance.visibleCheck then return end
+
+            if checked.slot then return renderSlotTooltip(self, gomLines, lineLength()) end
+            local ok, err = pcall(renderSlotTooltip, self, gomLines, lineLength())
+            if ok then
+                checked.slot = true
+            else
+                broken.slot = true
+                print("ZomboidFixesB42: Guns of Marz slot tooltip fix turned off, " .. tostring(err))
+                return previousSlotRender(self)
+            end
         end
     end
 end

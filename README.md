@@ -16,7 +16,7 @@ Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly 
 - Grab Eggs takes every egg in the nest box, also with Timed Action Instant on a server or fast forward in single player, which used to leave most of them behind (beta).
 - Running into a stair railing no longer vaults you over it.
 - Speed controls are back in multiplayer. The game fast forwards once every player votes for it, timed actions (milking, shearing, reading and reloading included), looting and cooking speed up with it, and right-clicking a fast forward button makes your timed actions vote for that speed automatically once you have been busy for a few seconds (5 by default).
-- Guns of Marz attachment tooltips wrap instead of stretching across the screen, at 200 characters a line by default.
+- Guns of Marz tooltips wrap instead of stretching across the screen: an attachment's list of guns (200 characters a line by default) and every Information line, kept as wide as the item's own rows.
 - A Guns of Marz gun's tooltip names the magazine really in it, with its capacity, instead of an earlier one.
 - Plysken Attachments Reborn's bag attachment slot box is drawn at the tooltip's font size (the slot names no longer overlap or spill out of the box with bigger fonts) and under the lines other mods add to a bag's tooltip, such as Dynamic Backpack Upgrades' upgrade slots, in any load order.
 - Grab amount... between Grab one and Grab all takes exactly as many items from a stack as you type, in loot windows and search mode.
