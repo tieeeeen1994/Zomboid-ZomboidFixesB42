@@ -1,6 +1,6 @@
 --[[
     Zomboid Fixes B42.20 -- server, what the server puts into or takes out of a bag in a
-    car reaches the players
+    car or in furniture reaches the players
 
     Server Lua tells clients about a container's contents with the globals
     sendAddItemToContainer, sendAddItemsToContainer, sendRemoveItemFromContainer,

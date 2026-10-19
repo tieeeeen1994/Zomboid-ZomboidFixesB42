@@ -50,7 +50,7 @@ game, and a test scenario in the Beta section below).
 - [ ] Tien's Coolers cooler out of a player's hands (car trunk, floor, furniture) shows stale contents, and moving
       eggs in or out with Fast Timed Actions on leaves the progress bar hanging while the eggs still move (reported
       2026-10-19; a cooler the player carries is fine). Not explained yet: the floor and furniture sends reach the
-      client in Java (BagContentsSync only covers bags in cars). A visible bar means the move went the vanilla way
+      client in Java (BagContentsSync covers bags in cars and furniture; the floor needs nothing). A visible bar means the move went the vanilla way
       (the fast path has none), and "hangs but the eggs arrive" fits a vanilla batch whose later entry fails on
       the server (`Transaction.update` → Reject, nothing sent, earlier eggs stay moved): the server's cooler lacks
       an egg the client shows, or `updateItem` throws. Server ReworkedIce was off. Get first: the server log around
@@ -105,7 +105,8 @@ game, and a test scenario in the Beta section below).
 - [ ] BagContentsSync, on a server with Fast Timed Actions on and a second player watching: put eggs into and take
       them out of a cooler (and a backpack) in a car's trunk: no 10 s wait, both screens show the right contents at
       once; with Tien's Coolers, a spent bag of ice in a trunk cooler disappears for the watcher; a bag inside a
-      bag in the trunk updates too (re-sent whole); option off: back to vanilla. No Lua errors in the server log.
+      bag in the trunk updates too (re-sent whole); with a container mod, a cooler on a shelf or in a crate updates
+      the same way; option off: back to vanilla. No Lua errors in the server log.
 - [ ] AdminGodVehicle, on a server with a second player watching: turn God Vehicle on, get in a car as a passenger
       while someone else drives; crash it into a wall and run down zombies (no part loses condition, nobody in it
       is hurt), idle with the headlights and radio on and the engine off (battery stays), drive a while (fuel,
