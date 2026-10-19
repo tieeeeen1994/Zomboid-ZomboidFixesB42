@@ -1207,6 +1207,12 @@ Where every admin tool lives, and how it runs, so a feature touching "all admin 
   `CellLoader.DoTileObjectCreation` and relays it, clients get `OnTileObjectAdded`. `BrushToolChooseTileUI.OnKeyPressed`
   swaps any drag with `isTileCursor` for the next tile on '[' / ']' (keys 26/27). The hotbar's "Paint a tile" holds
   one (`Hotbar.holdCursor`: right-click / Esc / second click end it, no context menu).
+- Every account, offline ones too (42.21, vanilla Users window): `requestUsers()` (`RequestNetworkUsersPacket`,
+  `Capability.SeeNetworkUsers`, checked again on the server) → the server answers with the whitelist and userlog of
+  its own database (`ServerWorldDatabase.getWhitelistUsers` + `getUserlogUsers`, the `db/<server>.db`, not the
+  save's players.db) plus everyone online, and the client fires `OnNetworkUsersReceived`; then `getUsers()` (ArrayList
+  of `NetworkUser`: `getUsername`, `getDisplayName`, `isOnline`, `getLastConnection`, `getRole`). Accounts outlive
+  world wipes, so the list can hold people who never played the current save. Lua has no SQLite access.
 - Online players for a picker: `scoreboardUpdate()` → `Events.OnScoreboardUpdate(usernames, displayNames, steamIDs)`
   (everyone online); `getOnlinePlayers()` on a client only holds the players it has loaded.
 - Climate Control (`ISAdmPanelClimate`): `getClimateManager():getClimateFloat(i)` (0..12: desaturation, global light,
