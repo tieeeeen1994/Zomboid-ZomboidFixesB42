@@ -37,6 +37,22 @@
     from a transaction per animal (about 300 ms each, one square at a time); here
     the server does it directly over the 3x3 squares round the admin.
 
+    Putting down waits for the pen (42.21, DesignationZone / DesignationZoneAnimal):
+    a zone counts as away as soon as one of its two corners (x, y and x + w - 1,
+    y + h - 1) is not loaded (`checkStreamed`, every 2.5 s in DesignationZone.update,
+    server and clients), noting `hourLastSeen`; the first check that finds both loaded
+    again runs `doMeta(now - hourLastSeen)`, which replays every hour on each animal
+    in the zone's list (`IsoAnimal.updateStatsAway`: age + hours / 24 days, then per
+    hour `hourGrow(true)`: hunger, thirst, health loss above 0.8 of either, feathers,
+    eggs, milk). Animals put down in a huge pen while its far corner was out of reach
+    were in that list when the corner loaded, and had every hour the pen had been away
+    replayed on them at once: they aged days and starved to death within seconds. So a
+    drop waits until every zone under the drop squares is fully loaded
+    (`isFullyStreamed`) and has stayed so for one check and a margin (PEN_SETTLE_MS),
+    and gives up after PEN_WAIT_MS. Vanilla's one-animal drop has the same flaw, and
+    animals that stay loaded in the near half of a huge pen while its far corner comes
+    and goes get the replay too; only smaller joined zones avoid that.
+
     Both directions run a few animals per tick (BATCH), so a big flock does not make
     one long server tick or one burst of packets.
 
@@ -55,6 +71,11 @@ if isClient() then return end
 local MODULE = ZomboidFixesB42.MODULE
 -- Animals picked up or put down per server tick.
 local BATCH = 20
+-- How long the pens under a drop must have been fully loaded before animals go down:
+-- one DesignationZone.update (2.5 s, where a pen coming back replays its hours) and a
+-- margin. And how long a drop waits for that before giving up.
+local PEN_SETTLE_MS = 3500
+local PEN_WAIT_MS = 15000
 
 local function isEnabled()
     local vars = SandboxVars and SandboxVars.ZomboidFixesB42
@@ -132,6 +153,40 @@ local function dropSquares(player)
     return squares
 end
 
+--- The animal zones under the drop squares, each once.
+local function dropZones(squares)
+    local zones, seen = {}, {}
+    for _, sq in ipairs(squares) do
+        local zone = DesignationZoneAnimal.getZone(sq:getX(), sq:getY(), sq:getZ())
+        if zone and not seen[zone] then
+            seen[zone] = true
+            zones[#zones + 1] = zone
+        end
+    end
+    return zones
+end
+
+local function zonesLoaded(zones)
+    for _, zone in ipairs(zones) do
+        if not zone:isFullyStreamed() then return false end
+    end
+    return true
+end
+
+--- Whether a drop job may put animals down now: false while its pens settle,
+-- nil once it has waited too long.
+local function penReady(job)
+    if #job.zones == 0 then return true end
+    local now = getTimestampMs()
+    if not zonesLoaded(job.zones) then
+        job.loadedSince = nil
+        if now - job.started > PEN_WAIT_MS then return nil end
+        return false
+    end
+    job.loadedSince = job.loadedSince or now
+    return now - job.loadedSince >= PEN_SETTLE_MS
+end
+
 local function putDown(player, item, square)
     local inventory = player:getInventory()
     if not inventory:contains(item) then return false end
@@ -187,7 +242,8 @@ local function startDrop(player, args)
     print(string.format("[ZomboidFixesB42] %s puts down %d %s %s at %d,%d,%d",
         player:getUsername(), #list, breed, animalType,
         math.floor(player:getX()), math.floor(player:getY()), math.floor(player:getZ())))
-    queue[#queue + 1] = { player = player, kind = "drop", list = list, index = 1, done = 0, squares = squares }
+    queue[#queue + 1] = { player = player, kind = "drop", list = list, index = 1, done = 0, squares = squares,
+        zones = dropZones(squares), started = getTimestampMs() }
 end
 
 local function onTick()
@@ -198,6 +254,17 @@ local function onTick()
     if not player or player:isDead() or (isServer() and not player:isExistInTheWorld()) then
         table.remove(queue, 1)
         return
+    end
+    if job.kind == "drop" and job.index == 1 then
+        local ready = penReady(job)
+        if ready == nil then
+            print(string.format("[ZomboidFixesB42] %s's drop of %d animals refused: the pen is not fully loaded",
+                player:getUsername(), #job.list))
+            table.remove(queue, 1)
+            reply(player, { kind = "drop", count = "0", reason = "penNotLoaded" })
+            return
+        end
+        if not ready then return end
     end
     local last = math.min(#job.list, job.index + BATCH - 1)
     for i = job.index, last do

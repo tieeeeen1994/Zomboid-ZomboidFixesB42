@@ -843,6 +843,17 @@ forces god mode / invisible / noclip / admin tag / hear all from the flags byte 
   poult, mice, rats, raccoons) or any animal with Unlimited Carry / god mode. Every loose animal costs a client a full
   update and blended animation each frame (`IsoPlayer.getMinimumSimulationLevel` = FULL, no invisible skips, no
   blending cap in `IsoWorld.sceneCullAnimals`); a hutched one is out of the world.
+- Pen catch-up (42.21, traced 2026-10-20): `DesignationZone.update` (every 2.5 s, server and clients) runs
+  `checkStreamed` then `check` per zone. `checkStreamed` marks a zone away (`streamed = false`, `hourLastSeen` =
+  world age hours) as soon as **either** corner square (x, y / x + w - 1, y + h - 1) is unloaded, and the first run
+  with both loaded calls `doMeta(now - hourLastSeen)` → `updateStatsAway(hours)` on every animal in its list (age +
+  hours / 24 × grow modifier, then per hour `hourGrow(true)`: hunger, thirst, health loss above 0.8, feathers, eggs,
+  milk, meta eating). Neither field is readable from Lua; `zone:isFullyStreamed()` (both corners) is, plus
+  `getX/getY/getW/getH`, static `DesignationZoneAnimal.getZone(x, y, z)`. `check` rebuilds the lists only while
+  fully loaded. So in a huge zone, animals that stay loaded near one corner while the far one comes and goes get the
+  away hours replayed on top of living them, and animals put down there before the far corner loads age days and
+  starve at once (reported 2026-10-20 after a Carry All drop). `AnimalManagerMain` (virtual → real) also calls
+  `updateStatsAway(now - zone.hourLastSeen)` with the animal's zone at load.
 
 ### Animal AI, animal sync and animals vs zombies (42.21)
 
@@ -1908,7 +1919,9 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   `AnimalContextMenu.doMenu`, submenu found by the option index noted before the call) picks up every loose animal
   of the clicked one's type and breed in its connected zones into the main inventory, 20 a server tick, the way
   `ISPickupAnimal:complete` does but sent with `sendAddItemToContainer`; a carried animal's inventory menu
-  (`doInventoryMenu`) puts all of a kind down over the 3x3 round the admin with `AddWorldInventoryItem`.
+  (`doInventoryMenu`) puts all of a kind down over the 3x3 round the admin with `AddWorldInventoryItem`, only once
+  the zones under those squares have been fully loaded for 3.5 s (refused after 15 s; the client refuses first if its
+  own copy is not), so a zone's catch-up replay never lands on animals just put down (see "Pen catch-up").
 - `*_AnimalZoneResync.lua` (client/server/shared, option `AnimalZoneResync`): the client mirrors `checkStreamed`
   per animal zone every second; a zone back after an hour boundary is checked 5 s later with its connected zones,
   in 10x10 blocks (`animalZoneCheck`: world items `x,y,id,fingerprint`, troughs' water and items). The server

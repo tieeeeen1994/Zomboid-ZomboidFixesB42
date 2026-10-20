@@ -448,5 +448,7 @@
     "IGUI_ZomboidFixesB42_AnimalCarryAll_gone": "That animal is no longer loose in the world.",
     "IGUI_ZomboidFixesB42_AnimalCarryAll_noSpace": "There is no floor round you to put animals down on.",
     "IGUI_ZomboidFixesB42_AnimalCarryAll_none": "No animals were moved.",
+    "IGUI_ZomboidFixesB42_AnimalCarryAll_penNotLoaded": "This pen is not fully loaded: its corners at %1 and %2 must both be in range. When a pen comes back into range the game replays every hour it was away on the animals in it, so animals put down now would age and starve at once.\nStand where both corners are in range, or split a huge pen into smaller joined zones.",
+    "IGUI_ZomboidFixesB42_AnimalCarryAll_penNotLoadedServer": "The server has not loaded the whole pen here. When a pen comes back into range the game replays every hour it was away on the animals in it, so nothing was put down.\nStand where both corners of the pen are in range, or split a huge pen into smaller joined zones.",
     "IGUI_ZomboidFixesB42_AnimalDropAll": "Put down all %1 here (%2)"
 }

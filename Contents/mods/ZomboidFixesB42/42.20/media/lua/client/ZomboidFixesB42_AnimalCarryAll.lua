@@ -12,6 +12,11 @@
     noted before the call and the submenu found from the option added at that index
     (getOptionFromName would find the first of several animals sharing a name).
 
+    Put down all is refused here while the pen under the player is not fully loaded
+    on this client (both corners), and the server waits for its own copy of the pen:
+    a pen that comes back replays all its missed hours on every animal in it, and
+    animals just put down in a huge pen died of that (see the server file).
+
     The count shown is this client's view of the pen (the zones' animal lists are
     rebuilt on clients too, DesignationZone.update every 2.5 s); the server collects
     its own list and checks each animal again as it takes it.
@@ -96,15 +101,6 @@ local function totalWeight(list)
     return total
 end
 
-local function showMessage(text)
-    local core = getCore()
-    local width, height = 420, 130
-    local modal = ISModalDialog:new(core:getScreenWidth() / 2 - width / 2, core:getScreenHeight() / 2 - height / 2,
-        width, height, text, false, nil, nil)
-    modal:initialise()
-    modal:addToUIManager()
-end
-
 local function onCarryAll(animal, playerObj)
     local list = penMatches(animal) or {}
     local text = getText("IGUI_ZomboidFixesB42_AnimalCarryAll_confirm", string.format("%d", #list), kindName(animal),
@@ -121,7 +117,35 @@ local function onCarryAll(animal, playerObj)
     modal:addToUIManager()
 end
 
+--- The animal zone under the player when this client has not loaded both its corners.
+local function unloadedPenHere(playerObj)
+    local sq = playerObj:getCurrentSquare()
+    local zone = sq and DesignationZoneAnimal.getZone(sq:getX(), sq:getY(), sq:getZ())
+    if zone and not zone:isFullyStreamed() then return zone end
+    return nil
+end
+
+local function penNotLoadedText(zone)
+    return getText("IGUI_ZomboidFixesB42_AnimalCarryAll_penNotLoaded",
+        string.format("%d,%d", zone:getX(), zone:getY()),
+        string.format("%d,%d", zone:getX() + zone:getW() - 1, zone:getY() + zone:getH() - 1))
+end
+
+local function showMessage(text)
+    local core = getCore()
+    local width, height = 420, 130
+    local modal = ISModalDialog:new(core:getScreenWidth() / 2 - width / 2, core:getScreenHeight() / 2 - height / 2,
+        width, height, text, false, nil, nil)
+    modal:initialise()
+    modal:addToUIManager()
+end
+
 local function onDropAll(playerObj, animalType, breed)
+    local zone = unloadedPenHere(playerObj)
+    if zone then
+        showMessage(penNotLoadedText(zone))
+        return
+    end
     sendClientCommand(playerObj, MODULE, ZomboidFixesB42.CMD_ANIMAL_DROP_ALL, { type = animalType, breed = breed })
 end
 
@@ -176,6 +200,13 @@ local REASONS = {
 local function onServerCommand(module, command, args)
     if module ~= MODULE or command ~= ZomboidFixesB42.CMD_ANIMAL_CARRY_ALL_RESULT then return end
     if type(args) ~= "table" or tonumber(args.count) ~= 0 then return end
+    if args.reason == "penNotLoaded" then
+        local playerObj = getSpecificPlayer(0)
+        local sq = playerObj and playerObj:getCurrentSquare()
+        local zone = sq and DesignationZoneAnimal.getZone(sq:getX(), sq:getY(), sq:getZ())
+        showMessage(zone and penNotLoadedText(zone) or getText("IGUI_ZomboidFixesB42_AnimalCarryAll_penNotLoadedServer"))
+        return
+    end
     showMessage(getText(REASONS[args.reason] or "IGUI_ZomboidFixesB42_AnimalCarryAll_none"))
 end
 
