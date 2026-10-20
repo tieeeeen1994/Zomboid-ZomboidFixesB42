@@ -1715,6 +1715,14 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   `HasStairs()`, `HasStairsNorth/West()`, `HasStairTop()`, `HasStairsBelow()`, `getStairsDirection()` (N, W or nil),
   `isSameStaircase(x, y, z)`. Sheet ropes: field `haveSheetRope`, `getSheetRope()`. Bottom = `HasStairs() and not
   HasElevatedFloor()` (elevated = M and T squares).
+- Step checks between neighbouring squares (42.21, IsoGridSquare ~667-1000, `isEdgeElementTo` ~3624): orthogonal
+  neighbours only (a diagonal pair is always false), and symmetric (both squares' facing edges are tested). `isWallTo` =
+  `collideN` / `collideW` edge that is not a window; `isWindowTo` = `windowN` / `windowW`; `isDoorTo` = an `IsoDoor` or door
+  `IsoThumpable` on that edge, **open or closed**; `isSomethingTo` = wall or window or door, so it calls every doorway
+  blocked (no furniture). `isBlockedTo` = wall, blocked window, blocked door or stair side. A wall on a square's own
+  north / west edge is `square:has(IsoFlagType.collideN / collideW)`; a south / east wall belongs to the next square.
+  Whether a closed door also sets `collide*` was not traced (TienLastSeenWhere's route search uses `isWallTo and not
+  isDoorTo`, which is right either way).
 - `ISUIElement:drawTextureAllPoint(tex, tlx, tly, trx, try, brx, bry, blx, bly, r, g, b, a)` goes straight to
   `SpriteRenderer` (`UIElement.DrawTexture`, 4-point overload): **absolute screen coordinates**, no element offset, no
   scroll (add `getAbsoluteX/Y()` and, in a list, `getYScroll()`). Textured `renderPoly` / this map u0,v0 to vertex 1, then
