@@ -997,6 +997,15 @@ vehicle stories and road foraging use. Vanilla, Raven Creek and NagaCity ship on
   (logged in `-debug`). A recipe that needs an optional mod: an empty placeholder filled by `recipe:Load` from Lua,
   hidden without the mod with `{ OnAddToMenu = False, NeedToBeLearn = True, }` (the crafting lists call OnAddToMenu
   through `callLuaBool`; a missing function is false, so the recipe is skipped; Ammo Maker's own trick).
+- AnimSet `x_extends` on Linux (42.21, traced 2026-10-24 from a Linux server log): `PZXmlUtil.parseXml` resolves
+  the target with `ZomboidFileSystem.resolveRelativePath` → `getRelativeFile`, which lower-cases the whole absolute
+  path and relativizes it against the lower-cased game folder; for a mod under the game folder (Steam workshop
+  content of an install or a dedicated server) that gives an all-lowercase relative path, `resolveFileOrGUID` finds
+  no `activeFileMap` entry for it (keys are `media/...` paths) and opens it as is, so a case-sensitive file system
+  throws `PZXmlParserException` (Windows hides it). Write extending nodes out in full (merge rules: `resolve` matches
+  children by tag + `x_name`, else by tag + position; a text-only child replaces, any other merges recursively, so an
+  empty `<m_Conditions />` keeps the parent's n-th; unmatched children are appended). "Marz Mods Animsets for
+  Linux" (3774316897) instead ships lowercase copies under an all-lowercase mod folder, for GoM's files only.
 - `CraftRecipe:Load(name, "craftRecipe X { OnCreate = Fn, }")` on a loaded recipe sets that key (blocks would be
   appended). OnCreate is looked up by name at every craft (`CraftRecipeData.initLuaFunctions`), called with
   `(craftRecipeData, character)` from `ISHandcraftAction:performRecipe` (server / SP only) after the outputs were added
