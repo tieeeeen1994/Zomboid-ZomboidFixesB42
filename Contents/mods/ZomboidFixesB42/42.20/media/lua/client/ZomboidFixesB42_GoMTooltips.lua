@@ -616,8 +616,12 @@ local function install(module)
         local previousSlotRender = ISToolTipItemSlot.render
 
         function ISToolTipItemSlot:render()
+            -- A crafting station's resource slot hands this tooltip a ResourceItem
+            -- (zombie.entity.components.resources), which has no getFullType; Guns of
+            -- Marz's own hook skips anything that is not an InventoryItem too.
             local item = self.item
-            local entry = item and module.tooltipsPergun[item:getFullType()]
+            if not instanceof(item, "InventoryItem") then return previousSlotRender(self) end
+            local entry = module.tooltipsPergun[item:getFullType()]
             local gomLines = entry and toLines(entry) or nil
             if not gomLines or #gomLines == 0 or broken.slot then return previousSlotRender(self) end
             if ISContextMenu.instance and ISContextMenu.instance.visibleCheck then return end
