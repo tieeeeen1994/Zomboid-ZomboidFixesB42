@@ -681,6 +681,10 @@ its CLAUDE.md has the design).
   `group:getOrCreateLocation(id):setAttachmentName(name)` (Plysken registers its locations this way). Names go
   through `ResourceLocation.of` (lowercased, `:` splits a namespace, no other check) for `shouldHideModel`, which hides
   an item when that name is a body location a worn item hides (vanilla `ShoulderHolster`, `AnkleHolster`); avoid `:`.
+  A new point can hide the same way (TienAttachmentPositions 0.1.11): name it `mod:Name`, `ItemBodyLocation.register`
+  it (base namespace refused), `BodyLocations.getGroup("Human"):getOrCreateLocation(loc)` and `setHideModel(loc)` on
+  every `BodyLocation` that `isHideModel` the original. `RegistryReset.resetAll` (leaving a game) drops non-base
+  registrations; the group has no remove.
 - `setAttachedItem(loc, item)` → `AttachedItems.setItem` → `checkValid` **throws** `no such location` for an unknown
   location. On a client, a local player's call sends `GameCharacterAttachedItemPacket` (location string + item, not
   for `bowtie` / `head_hat`); the server runs `setAttachedItem` and relays it to every other connection, whose
