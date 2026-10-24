@@ -990,6 +990,13 @@ vehicle stories and road foraging use. Vanilla, Raven Creek and NagaCity ship on
   `OutputEntree` fields are not readable from Lua. Build a resolved entry in `OutputMapper.new(name)` +
   `addOutputEntree(result, ArrayList)` + `OnPostWorldDictionaryInit()` (no recipe name = no side effects) and move it.
   Mapper syntax `Result = A;B` (every item must match). Get a recipe's mapper from `output:getOutputMapper()`.
+- Script errors that break other mods' recipes (traced 2026-10-24 for Guns of Tien's optional Ammo Maker): a
+  craftRecipe whose `timedAction` does not exist throws in `CraftRecipe.OnScriptsLoaded`, an `itemMapper` naming a
+  missing item throws in `OutputMapper.OnPostWorldDictionaryInit`, and `ScriptManager` catches either around the
+  whole pass, so every recipe after it is left half-built; an unknown item in an `inputs` line is only skipped
+  (logged in `-debug`). A recipe that needs an optional mod: an empty placeholder filled by `recipe:Load` from Lua,
+  hidden without the mod with `{ OnAddToMenu = False, NeedToBeLearn = True, }` (the crafting lists call OnAddToMenu
+  through `callLuaBool`; a missing function is false, so the recipe is skipped; Ammo Maker's own trick).
 - `CraftRecipe:Load(name, "craftRecipe X { OnCreate = Fn, }")` on a loaded recipe sets that key (blocks would be
   appended). OnCreate is looked up by name at every craft (`CraftRecipeData.initLuaFunctions`), called with
   `(craftRecipeData, character)` from `ISHandcraftAction:performRecipe` (server / SP only) after the outputs were added
