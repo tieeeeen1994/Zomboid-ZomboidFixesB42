@@ -955,6 +955,36 @@ Traced 2026-10-08 while reviewing Animals Attack Zombies (`~/Zomboid/Workshop/An
 - IsoObject/IsoThumpable/IsoWorldInventoryObject `addToWorld` can run twice on a server (process lists are sets or
   checked); the classes in `zombie/iso/objects` with their own override (stoves, doors, generators...) may not.
 
+### Weather periods, storms and thunder clouds (42.21)
+
+Traced 2026-10-24 for `*_Storm.lua`.
+- Admin triggers (Weather tab, packet type 7 → `serverReceiveClientChangeWeather`) run
+  `triggerCustomWeatherStage(stage, hours)`: a fresh `AirFront` (strength 0.95, warm, angle **0** from `reset`),
+  then `createSingleStage` = START 1 h + stage + CLEARING 1 h. So every admin storm travels west to east.
+  `WeatherPeriod:startCreateModdedPeriod(warmFront, strength, angle)` (fails while running, on a client, or
+  strength < 0.1) + `createAndAddStage(id, hours)` (min 1 h) + `endCreateModdedPeriod()` builds any sequence with
+  any angle; `endInit` sends the period (type 1), climate values follow with the 10-minute type 0. Lua can call
+  `transmitServerStopWeather()` (stop + type 0); `transmitClimatePacket` / `updateOnTick` are not reachable.
+- Front type only flips the temperature: warm (1) = internal - up to 7 C at full strength, cold = + 7 C.
+- Clouds (`ThunderStorm`, server only, max 3, **not saved**; `hasStartedCloud` is, so a restart mid-stage leaves a
+  storm with no thunder): STORM / TROPICAL stages start them once in `updateCurrentStage`: `Rand.Next(1, 3)` clouds,
+  radius 8000 x strength, thunder ratio 0.6 x strength, first one over a random player only above 0.7 strength;
+  tropical 1 cloud, 15000, 0.8, strength 1; blizzard none. `startThunderCloud` (use the 8-argument one: the
+  7-argument overload calls itself) adds ±10° and returns the cloud; `ThunderCloud:setCenter(x, y, angle)` puts the
+  path through (x, y), from centre - d (cos a, sin a) to centre + d, d = half map diagonal + 1500..7500 each, crossed
+  over the cloud's duration. Events every `Rand(3.5 - 3s, 24 - 20s)` real seconds at 1x (s = cloud strength; the
+  `eventFreq` argument is unused), within half the radius; thunder ratio = share with flash and thunder.
+  `getClouds()` lists all three (`isRunning`). Every class here is exposed, `ThunderCloud` included.
+- `Events.OnClimateTick(climate)` fires right after `weatherPeriod.update` (climate minute ticks, server and SP;
+  clients too, but they do not run the period) and before the floats are calculated and `ThunderStorm.update`, so
+  clouds a stage just started can be replaced before they make an event, and stage overrides retargeted.
+  `ClimateFloat.calculate` order: admin value (not on clients) wins; else modded lerps `internalValue`, then the
+  override lerps over that, so a storm's overrides beat modded values. `setOverride(v, getOverrideInterpolate())`
+  keeps the stage's blend. Storm wind: speed 0.2 + 0.5 noise (tropical 0.4 + 0.6, blizzard 0.75 + 0.25), angle value
+  0.7 x noise x (+1 when the front angle is 90..270, else -1). `getWindAngleDegrees`: v > 0 → 45 + 180 v,
+  -0.25 < v <= 0 → 45 + 45 v, v <= -0.25 → 360 - 180 (|v| - 0.25) (0..33.75° unreachable). The forecaster and radio
+  call the front angle the wind direction (`getWindAngleString`, whose names are screen directions: 0 = "SE").
+
 ### Map files (42.20)
 
 B42 map formats (lotheader, lotpack, chunkdata with its undocumented type 5 / bit 32, biome PNGs, worldmap.xml), where
@@ -1959,6 +1989,12 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   ID, origin, destination, token}`; the server takes the item out by ID, flies the same path (same numbers, same
   steps, so the same landing), broadcasts `throwableFly` / `throwableEnd`, and ends it with
   `IsoTrap.new(thrower, item, ...):place()`. Single player: the client calls `Throwables.launch` directly.
+- `*_Storm.lua` (shared/client/server, option `StormControls`, beta): a Storm tab registered after vanilla's in
+  `ISAdminWeather:initialise`; the server (`Capability.ClimateManager`; SP: the tab calls `Storm.start`) builds a
+  modded period with the chosen angle / strength / front, keeps the settings in global mod data
+  `ZomboidFixesB42_Storm`, and in `OnClimateTick` replaces the storm stage's clouds (count, radius, strength,
+  ratio, centred on a player) and retargets the wind overrides; it is "ours" while the running period's first stage
+  start equals the saved `startHour`.
 - `*_ZombieCarDamage.lua` (client/server, option `ZombieCarDamageSync`): the client snapshots door / bodywork
   conditions of every vehicle a known player sits in each tick; a drop while a zombie it owns is in "attackvehicle"
   for someone in that car goes to the server (`zombieCarDamage`), which checks the owner (`getOwnerPlayer`), the

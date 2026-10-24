@@ -114,6 +114,10 @@ A Body part condition shortcut for the admin hotbar: one click turns a bite, scr
 Option: [i]Admin Chopper Controls[/i]
 Admins and moderators can send and stop the chopper from the right-click Debug menu, and the debug menu's chopper buttons work on servers. Stopping it ends today's chopper event, so it does not fly straight back, and it reaches every player, including anyone who still hears a chopper that already left.
 
+[b]Admin storm controls (beta)[/b]
+Option: [i]Admin Storm Controls[/i]
+The admin Climate Control window gets a Storm tab. Vanilla's Trigger Storm, Tropical Storm and Blizzard buttons only set the length: every storm they make has the same strength, comes from the west, and its lightning lands wherever chance puts it, often far from everyone. The Storm tab chooses the type, the side it comes from (or a random one), what it passes over (a random player, yourself, any online player or a random spot), its length and strength, and whether it gets colder or warmer. Optionally also the number of thunder clouds, how wide the storm is, how often it flashes or rumbles and how much of that is lightning, the wind speed, and the wind blowing from the storm's side; blizzards can get lightning too. A storm started there keeps its thunder clouds after a server restart, which vanilla storms lose. For roles with the Climate Manager capability (admins and moderators by default). Each storm is written to the admin log.
+
 [b]Admin spawn protection (off by default)[/b]
 Option: [i]Admin Spawn Protection[/i] (seconds, 0 = off)
 Admins who join are fully healed and in god mode for the number of seconds you set, so an admin revived on the server does not die again on load.

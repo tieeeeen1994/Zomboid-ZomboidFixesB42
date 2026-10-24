@@ -32,6 +32,7 @@ description=- Admins can change any player's body stats (hunger, mood, health, c
 description=- Admins can pick up every loose animal of one type and breed in a pen at once and put them all down elsewhere (beta).
 description=- Admins can toggle bites, fractures, bleeding and other conditions on any body part of any player from the admin hotbar, and heal a part or the body without taking bandages off (beta).
 description=- Admins can send and stop the chopper from the right-click Debug menu; stopping it ends today's chopper event so it stays gone, and reaches every player, even one who still hears a chopper that already left.
+description=- A Storm tab in Climate Control: choose where a storm comes from, what it passes over, its strength, thunder clouds, lightning and wind (beta).
 description=- An admin hotbar: one-click shortcuts to every admin tool, each with its own settings, optional extra steps and repeats, opened from the sidebar (single player: with -debug).
 description=- Picking a square in the debug Horde Manager or Tile Picker no longer walks your character there.
 description=- Finished skill books stay read after relogging, also with the instant actions cheat (beta).
