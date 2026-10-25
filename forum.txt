@@ -56,6 +56,10 @@ In vanilla multiplayer, only the cook hears an ingredient going into a soup, ste
 Option: [i]Clothing Wear Down Rework (Requires Restart)[/i]
 In vanilla multiplayer, a zombie attack that your clothing or armor stops does not wear it down, so armor with full protection lasts forever, and clothing destroyed while worn drops only on your own screen and comes back on relog. Now your own game rolls every zombie attack that lands on you, from any zombie, and sends each one to the server, which wears your clothing down like in single player. Destroyed clothing falls off for everyone and stays destroyed, and no plain copy of it (a white scarf for a green one) is left on your character. Wounds work as before.
 
+[b]Fallen clothing sync (beta)[/b]
+Option: [i][BETA] Fallen Clothing Sync[/i]
+In vanilla multiplayer, the server tells every player's game which floor item to remove by its place in the spot's list, so a game holding the items in another order removes the wrong one: the item picked up stays on other players' floors, and a different one vanishes for everyone until a relog. Items knocked off a player or a zombie (hats, helmets, masks, glasses) land on everyone's floor a moment later than on the server's, so anything that drops on the same spot in that moment, like a scarf torn off by the same zombie attack, ends up in another order. Now each player's game puts the items on that spot back in the server's order once the knocked off item lands.
+
 [b]Watering plants uses water once (beta)[/b]
 Option: [i][BETA] Watering Plants Uses Water Once[/i]
 Watering a plant in multiplayer no longer gives it twice the water or empties the can twice as fast.
@@ -405,9 +409,9 @@ Opening a pumpkin or sunflower seed packet you made gives back the 25 seeds pack
 Option: [i]Item Data Fixes (Requires Restart)[/i]
 Leeks, jars of leeks and grapefruits have real nutrition values instead of absurd carbohydrates and protein.
 
-[b].44 box weights[/b]
+[b]Ammo box weights[/b]
 Option: [i]Item Data Fixes (Requires Restart)[/i]
-The .44 Magnum box and carton weigh in line with the other ammunition.
+Boxing ammunition always saves weight: the .44 Magnum, .357 Magnum, .38 Special and shotgun shell boxes weigh 0.8 of their rounds, like the 9mm and .45 boxes, and their cartons ten boxes. Before, a .44 box weighed twice its rounds and the others as much or more than them.
 
 [b]Minor item fixes[/b]
 Option: [i]Item Data Fixes (Requires Restart)[/i]

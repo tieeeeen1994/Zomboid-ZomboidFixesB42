@@ -11,6 +11,7 @@ Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly 
 - No fall damage on stairs while Fast Move is on.
 - Items with negative weight are deleted.
 - Clothing wear down rework for multiplayer: zombie attacks that clothing or armor stops wear it down like in single player, so armor with full protection no longer lasts forever; clothing destroyed while worn falls off for everyone and stays destroyed after relogging, with no plain copy of itself left on your character (a white scarf for a green one).
+- Picking up a floor item in multiplayer no longer removes a different one, which happened on the spot where a hat, helmet, mask or pair of glasses was knocked off when something else dropped there at the same time, like the scarf the same zombie attack tore off (beta).
 - Chickens the game deletes after laying in a full hutch are put back.
 - Hutches and nest boxes get dirty at a quarter of the normal speed. The speed can be changed, or set back to vanilla.
 - Grab Eggs takes every egg in the nest box, also with Timed Action Instant on a server or fast forward in single player, which used to leave most of them behind (beta).
@@ -97,7 +98,7 @@ Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly 
 - Pasta and rice cooked in a copper saucepan can be split into bowls, giving back the copper saucepan.
 - Splitting a pot into clay bowls gives clay bowls of food, and beans, oatmeal, cereal and cake made with a clay bowl give the clay bowl back.
 - Opening a pumpkin or sunflower seed packet you made gives back the 25 seeds packing it took, instead of 5; found packets still give 5.
-- The .44 Magnum box and carton weigh in line with the other ammunition.
+- Boxing ammunition always saves weight: the .44, .357, .38 and shotgun shell boxes weigh 0.8 of their rounds, like the 9mm and .45 boxes, and their cartons ten boxes.
 - The Rangers baseball shirt covers the arms, the red baseball cap falls off like the others, the seafood cooler makes cooler sounds, and the metal, copper, gold, silver and tumbler hot drinks and the clay bowl fruit salad have names.
 
 Steam Workshop ID 3800148259, mod ID ZomboidFixesB42. Licensed under the GNU GPL v3, see [LICENSE](LICENSE).

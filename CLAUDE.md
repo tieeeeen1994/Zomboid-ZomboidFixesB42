@@ -288,6 +288,12 @@ the server's inventory holds what is worn there (by then the preview copy). Remo
 `removeWornItem` unwears on the server through SyncClothing but the item stays in the server's inventory. The server
 saves players (`ServerPlayerDB.serverUpdateNetworkCharacter` → `IsoPlayer.save`), so leftovers persist.
 `*_MakeUp.lua` fixes both; ClothingWear's ghost check never takes make-up off.
+Knocked-off hats (42.21): `IsoGameCharacter.helmetFall` (server only; `AddRandomDamageFromZombie` ~1433 on any
+non-thump roll, +40 for head / neck, before that roll's holes; falls; weapon hits on zombies) drops a `ChanceToFall`
+item with `AddWorldInventoryItem(..., false)` and sends `ZombieHelmetFalling`; every client throws an
+`IsoFallingClothing` that adds its own copy up to 60 frames later and fires `OnContainerUpdate(square)` (corpse removal
+is the only other square caller). Items dropped there meanwhile (a scarf the same hit broke) sit in another order than
+on the server, so index-addressed pickups remove the wrong one (`*_FallenClothing.lua` reorders with `objects:set`).
 Mechanics XP once per part per day (42.21): `IsoPlayer.addMechanicsItem(key, part, time)` gives XP when `key` is not in
 its saved `mechanicsItem` map (entries expire after 24 game h); keys are `itemID .. vehicle:getMechanicalID() .. digit`
 (0 uninstall, 1 install, 2 repair, 3 engine parts). `mechanicalId` is saved, but `BaseVehicle.createPhysics` (every

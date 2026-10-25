@@ -53,9 +53,15 @@
     told apart from one found as loot (Distributions.lua ~20154, ProceduralDistributions
     ~14802), which has no record and keeps vanilla's 5.
 
-    ItemWeights: the .44 Magnum box holds 20 rounds of 0.03 (0.6) but weighs 1.2;
-    every other box weighs 75-100% of its rounds and every carton ten boxes, so it
-    is 0.48 and its carton 4.8. (Pie slices were set to 0.2 here at first: a slice
+    ItemWeights: packing ammunition should always pay. Every carton weighs ten of
+    the twelve boxes it holds, and the 9mm and .45 boxes 0.8 of their 50 rounds
+    (rifle boxes 0.6-0.75), but the .44 Magnum box holds 20 rounds of 0.03 (0.6) and
+    weighs 1.2, the .357 box 50 x 0.02 and weighs 1.0, the .38 box 50 x 0.015 (0.75)
+    and weighs 0.8, the shotgun shell box 25 x 0.06 and weighs 1.5: boxing them gains
+    nothing or costs weight. They get the handgun boxes' 0.8 (.44 0.48, .357 0.8,
+    .38 0.6, shells 1.2) and their cartons ten boxes. Audited 2026-10-25 against Guns
+    of Marz (box 0.9 of its rounds, carton and crate 0.8 of what they hold, all
+    right). (Pie slices were set to 0.2 here at first: a slice
     weighs 0.5 at hunger -30, which per hunger point is already lighter than a 0.2
     cake slice at -7, so that was dropped. A slice's weight grows with how filling
     it is, Food.getActualWeight, which is engine code.)
@@ -306,10 +312,16 @@ end
 
 ScriptFixes.register("ItemDataFixes", "ItemWeights",
     function()
-        -- vanilla 1.2 and 12.0
+        -- vanilla .44 1.2 / 12.0, .357 1.0 / 10.0, .38 0.8 / 8.0, shells 1.5 / 15.0
         ScriptFixes.setParams({
             ["Base.Bullets44Box"] = { Weight = "0.48" },
             ["Base.Bullets44Carton"] = { Weight = "4.8" },
+            ["Base.Bullets357Box"] = { Weight = "0.8" },
+            ["Base.Bullets357Carton"] = { Weight = "8.0" },
+            ["Base.Bullets38Box"] = { Weight = "0.6" },
+            ["Base.Bullets38Carton"] = { Weight = "6.0" },
+            ["Base.ShotgunShellsBox"] = { Weight = "1.2" },
+            ["Base.ShotgunShellsCarton"] = { Weight = "12.0" },
         })
     end)
 
