@@ -78,9 +78,6 @@ local ScriptFixes = ZomboidFixesB42.ScriptFixes
 ScriptFixes.register("RecipeFixes", "ForgedPotPasta",
     function()
         ScriptFixes.setParams({ ["Base.WaterPotForgedPasta"] = { ReplaceOnUse = "Base.PotForged" } })
-    end,
-    function()
-        ScriptFixes.setParams({ ["Base.WaterPotForgedPasta"] = { ReplaceOnUse = "Base.Pot" } })
     end)
 
 ScriptFixes.onBeforeUse(function(item)
@@ -99,14 +96,6 @@ ScriptFixes.register("ItemDataFixes", "FoodNutrition",
             ["Base.CannedLeek"] = { Carbohydrates = "50.4", Proteins = "5.2" },
             ["Base.CannedLeek_Open"] = { Carbohydrates = "50.4", Proteins = "5.2" },
             ["Base.Grapefruit"] = { Calories = "126.0", Carbohydrates = "32.1", Lipids = "0.42", Proteins = "2.31" },
-        })
-    end,
-    function()
-        ScriptFixes.setParams({
-            ["Base.Leek"] = { Carbohydrates = "140.0" },
-            ["Base.CannedLeek"] = { Carbohydrates = "560.0", Proteins = "15.2" },
-            ["Base.CannedLeek_Open"] = { Carbohydrates = "560.0", Proteins = "15.2" },
-            ["Base.Grapefruit"] = { Calories = "15.0", Carbohydrates = "101.11", Lipids = "3.78", Proteins = "17.56" },
         })
     end)
 
@@ -138,9 +127,8 @@ local function splitRecipeParts(recipe)
     return bowlMapper, potMapper, bowlInput
 end
 
---- Adds resolved mapper entries and remembers them in `added` for removeEntries.
--- `front` puts them at the start of the list, in order.
-local function addEntries(added, mapper, entries, front)
+--- Adds resolved mapper entries; `front` puts them at the start of the list, in order.
+local function addEntries(mapper, entries, front)
     local list = mapper:getEntrees()
     local index = 0
     for _, entry in ipairs(entries) do
@@ -152,34 +140,24 @@ local function addEntries(added, mapper, entries, front)
             else
                 list:add(resolved)
             end
-            added[#added + 1] = { mapper = mapper, entry = resolved }
         end
-    end
-end
-
-local function removeEntries(added)
-    for _, a in ipairs(added) do
-        a.mapper:getEntrees():remove(a.entry)
     end
 end
 
 -- CopperSaucepanBowls ---------------------------------------------------------------
 
-local copperAdded = {}
-
 ScriptFixes.register("RecipeFixes", "CopperSaucepanBowls",
     function()
-        copperAdded = {}
         ScriptFixes.addTag("Base.RicePanCopper", "base:canbedividedinbowls")
         for _, name in ipairs(SPLIT_RECIPES) do
             local recipe = ScriptFixes.getRecipe(name)
             local bowlMapper, potMapper
             if recipe then bowlMapper, potMapper = splitRecipeParts(recipe) end
             if bowlMapper and potMapper then
-                addEntries(copperAdded, bowlMapper, {
+                addEntries(bowlMapper, {
                     { "Base.RiceBowl", { "Base.RicePanCopper" } },
                 })
-                addEntries(copperAdded, potMapper, {
+                addEntries(potMapper, {
                     { "Base.SaucepanCopper", { "Base.PastaPanCopper" } },
                     { "Base.SaucepanCopper", { "Base.RicePanCopper" } },
                 })
@@ -187,11 +165,6 @@ ScriptFixes.register("RecipeFixes", "CopperSaucepanBowls",
                 ScriptFixes.log("CopperSaucepanBowls: mappers not found in " .. name)
             end
         end
-    end,
-    function()
-        removeEntries(copperAdded)
-        copperAdded = {}
-        ScriptFixes.removeTag("Base.RicePanCopper", "base:canbedividedinbowls")
     end)
 
 -- ClayBowlPortions ------------------------------------------------------------------
@@ -221,48 +194,33 @@ local POT_TO_BOWL = {
     { "Base.PotForgedStew", "Base.StewBowl" },
 }
 
-local clayAdded = {}
--- Mappers the bowl input was registered in, this game (never undone: with only the
--- vanilla single-pot entries it matches nothing).
-local clayRegistered = {}
-local cakeCallSet = {}
-
 local function clayEnabled()
     return ScriptFixes.isEnabled("RecipeFixes")
 end
 
 ScriptFixes.register("RecipeFixes", "ClayBowlPortions",
     function()
-        clayAdded = {}
         for _, name in ipairs(SPLIT_RECIPES) do
             local recipe = ScriptFixes.getRecipe(name)
             local bowlMapper, _, bowlInput
             if recipe then bowlMapper, _, bowlInput = splitRecipeParts(recipe) end
             if bowlMapper and bowlInput then
-                if not clayRegistered[bowlMapper] then
-                    bowlMapper:registerInputScript(bowlInput)
-                    clayRegistered[bowlMapper] = true
-                end
+                bowlMapper:registerInputScript(bowlInput)
                 local entries = {}
                 for _, pair in ipairs(POT_TO_BOWL) do
                     entries[#entries + 1] = { pair[2] .. "Clay", { pair[1], "Base.ClayBowl" } }
                     entries[#entries + 1] = { pair[2], { pair[1], "Base.Bowl" } }
                 end
-                addEntries(clayAdded, bowlMapper, entries, true)
+                addEntries(bowlMapper, entries, true)
             elseif recipe then
                 ScriptFixes.log("ClayBowlPortions: bowl mapper or input not found in " .. name)
             end
         end
 
         local cake = ScriptFixes.getRecipe("Base.PlaceCakeInBakingPan")
-        if cake and not cakeCallSet[cake] then
+        if cake then
             ScriptFixes.setRecipeCall(cake, "OnCreate", "ZomboidFixesB42.OnCreateCakeInPan")
-            cakeCallSet[cake] = true
         end
-    end,
-    function()
-        removeEntries(clayAdded)
-        clayAdded = {}
     end)
 
 local function madeWithClayBowl(item)
@@ -310,18 +268,13 @@ local PACKET_SEEDS = {
 }
 -- What PutSeedsInPacket takes for these two.
 local SEEDS_PER_PACKET = 25
-local seedCallSet = {}
 
 ScriptFixes.register("RecipeFixes", "SeedPacketCount",
     function()
         local recipe = ScriptFixes.getRecipe("Base.OpenPacketOfSeeds")
-        if recipe and not seedCallSet[recipe] then
+        if recipe then
             ScriptFixes.setRecipeCall(recipe, "OnCreate", "ZomboidFixesB42.OnCreateSeedPacket")
-            seedCallSet[recipe] = true
         end
-    end,
-    function()
-        -- The call cannot be unset; it checks the option itself.
     end)
 
 --- OnCreate of OpenPacketOfSeeds: a pumpkin or sunflower packet the player made
@@ -351,16 +304,14 @@ end
 
 -- ItemWeights -----------------------------------------------------------------------
 
-local function setWeights(box, carton)
-    ScriptFixes.setParams({
-        ["Base.Bullets44Box"] = { Weight = box },
-        ["Base.Bullets44Carton"] = { Weight = carton },
-    })
-end
-
 ScriptFixes.register("ItemDataFixes", "ItemWeights",
-    function() setWeights("0.48", "4.8") end,
-    function() setWeights("1.2", "12.0") end)
+    function()
+        -- vanilla 1.2 and 12.0
+        ScriptFixes.setParams({
+            ["Base.Bullets44Box"] = { Weight = "0.48" },
+            ["Base.Bullets44Carton"] = { Weight = "4.8" },
+        })
+    end)
 
 -- MinorItemFixes --------------------------------------------------------------------
 
@@ -370,12 +321,5 @@ ScriptFixes.register("ItemDataFixes", "MinorItemFixes",
             ["Base.Shirt_Baseball_Rangers"] = { BloodLocation = "Shirt" },
             ["Base.Hat_BaseballCapRed"] = { ChanceToFall = "60" },
             ["Base.Cooler_Seafood"] = { OpenSound = "OpenCooler", CloseSound = "CloseCooler", PutInSound = "StoreItemCooler" },
-        })
-    end,
-    function()
-        ScriptFixes.setParams({
-            ["Base.Shirt_Baseball_Rangers"] = { BloodLocation = "UpperBody" },
-            ["Base.Hat_BaseballCapRed"] = { ChanceToFall = "80" },
-            ["Base.Cooler_Seafood"] = { OpenSound = "", CloseSound = "", PutInSound = "" },
         })
     end)

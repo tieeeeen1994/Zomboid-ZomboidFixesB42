@@ -18,8 +18,8 @@
     every craftRecipe resolves its inputs and output mappers, so recipe edits have
     to come after it: an output mapper entry added before it would be resolved a
     second time. Everything here therefore starts from OnLoadMapZones. There is no
-    event for the sandbox options changing mid-game, so the options are checked
-    again every ten game minutes and a fix switched off is undone.
+    event for the sandbox options changing mid-game and nothing polls for it, so a
+    changed option takes effect at the next world load (the tooltips say so).
 
     ScriptManager.Reset + Load runs when a game is left (IngameState.exit) and when
     Lua is reset, so every game starts from fresh vanilla scripts. Lua itself is not
@@ -45,7 +45,7 @@
         CraftRecipeManager matches items with input.containsItem = that list);
       * ScriptManager.tagToItemMap, filled lazily by getItemsTag;
       * Item.usedInRecipes, the recipe names the item appears in.
-    ScriptFixes.addTag / removeTag update the item's own set and every one of those
+    ScriptFixes.addTag updates the item's own set and every one of those
     Lua can reach. The per-item amount of an input (`25:Base.X`) is looked up in a
     private list of names, so an item added this way counts with the input's
     default amount; the fixes only use inputs of amount 1.
@@ -88,11 +88,10 @@ function ScriptFixes.isEnabled(option)
     return vars ~= nil and vars[option] == true
 end
 
---- Registers a fix named `name` (for the log): `apply` runs when its option is on
--- (at world load or when the option is ticked mid-game), `revert` when a fix
--- already applied is switched off. Several fixes can share one option.
-function ScriptFixes.register(option, name, apply, revert)
-    fixes[#fixes + 1] = { option = option, name = name, apply = apply, revert = revert, applied = false }
+--- Registers a fix named `name` (for the log): `apply` runs at world load when its
+-- option is on. Several fixes can share one option.
+function ScriptFixes.register(option, name, apply)
+    fixes[#fixes + 1] = { option = option, name = name, apply = apply }
 end
 
 --- Registers `fn(item)`, called just before a food item is eaten, emptied or used in
@@ -130,8 +129,6 @@ end
 
 -- Tags ------------------------------------------------------------------------
 
-local addedTags = {}
-
 local function getTag(name)
     return ItemTag.get(ResourceLocation.of(name))
 end
@@ -157,7 +154,6 @@ function ScriptFixes.addTag(fullType, tagName)
     local tags = item:getTags()
     if tags:contains(tag) then return end
     tags:add(tag)
-    addedTags[fullType .. "|" .. tagName] = true
 
     local byTag = ScriptManager.instance:getItemsTag(tag)
     if not byTag:contains(item) then byTag:add(item) end
@@ -167,22 +163,6 @@ function ScriptFixes.addTag(fullType, tagName)
         local list = input:getPossibleInputItems()
         if not list:contains(item) then list:add(item) end
         if not used:contains(recipe:getName()) then used:add(recipe:getName()) end
-    end)
-end
-
---- Takes back a tag given by addTag (never one vanilla gave).
-function ScriptFixes.removeTag(fullType, tagName)
-    if not addedTags[fullType .. "|" .. tagName] then return end
-    addedTags[fullType .. "|" .. tagName] = nil
-    local item, tag = ScriptFixes.getItem(fullType), getTag(tagName)
-    if not item or not tag then return end
-    item:getTags():remove(tag)
-    ScriptManager.instance:getItemsTag(tag):remove(item)
-
-    local used = item:getUsedInRecipes()
-    eachTagInput(tag, function(recipe, input)
-        input:getPossibleInputItems():remove(item)
-        used:remove(recipe:getName())
     end)
 end
 
@@ -231,32 +211,20 @@ function ScriptFixes.newFixer(line)
     return fixing:getFixers():get(0)
 end
 
--- Switching fixes on and off ------------------------------------------------------
-
-local function run(fix, enabled)
-    local fn = enabled and fix.apply or fix.revert
-    local ok, err = pcall(fn)
-    if not ok then log(fix.name .. " failed: " .. tostring(err)) end
-    -- Marked either way: a fix that errors is not retried every ten minutes.
-    fix.applied = enabled
-end
-
-local function update()
-    for i = 1, #fixes do
-        local fix = fixes[i]
-        local enabled = ScriptFixes.isEnabled(fix.option)
-        if enabled ~= fix.applied then run(fix, enabled) end
-    end
-end
+-- Applying the fixes ----------------------------------------------------------------
 
 local function onWorldLoad()
     -- The scripts are fresh vanilla ones at every world load.
-    for i = 1, #fixes do fixes[i].applied = false end
-    update()
+    for i = 1, #fixes do
+        local fix = fixes[i]
+        if ScriptFixes.isEnabled(fix.option) then
+            local ok, err = pcall(fix.apply)
+            if not ok then log(fix.name .. " failed: " .. tostring(err)) end
+        end
+    end
 end
 
 Events.OnLoadMapZones.Add(onWorldLoad)
-Events.EveryTenMinutes.Add(update)
 
 -- Hooks where a food item's ReplaceOnUse is used ------------------------------------
 -- Each runs where the action completes: the server in multiplayer, the game in

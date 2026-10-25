@@ -2,7 +2,7 @@
 
 A set of fixes for Build 42.20, mostly for multiplayer. Install it on both the server and the clients.
 
-Every fix can be turned off on the [b]Zomboid Fixes[/b] page of the sandbox settings, and is on by default unless it says otherwise. Each one below names its option; the item and recipe fixes share two options. If you are updating from a version before 3.0.0, check [i]Admin Tag[/i], [i]Item Data Fixes[/i] and [i]Recipe And Repair Fixes[/i]: they replace older options and start at their default. Fixes marked [b](beta)[/b] are new and not fully tested yet.
+Every fix can be turned off on the [b]Zomboid Fixes[/b] page of the sandbox settings, and is on by default unless it says otherwise. Each one below names its option; the item and recipe fixes share two options. If you are updating from a version before 3.0.0, check [i]Admin Tag[/i], [i]Item Data Fixes (Requires Restart)[/i] and [i]Recipe And Repair Fixes (Requires Restart)[/i]: they replace older options and start at their default. Fixes marked [b](beta)[/b] are new and not fully tested yet.
 
 Found a problem? Post it in this thread and say which fix, whether it was single player or a server, and what you did.
 
@@ -53,7 +53,7 @@ Option: [i]Hear Other Players Add Ingredients[/i]
 In vanilla multiplayer, only the cook hears an ingredient going into a soup, stew, salad or drink. Now everyone nearby hears it. Invisible players stay silent. (Crafting sounds are already shared by the game.)
 
 [b]Clothing wear down rework[/b]
-Option: [i]Clothing Wear Down Rework[/i]
+Option: [i]Clothing Wear Down Rework (Requires Restart)[/i]
 In vanilla multiplayer, a zombie attack that your clothing or armor stops does not wear it down, so armor with full protection lasts forever, and clothing destroyed while worn drops only on your own screen and comes back on relog. Now your own game rolls every zombie attack that lands on you, from any zombie, and sends each one to the server, which wears your clothing down like in single player. Destroyed clothing falls off for everyone and stays destroyed, and no plain copy of it (a white scarf for a green one) is left on your character. Wounds work as before.
 
 [b]Watering plants uses water once (beta)[/b]
@@ -255,11 +255,11 @@ Option: [i][BETA] Crafting Stations Stay Reachable[/i]
 Once something below a forge, kiln, furnace or other crafting station on its tile was removed, the server could no longer find the station, and every craft there stuck at 100%. The server now keeps the stations near each player up to date.
 
 [b]Scrapping never deletes container contents (beta)[/b]
-Option: [i][BETA] Scrapping Never Deletes Container Contents[/i]
+Option: [i][BETA] Scrapping Never Deletes Container Contents (Requires Restart)[/i]
 Scrapping a forged gold or silver key ring used to delete every key on it, and cutting up a sack, sandbag, laundry or mail bag, or making a hollow book from one that already hid something, deleted what was inside. Those recipes now only take an empty container, like the bag recipes already do; empty it first.
 
 [b]Barricade fixes (beta)[/b]
-Option: [i][BETA] Barricade Fixes[/i]
+Option: [i][BETA] Barricade Fixes (Requires Restart)[/i]
 A plank barricade takes 2 nails, as the right-click menu (which asks for 2) and the barricade itself show; it took only 1. Once the last plank is used, the barricade cursor turns red and a queued barricade stops, instead of running to the end and building nothing.
 
 [b]Mechanics XP limit survives reloads (beta)[/b]
@@ -275,7 +275,7 @@ Option: [i][BETA] Max Item Size Checks Each Item[/i]
 Bags with a max item size (ALICE belts and chest rigs, toolboxes, totes, first aid kits...) checked it against everything dragged in at once, so only 1 to 4 magazines went into ALICE webbing per drag. Each item is now checked on its own, when dragging and with the transfer same type button. Picking items up from the floor straight into such a bag still stops at the limit; that check is in Java.
 
 [b]No max item size limit (off by default)[/b]
-Option: [i]No Max Item Size Limit (Off By Default)[/i]
+Option: [i]No Max Item Size Limit (Off By Default) (Requires Restart)[/i]
 Removes the max item size of every bag that has one, mods' bags included, so only the bag's capacity limits what goes in. A balance change rather than a fix, so it is off unless the server turns it on.
 
 [b]Paper map markings are kept (beta)[/b]
@@ -339,78 +339,78 @@ Saving the options no longer resets or deletes the mod options, or the Key Bindi
 With Plysken Attachments Reborn, the Hotbar 6, 7 and 8 keys in the Key Bindings tab show the key you set and can be changed again, instead of a second copy of each showing 6, 7 and 8 in game, and hotbar keys set with Shift, Ctrl or Alt no longer also fire without it.
 
 [h2]Items and recipes[/h2]
-Two options cover all of these: [i]Item Data Fixes[/i] for item properties, and [i]Recipe And Repair Fixes[/i] for recipes and repairs.
+Two options cover all of these: [i]Item Data Fixes (Requires Restart)[/i] for item properties, and [i]Recipe And Repair Fixes (Requires Restart)[/i] for recipes and repairs.
 
 [b]Metal shin armor run speed[/b]
-Option: [i]Item Data Fixes[/i]
+Option: [i]Item Data Fixes (Requires Restart)[/i]
 Shin armor run speeds follow the same pattern as thigh armor. Articulated Metal Shin Armor runs at 0.95 (was 0.85, slower than plain metal), Spiked Articulated Metal Shin Armor at 0.90 (was 0.80), and spiked metal and spiked scrap metal shin armor at 0.85 (was 0.90, no cost for the spikes). Plain metal and scrap metal shin armor stay at 0.90.
 
 [b]Chainmail sleeve combat speed[/b]
-Option: [i]Item Data Fixes[/i]
+Option: [i]Item Data Fixes (Requires Restart)[/i]
 Full chainmail sleeves no longer have their combat speed penalties swapped between the right and left arm.
 
 [b]Tire shoulder pads[/b]
-Option: [i]Item Data Fixes[/i]
+Option: [i]Item Data Fixes (Requires Restart)[/i]
 The left tire shoulder pad wears out like the right one, and both protect their own upper arm instead of the torso.
 
 [b]Spiked thigh armor can change side[/b]
-Option: [i]Item Data Fixes[/i]
+Option: [i]Item Data Fixes (Requires Restart)[/i]
 The right spiked metal and spiked scrap metal thigh armor can be moved to the left thigh, like every other thigh armor.
 
 [b]Spiked shoulder pads can be smelted[/b]
-Option: [i]Recipe And Repair Fixes[/i]
+Option: [i]Recipe And Repair Fixes (Requires Restart)[/i]
 Spiked articulated metal shoulder pads can be smelted like the plain ones.
 
 [b]Knee pads and gaiters spawn in pairs[/b]
-Option: [i]Item Data Fixes[/i]
+Option: [i]Item Data Fixes (Requires Restart)[/i]
 The plain left knee pad and the right gaiter spawn with their other half, like every other pair.
 
 [b]Bow tie weight[/b]
-Option: [i]Item Data Fixes[/i]
+Option: [i]Item Data Fixes (Requires Restart)[/i]
 The full bow tie weighs 0.1 instead of 1.0.
 
 [b]Sawn-off double barrel shotgun repair[/b]
-Option: [i]Recipe And Repair Fixes[/i]
+Option: [i]Recipe And Repair Fixes (Requires Restart)[/i]
 The sawn-off double barrel shotgun can be repaired, with itself or the full double barrel shotgun.
 
 [b]Sawn-off shotgun loading sounds[/b]
-Option: [i]Item Data Fixes[/i]
+Option: [i]Item Data Fixes (Requires Restart)[/i]
 The sawn-off pump shotgun plays its start and stop loading sounds and an unloading sound.
 
 [b]Pump shotguns take the x2 scope[/b]
-Option: [i]Item Data Fixes[/i]
+Option: [i]Item Data Fixes (Requires Restart)[/i]
 The x2 scope fits the pump shotgun and the sawn-off pump shotgun, which have a model and a place for it.
 
 [b]Katana can be sharpened[/b]
-Option: [i]Recipe And Repair Fixes[/i]
+Option: [i]Recipe And Repair Fixes (Requires Restart)[/i]
 The katana and the broken katana can be sharpened like the other long blades.
 
 [b]Forged pot pasta[/b]
-Option: [i]Recipe And Repair Fixes[/i]
+Option: [i]Recipe And Repair Fixes (Requires Restart)[/i]
 Pasta cooked in a forged cooking pot gives back the forged pot instead of a normal one.
 
 [b]Copper saucepan bowls[/b]
-Option: [i]Recipe And Repair Fixes[/i]
+Option: [i]Recipe And Repair Fixes (Requires Restart)[/i]
 Pasta and rice cooked in a copper saucepan can be split into bowls, giving back the copper saucepan.
 
 [b]Clay bowls stay clay bowls[/b]
-Option: [i]Recipe And Repair Fixes[/i]
+Option: [i]Recipe And Repair Fixes (Requires Restart)[/i]
 Splitting a pot into clay bowls gives clay bowls of food, and beans, oatmeal, cereal and cake made with a clay bowl give the clay bowl back.
 
 [b]Pumpkin and sunflower seed packets[/b]
-Option: [i]Recipe And Repair Fixes[/i]
+Option: [i]Recipe And Repair Fixes (Requires Restart)[/i]
 Opening a pumpkin or sunflower seed packet you made gives back the 25 seeds packing it took, instead of 5. Packets found as loot still give 5, as in vanilla.
 
 [b]Leek and grapefruit nutrition[/b]
-Option: [i]Item Data Fixes[/i]
+Option: [i]Item Data Fixes (Requires Restart)[/i]
 Leeks, jars of leeks and grapefruits have real nutrition values instead of absurd carbohydrates and protein.
 
 [b].44 box weights[/b]
-Option: [i]Item Data Fixes[/i]
+Option: [i]Item Data Fixes (Requires Restart)[/i]
 The .44 Magnum box and carton weigh in line with the other ammunition.
 
 [b]Minor item fixes[/b]
-Option: [i]Item Data Fixes[/i]
+Option: [i]Item Data Fixes (Requires Restart)[/i]
 The Rangers baseball shirt covers the arms, the red baseball cap falls off like the others, the seafood cooler makes cooler sounds, and the metal, copper, gold, silver and tumbler hot drinks and the clay bowl fruit salad have names.
 
 [h2]Fixes for other mods[/h2]

@@ -10,10 +10,10 @@
     jewellery boxes and small first aid kits (0.3), wallets and photo albums (0.2).
 
     With this option on, every item script with a MaxItemSize gets 0 (no limit) at
-    world load, on the client and the server alike (ScriptFixes, re-checked every ten
-    game minutes), so the bag's own capacity is the only limit, in every check:
-    dragging, the transfer action, floor pickups and the server's transaction checks.
-    Mods' bags are included. Switching it off puts each value back.
+    world load, on the client and the server alike (ScriptFixes), so the bag's own
+    capacity is the only limit, in every check: dragging, the transfer action, floor
+    pickups and the server's transaction checks. Mods' bags are included. Changing
+    the option takes effect at the next world load.
 --]]
 
 require "ZomboidFixesB42_ScriptFixes"
@@ -22,25 +22,14 @@ ZomboidFixesB42 = ZomboidFixesB42 or {}
 
 local ScriptFixes = ZomboidFixesB42.ScriptFixes
 
--- [Item script] = the MaxItemSize it had.
-local original = {}
-
 ScriptFixes.register("RemoveMaxItemSize", "RemoveMaxItemSize",
     function()
-        original = {}
         local items = ScriptManager.instance:getAllItems()
         for i = 0, items:size() - 1 do
             local item = items:get(i)
             local size = item:getMaxItemSize()
             if size and size > 0 then
-                original[item] = size
                 item:DoParam("MaxItemSize", "0")
             end
         end
-    end,
-    function()
-        for item, size in pairs(original) do
-            item:DoParam("MaxItemSize", tostring(size))
-        end
-        original = {}
     end)

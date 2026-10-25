@@ -62,7 +62,4 @@ ScriptFixes.register(OPTION, "ScrapFullContainers",
                 ScriptFixes.setRecipeCall(recipe, "OnTest", "ZomboidFixesB42.RecipeOnTestEmptyContainer")
             end
         end
-    end,
-    function()
-        -- The test passes everything while the option is off.
     end)

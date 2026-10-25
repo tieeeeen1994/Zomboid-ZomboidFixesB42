@@ -47,9 +47,13 @@ local function barricadeRecipe()
     return recipe
 end
 
---- Nails a plank barricade takes with the fix in place.
+-- The nails input this file added to the recipe at world load, nil when it did not.
+local added = nil
+
+--- Nails a plank barricade takes: two once the recipe has the second input (an
+-- option changed mid-game only takes effect at the next world load).
 function ZomboidFixesB42.barricadeNailsNeeded()
-    return ScriptFixes.isEnabled(OPTION) and 2 or 1
+    return added and 2 or 1
 end
 
 --- Leaves one copy of `name` in each input item's used-in list.
@@ -72,11 +76,12 @@ local function dedupeUsedIn(recipe)
     end
 end
 
-local added = nil
+-- The scripts are fresh at every world load, so is the recipe's list of inputs
+-- (OnInitGlobalModData comes before the OnLoadMapZones that applies the fixes).
+Events.OnInitGlobalModData.Add(function() added = nil end)
 
 ScriptFixes.register(OPTION, "BarricadeTwoNails",
     function()
-        added = nil
         local recipe = barricadeRecipe()
         if not recipe then return end
         local inputs = recipe:getInputs()
@@ -91,12 +96,4 @@ ScriptFixes.register(OPTION, "BarricadeTwoNails",
         added = inputs:get(before)
         recipe:OnPostWorldDictionaryInit()
         dedupeUsedIn(recipe)
-    end,
-    function()
-        local recipe = added and barricadeRecipe()
-        if recipe then
-            recipe:getInputs():remove(added)
-            recipe:getIoLines():remove(added)
-        end
-        added = nil
     end)

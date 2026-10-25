@@ -122,9 +122,9 @@ end
 -- ---------------------------------------------------------------------------
 
 -- Item IDs whose removeOnBroken flag this file cleared, so it knows which breaks
--- vanilla would have dropped and which flags to put back if the option goes off.
+-- vanilla would have dropped. Switching the option off mid-game leaves the flags
+-- cleared until the next relog, which gives them back (nothing polls for it).
 local suppressed = {}
-local suppressedCount = 0
 
 -- Item IDs already reported this session, so one break is only reported once.
 local reported = {}
@@ -149,10 +149,7 @@ local function checkItem(item)
 
     if item:isRemoveOnBroken() then
         item:setRemoveOnBroken(false)
-        if not suppressed[id] then
-            suppressed[id] = true
-            suppressedCount = suppressedCount + 1
-        end
+        suppressed[id] = true
     end
 
     if not suppressed[id] or reported[id] or item:getCondition() > 0 then return false end
@@ -161,23 +158,16 @@ local function checkItem(item)
     return true
 end
 
---- Walk a local player's worn clothing. With restore set, put the flags back
--- instead.
-local function checkPlayer(player, restore)
+--- Walk a local player's worn clothing.
+local function checkPlayer(player)
     local wornItems = player:getWornItems()
     if not wornItems then return end
 
     local broken = {}
     for i = 0, wornItems:size() - 1 do
         local item = wornItems:getItemByIndex(i)
-        if item and instanceof(item, "Clothing") then
-            if not restore then
-                if checkItem(item) then
-                    table.insert(broken, item)
-                end
-            elseif suppressed[item:getID()] then
-                item:setRemoveOnBroken(true)
-            end
+        if item and instanceof(item, "Clothing") and checkItem(item) then
+            table.insert(broken, item)
         end
     end
 
@@ -492,28 +482,14 @@ local function onPlayerUpdate(player)
     scan(player)
 end
 
-local function checkLocalPlayers(restore)
+local function onTick()
+    if not isEnabled() then return end
     for i = 0, getNumActivePlayers() - 1 do
         local player = getSpecificPlayer(i)
         if player and not player:isDead() then
-            checkPlayer(player, restore)
-            if not restore then
-                checkGhosts(player)
-            end
+            checkPlayer(player)
+            checkGhosts(player)
         end
-    end
-end
-
-local function onTick()
-    if isEnabled() then
-        checkLocalPlayers(false)
-    elseif suppressedCount > 0 then
-        -- Switched off mid-game. Worn items get their flag back now; anything
-        -- taken off meanwhile only matters once worn again, and gets it back on
-        -- the next relog.
-        checkLocalPlayers(true)
-        suppressed = {}
-        suppressedCount = 0
     end
 end
 
@@ -524,7 +500,7 @@ local function onClothingUpdated(character)
     if not isEnabled() then return end
     if not instanceof(character, "IsoPlayer") or not character:isLocalPlayer() then return end
     markLocalRoll(character)
-    checkPlayer(character, false)
+    checkPlayer(character)
 end
 
 Events.OnPlayerUpdate.Add(onPlayerUpdate)

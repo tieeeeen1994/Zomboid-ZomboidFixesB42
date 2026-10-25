@@ -40,27 +40,14 @@ require "ZomboidFixesB42_ScriptFixes"
 local ScriptFixes = ZomboidFixesB42.ScriptFixes
 
 local SAWN_OFF_DB = "Base.DoubleBarrelShotgunSawnoff"
-local repairState = {}
 
 ScriptFixes.register("RecipeFixes", "SawnOffDoubleBarrelRepair",
     function()
         local fixing = ScriptFixes.getFixing("Fix DoubleBarrelShotgun")
         if not fixing or not ScriptFixes.getItem(SAWN_OFF_DB) then return end
         local required = fixing:getRequiredItem()
-        if not required:contains(SAWN_OFF_DB) then
-            required:add(SAWN_OFF_DB)
-            repairState.required = true
-        end
-        local fixer = ScriptFixes.newFixer(SAWN_OFF_DB .. "; Aiming=2")
-        fixing:getFixers():add(fixer)
-        repairState.fixer = fixer
-    end,
-    function()
-        local fixing = ScriptFixes.getFixing("Fix DoubleBarrelShotgun")
-        if not fixing then return end
-        if repairState.required then fixing:getRequiredItem():remove(SAWN_OFF_DB) end
-        if repairState.fixer then fixing:getFixers():remove(repairState.fixer) end
-        repairState = {}
+        if not required:contains(SAWN_OFF_DB) then required:add(SAWN_OFF_DB) end
+        fixing:getFixers():add(ScriptFixes.newFixer(SAWN_OFF_DB .. "; Aiming=2"))
     end)
 
 ScriptFixes.register("ItemDataFixes", "SawnOffShotgunSounds",
@@ -72,15 +59,6 @@ ScriptFixes.register("ItemDataFixes", "SawnOffShotgunSounds",
             EjectAmmoSound = "JS2000ShotgunEjectAmmo",
             EjectAmmoStopSound = "SawnOffJS2000ShotgunEjectAmmoStop",
         } })
-    end,
-    function()
-        ScriptFixes.setParams({ ["Base.ShotgunSawnoff"] = {
-            InsertAmmoStartSound = "",
-            InsertAmmoStopSound = "",
-            EjectAmmoStartSound = "",
-            EjectAmmoSound = "",
-            EjectAmmoStopSound = "",
-        } })
     end)
 
 local X2_SCOPE_MOUNT_ON = "Base.HuntingRifle;Base.VarmintRifle;Base.AssaultRifle;Base.AssaultRifle2;"
@@ -91,9 +69,6 @@ ScriptFixes.register("ItemDataFixes", "ShotgunScopeMount",
         ScriptFixes.setParams({ ["Base.x2Scope"] = {
             MountOn = X2_SCOPE_MOUNT_ON .. ";Base.Shotgun;Base.ShotgunSawnoff",
         } })
-    end,
-    function()
-        ScriptFixes.setParams({ ["Base.x2Scope"] = { MountOn = X2_SCOPE_MOUNT_ON } })
     end)
 
 local KATANAS = { "Base.Katana", "Base.Katana_Broken" }
@@ -102,10 +77,5 @@ ScriptFixes.register("RecipeFixes", "KatanaSharpening",
     function()
         for _, fullType in ipairs(KATANAS) do
             ScriptFixes.addTag(fullType, "base:sharpenable")
-        end
-    end,
-    function()
-        for _, fullType in ipairs(KATANAS) do
-            ScriptFixes.removeTag(fullType, "base:sharpenable")
         end
     end)

@@ -150,8 +150,11 @@ or methods exist.
   semicolons and the code accepts commas too (the value set in game is a quoted Lua string).
 - Sandbox vars do not exist yet when a mod file loads. `IsoWorld.init` calls `SandboxOptions.load` (server/SP; a client
   already has the server's) before `GlobalModData.init`, which fires `OnInitGlobalModData` — so load-time work that depends
-  on an option (e.g. item script `DoParam`) goes there. There is no Lua event for sandbox options changing mid-game;
-  re-check on a timer (`EveryTenMinutes`) if a load-time change must follow the option. Recipe edits must wait for
+  on an option (e.g. item script `DoParam`) goes there. There is no Lua event for sandbox options changing mid-game,
+  and **no timer may poll for it** (user's rule, 2026-10-25, all mods: a performance cost for something admins rarely
+  do): load-time work reads the option once at world load, its name ends in " (Requires Restart)" (forum.txt
+  quotes it the same way) and its tooltip says a change takes effect after a restart. Code that already runs anyway
+  may read an option live. Recipe edits must wait for
   `OnLoadMapZones` (see "Item and recipe scripts at run time"). Leaving a game runs `ScriptManager.Reset` + `Load`
   without always reloading Lua, so a file-level "already applied" flag must be cleared at world load.
   UI strings go in `Translate/EN/IG_UI.json` as `IGUI_ZomboidFixesB42_*`.
@@ -558,6 +561,24 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
   clamps to the item's (or script's) max capacity, not the condition-reduced `getContainerCapacity()`, and writes
   `modData.contentAmount` + the item's capacity. Repairing an installed part = `ISFixVehiclePartAction` (shared, server
   `complete`); its 42.21 `complete` errors on gas tanks (`*_GasTankWelding.lua`).
+
+### Vehicle top speed (42.21)
+
+Traced 2026-10-25 (faster race cars, not built). **Hard cap**: `BaseVehicle.updateVelocityMultiplier` (private,
+every update) scales any wheeled car's horizontal velocity above 34 down to 34 (`Bullet.setVehicleVelocityMultiplier`;
+`Bullet` is not exposed to Lua), and PZBullet64.dll computes km/h as 3.6 × |linear velocity| (Bullet's stock
+formula, seen in the disassembly), so **no car passes ~122 km/h on the flat** whatever its script; a higher
+`maxSpeed` / `engineForce` only reaches it sooner. `CarController.control_ForwardNew`: engine force =
+power × (0.3 + rpm / 30000) × (1 - km/h / 200) (zero at 200 whatever the script says), fading to zero from the
+car's `maxSpeed` to `maxSpeed + 20` (Speed Demon from × 1.15; Sunday Driver × 0.75, fading from 60%); gears spread
+over `maxSpeed`; an MP client cuts the engine at server option `SpeedLimit` (default 70). Vanilla tops: race cars
+and Cossette 120, Mercia Lang 105, police interceptors 100. `BaseVehicle.maxSpeed` is copied from the script in
+`createPhysics`; engine power is set per car at spawn (`Vehicles.Create.Engine`), saved, and reaches clients with
+the engine state (`transmitEngine`, server only, VehicleUpdatePacket flag 4); `setEngineFeature(q, loudness, p)`
+stores loudness × 0.37, so follow it with `updatePartStats()` (recomputes loudness from the muffler). `VehicleScript:Load(name,
+"vehicle X { key = v, }")` on a loaded script sets only those keys (`Loaded()`, which scales sizes and appends the
+`mechanicType` digit to part items, is not re-run). `mechanicType` 3 = the `…3` performance-grade part items
+(race cars, Cossette, Mercia Lang, Dash Elite, Primani, police Dash Elites, their wrecks).
 
 ### Where a vehicle wears down (42.21)
 
@@ -2046,7 +2067,7 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   swapped for one render, and the state is kept in `Zomboid/Lua/ZomboidFixesB42_FullBright.ini` (vanilla
   restores Admin Powers only in SP, from `CheatPanel.ini`, written only by the window's Save).
 - `shared/ZomboidFixesB42_ScriptFixes.lua` + `*_ItemFixesClothing/Weapons/Food.lua`: item and recipe data fixes, behind
-  `ItemDataFixes` / `RecipeFixes`, applied at `OnLoadMapZones` and re-checked every ten minutes
-  (`ScriptFixes.register(option, name, apply, revert)`, several fixes per option, `name` for the log;
-  `setParams`, `addTag`/`removeTag`, `newMapperEntry`, `setRecipeCall`, `newFixer`, `onBeforeUse` hooks in
+  `ItemDataFixes` / `RecipeFixes`, applied once at `OnLoadMapZones` (a changed option waits for the next world load)
+  (`ScriptFixes.register(option, name, apply)`, several fixes per option, `name` for the log;
+  `setParams`, `addTag`, `newMapperEntry`, `setRecipeCall`, `newFixer`, `onBeforeUse` hooks in
   ISEatFoodAction / ISDumpContentsAction / ISAddItemInRecipe for per-instance ReplaceOnUse).

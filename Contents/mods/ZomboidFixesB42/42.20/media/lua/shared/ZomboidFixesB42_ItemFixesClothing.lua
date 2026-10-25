@@ -54,41 +54,26 @@ require "ZomboidFixesB42_ScriptFixes"
 
 local ScriptFixes = ZomboidFixesB42.ScriptFixes
 
-local SHIN_SPEEDS = {
-    -- full type = { fixed, vanilla }
-    ["Base.GreaveSpike_Left"] = { "0.85", "0.9" },
-    ["Base.GreaveSpike_Right"] = { "0.85", "0.9" },
-    ["Base.GreaveSpikeScrap_Left"] = { "0.85", "0.9" },
-    ["Base.GreaveSpikeScrap_Right"] = { "0.85", "0.9" },
-    ["Base.ShinKneeGuard_L_Metal"] = { "0.95", "0.85" },
-    ["Base.ShinKneeGuard_R_Metal"] = { "0.95", "0.85" },
-    ["Base.ShinKneeGuardSpike_L_Metal"] = { "0.9", "0.8" },
-    ["Base.ShinKneeGuardSpike_R_Metal"] = { "0.9", "0.8" },
-}
-
-local function setShinSpeeds(index)
-    local params = {}
-    for fullType, values in pairs(SHIN_SPEEDS) do
-        params[fullType] = { RunSpeedModifier = values[index] }
-    end
-    ScriptFixes.setParams(params)
-end
-
 ScriptFixes.register("ItemDataFixes", "ShinArmorSpeed",
-    function() setShinSpeeds(1) end,
-    function() setShinSpeeds(2) end)
+    function()
+        -- vanilla: greaves 0.9, metal shin and knee guards 0.85, spiked ones 0.8
+        ScriptFixes.setParams({
+            ["Base.GreaveSpike_Left"] = { RunSpeedModifier = "0.85" },
+            ["Base.GreaveSpike_Right"] = { RunSpeedModifier = "0.85" },
+            ["Base.GreaveSpikeScrap_Left"] = { RunSpeedModifier = "0.85" },
+            ["Base.GreaveSpikeScrap_Right"] = { RunSpeedModifier = "0.85" },
+            ["Base.ShinKneeGuard_L_Metal"] = { RunSpeedModifier = "0.95" },
+            ["Base.ShinKneeGuard_R_Metal"] = { RunSpeedModifier = "0.95" },
+            ["Base.ShinKneeGuardSpike_L_Metal"] = { RunSpeedModifier = "0.9" },
+            ["Base.ShinKneeGuardSpike_R_Metal"] = { RunSpeedModifier = "0.9" },
+        })
+    end)
 
 ScriptFixes.register("ItemDataFixes", "SpikedThighArmorSide",
     function()
         ScriptFixes.setParams({
             ["Base.ThighMetalSpike_R"] = { ClothingItemExtra = "Base.ThighMetalSpike_L" },
             ["Base.ThighScrapMetalSpike_R"] = { ClothingItemExtra = "Base.ThighScrapMetalSpike_L" },
-        })
-    end,
-    function()
-        ScriptFixes.setParams({
-            ["Base.ThighMetalSpike_R"] = { ClothingItemExtra = "Base.ThighMetalSpike_R" },
-            ["Base.ThighScrapMetalSpike_R"] = { ClothingItemExtra = "Base.ThighScrapMetalSpike_R" },
         })
     end)
 
@@ -99,11 +84,6 @@ ScriptFixes.register("RecipeFixes", "SpikedShoulderPadSmelting",
         for _, fullType in ipairs(SPIKED_PADS) do
             ScriptFixes.addTag(fullType, "base:smeltablesteelmedium")
         end
-    end,
-    function()
-        for _, fullType in ipairs(SPIKED_PADS) do
-            ScriptFixes.removeTag(fullType, "base:smeltablesteelmedium")
-        end
     end)
 
 ScriptFixes.register("ItemDataFixes", "KneepadGaiterPairs",
@@ -112,20 +92,11 @@ ScriptFixes.register("ItemDataFixes", "KneepadGaiterPairs",
             ["Base.Kneepad_Left"] = { SpawnWith = "Base.Kneepad_Right" },
             ["Base.Gaiter_Right"] = { SpawnWith = "Base.Gaiter_Left" },
         })
-    end,
-    function()
-        ScriptFixes.setParams({
-            ["Base.Kneepad_Left"] = { SpawnWith = "" },
-            ["Base.Gaiter_Right"] = { SpawnWith = "" },
-        })
     end)
 
 ScriptFixes.register("ItemDataFixes", "BowTieWeight",
     function()
         ScriptFixes.setParams({ ["Base.Tie_BowTieFull"] = { Weight = "0.1" } })
-    end,
-    function()
-        ScriptFixes.setParams({ ["Base.Tie_BowTieFull"] = { Weight = "1.0" } })
     end)
 
 ScriptFixes.register("ItemDataFixes", "ChainmailSleeveSpeed",
@@ -134,12 +105,6 @@ ScriptFixes.register("ItemDataFixes", "ChainmailSleeveSpeed",
             ["Base.Chainmail_SleeveFull_R"] = { CombatSpeedModifier = "0.95" },
             ["Base.Chainmail_SleeveFull_L"] = { CombatSpeedModifier = "0.97" },
         })
-    end,
-    function()
-        ScriptFixes.setParams({
-            ["Base.Chainmail_SleeveFull_R"] = { CombatSpeedModifier = "0.97" },
-            ["Base.Chainmail_SleeveFull_L"] = { CombatSpeedModifier = "0.95" },
-        })
     end)
 
 ScriptFixes.register("ItemDataFixes", "TireShoulderPads",
@@ -147,11 +112,5 @@ ScriptFixes.register("ItemDataFixes", "TireShoulderPads",
         ScriptFixes.setParams({
             ["Base.Shoulderpad_Tire_L"] = { ConditionLowerChanceOneIn = "2", BloodLocation = "UpperArm_L" },
             ["Base.Shoulderpad_Tire_R"] = { BloodLocation = "UpperArm_R" },
-        })
-    end,
-    function()
-        ScriptFixes.setParams({
-            ["Base.Shoulderpad_Tire_L"] = { ConditionLowerChanceOneIn = "5", BloodLocation = "UpperBody" },
-            ["Base.Shoulderpad_Tire_R"] = { BloodLocation = "UpperBody" },
         })
     end)
