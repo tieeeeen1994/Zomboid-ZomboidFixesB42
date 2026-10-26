@@ -75,6 +75,13 @@ game, and a test scenario in the Beta section below).
 
 ## Beta features: what playing each one should check
 
+- [ ] GunworksGripSync (2026-10-26), with Guns of Tien (and Post-93) on a server, two clients: player B holds an Uzi,
+      an MP5K or an MP7 (or Heavy Ordnance's RPG); A sees the custom pose. B walks out of A's range (over 5 s) and
+      back, then relogs, then dies and respawns holding one: A sees the custom pose again within a fraction of a
+      second each time (with the option off it stays vanilla until B changes weapons). B swaps guns and puts the gun
+      away: the pose follows at once. Single player and split screen: a second player picking up the same gun as the
+      first gets its pose. No errors without Gunworks loaded.
+
 - [ ] GoMTooltipLineLength, Information lines (2026-10-19): with Guns of Tien, hover a Double Barrel (its sawn-off stock
       line), an M60 (its bipod line) and a 7.62x39 US round: every Information line wraps to the width of the item's own
       rows (a round's at least 40 digits wide), carried-over lines indented, nothing cut off; a scope's gun list still

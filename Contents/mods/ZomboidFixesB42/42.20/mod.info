@@ -21,6 +21,7 @@ description=- Hutches and nest boxes get dirty four times more slowly, adjustabl
 description=- Grab Eggs takes every egg in the nest box, also with Timed Action Instant or fast forward (beta).
 description=- Guns of Marz tooltips wrap instead of stretching across the screen: attachments' gun lists and every Information line.
 description=- Guns of Marz guns show the magazine really in them, and its capacity, in their tooltip.
+description=- Gunworks guns with a held pose of their own (Heavy Ordnance's RPG, Guns of Tien's SMG stance) keep it for players coming back into range, relogging or respawning (beta).
 description=- Plysken Attachments Reborn's bag attachment slot box fits the tooltip font size and goes under other mods' tooltip lines.
 description=- Running players no longer vault stair railings by accident.
 description=- Fast forward in multiplayer, when every player votes for it, with actions, looting and cooking sped up too; right-click a speed to auto fast forward actions longer than 5 seconds.

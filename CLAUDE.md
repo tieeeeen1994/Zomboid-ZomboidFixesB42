@@ -2072,6 +2072,16 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   is wrapped to send the own Always Day, `RefreshCheats` re-sets the flag, the watermark's `drawTextRight` is
   swapped for one render, and the state is kept in `Zomboid/Lua/ZomboidFixesB42_FullBright.ini` (vanilla
   restores Admin Powers only in SP, from `CheatPanel.ini`, written only by the window's Save).
+- `client/ZomboidFixesB42_GunworksGripSync.lua` (option `GunworksGripSync`, beta): Gunworks' held-pose selector
+  (`WeaponSystems/Utils/GripAnim.lua`, variable `GunworksGripAnim`, local player from OnPlayerUpdate, remote ones
+  from a 3-tick OnTick sweep on clients) writes the variable only when its value changes in `lastGripByOnlineId`,
+  a cache keyed by online ID, not by character. A character rebuilt with the same ID (a remote player back after
+  `timeoutRemotePlayers`' 5 s, a relog, ID reuse, a respawn, a world loaded without a Lua reload; split-screen
+  players share one ID) holding the same gun never gets it, so others see vanilla's nodes until the weapon changes
+  (reproduced with lupa against the real GripAnim.lua). Gunworks' reload selector (`ReloadAnim/Sync.lua`) already
+  compares with the character's variable; the fix does the same for the grip every 10 ticks (local players, plus
+  `getOnlinePlayers()` on a client), with Gunworks' own `GripAnim.GetGripForGun`. Users: Heavy Ordnance's RPG, Guns
+  of Tien's short SMG stance.
 - `shared/ZomboidFixesB42_ScriptFixes.lua` + `*_ItemFixesClothing/Weapons/Food.lua`: item and recipe data fixes, behind
   `ItemDataFixes` / `RecipeFixes`, applied once at `OnLoadMapZones` (a changed option waits for the next world load)
   (`ScriptFixes.register(option, name, apply)`, several fixes per option, `name` for the log;

@@ -428,6 +428,10 @@ Guns of Marz tooltips wrap instead of stretching across the screen: the list of 
 Option: [i]Guns of Marz Magazine Tooltip[/i]
 A Guns of Marz gun's tooltip names the magazine really in it, with its capacity, instead of an earlier one.
 
+[b]Gunworks held poses (beta)[/b]
+Option: [i][BETA] Gunworks Held Pose Sync[/i]
+Gunworks lets a gun mod give a gun a held pose of its own, such as Heavy Ordnance's RPG or Guns of Tien's short SMG stance. Gunworks only set that pose when the gun in a player's hands changed, and remembered it per player number rather than per character, so a player who left your range and came back, relogged or respawned, or a second split-screen player, was shown in the vanilla pose (the gun often off their hands) until they changed weapons. Each player's pose is now checked a few times a second and given back.
+
 [b]Bag attachment slots tooltip box[/b]
 Option: [i]Bag Attachment Slots Tooltip Box[/i]
 Plysken Attachments Reborn's bag attachment slot box is drawn at the tooltip's real font size, so with a bigger font size the slot names no longer overlap each other or spill out of the box. It also starts under the lines other mods add to a bag's tooltip, such as Dynamic Backpack Upgrades' or Tien's Bag Upgrades' upgrade slots, whichever mod loads first.

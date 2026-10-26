@@ -207,6 +207,14 @@ option ZomboidFixesB42.GoMMagazineTooltip
     translation = ZomboidFixesB42_GoMMagazineTooltip,
 }
 
+option ZomboidFixesB42.GunworksGripSync
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_GunworksGripSync,
+}
+
 option ZomboidFixesB42.TooltipStacking
 {
     type = boolean,
