@@ -3531,7 +3531,15 @@ function ISEquippedItem:prerender()
     local visible = Hotbar.canUse(self.chr)
     if self.adminBtn and not self.adminBtn:isVisible() then visible = false end
     button:setVisible(visible)
-    if not visible then return end
+    if not visible then
+        -- initialise's shrinkWrap sized the sidebar for the button; give that strip back,
+        -- or the empty sidebar below the last button keeps catching the mouse.
+        local lowest = lowestButtonBottom(self)
+        if self.height > lowest and self.height <= button:getBottom() then
+            self:setHeight(lowest)
+        end
+        return
+    end
 
     local bottom = button:getBottom()
     if self.adminBtn then
@@ -3545,6 +3553,15 @@ function ISEquippedItem:prerender()
     if self.height < bottom then
         self:setHeight(bottom)
     end
+end
+
+-- checkToolTip finds the hovered button with checkBounds, which ignores visibility,
+-- so a hidden button would still show its tooltip over the empty space it leaves.
+local vanillaCheckBounds = ISEquippedItem.checkBounds
+
+function ISEquippedItem:checkBounds(item, x, y)
+    if item ~= nil and item == self.zomboidFixesHotbarBtn and not item:isVisible() then return false end
+    return vanillaCheckBounds(self, item, x, y)
 end
 
 local vanillaOnOptionMouseDown = ISEquippedItem.onOptionMouseDown
