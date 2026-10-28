@@ -80,7 +80,11 @@ or methods exist.
   path under `media/lua/<folder>`, runs each path once, at its first place in the list, from
   `ZomboidFileSystem.getAbsolutePath` = the last mod loaded that has it (`activeFileMap`, logged as `mod "X"
   overrides <path>`). So a later mod's file, even an empty one, replaces another mod's Lua file; scripts
-  (`media/scripts/...`) are replaced the same way. Translations are not: `Translator.tryFillMapFromMods` reads every
+  (`media/scripts/...`) are replaced the same way. Script files at **different** paths load in one list sorted by
+  lowercase path under media/scripts (42.21 `ScriptManager.Load`: vanilla's files first, then every mod's file
+  together, `template_*` names first; mod order plays no part), and a later `model` block of the same name resets
+  the earlier one, so a mod re-declaring another mod's model must put the file where it sorts after that mod's
+  (`GunsOfTien/` sorts before Guns of Marz's `MarzWeapons/`, so its re-declared MP5 models silently lost). Translations are not: `Translator.tryFillMapFromMods` reads every
   mod's `Translate/<LANG>/<File>.json` in mod order and merges by key (a later non-empty value wins). Every
   mod's sandbox-options.txt is read too (not traced in Java: many mods log "overrides media/sandbox-options.txt"
   and all their options exist).
