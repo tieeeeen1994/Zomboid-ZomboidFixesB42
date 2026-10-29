@@ -805,6 +805,17 @@ e.g. "Cow's Milk (Carton)", plus " (Sealed)" / " (Tainted)", "Empty %1" (just th
 prefixes "Fresh, " / "Stale, " / "Rotten, " / "Burnt, " / "Cooked, " / "Frozen"... So a display name is no stable key;
 compare liquids with `getFluidContainer():getPrimaryFluid():getFluidTypeString()` (vanilla FireFighting.lua does;
 `isPrimaryFluidType` is overloaded String / FluidType, so avoid it from Lua), `Fluid.Get(str)`, `getTranslatedName()`.
+Renaming one item (traced 2026-10-29): `setName(s)` (max 256) sets the `name` field that `getName` / `getDisplayName`
+return, with the "Worn, " / "Broken, " / "Bloody, " prefixes still added. `InventoryItem.save` writes the name as a
+plain string whenever it differs from `originalName` (the script's display name in the saving machine's language),
+so saves and every item send carry it; `customName` only sets flag 64 and modData `customName`, and
+`SyncItemFieldsPacket` carries the name only for a custom-named item. A name set on an MP server is the server's
+language in every copy it sends; a per-language name has to be set again on each client.
+Per-item icon: `InventoryItem.getTexture` (= `getIcon`, what the inventory and tooltips draw) returns
+`Texture.getSharedTexture(modData.customInventoryIcon)` when that modData key is a string naming a texture, else the
+item's own `texture` (no vanilla Lua sets it). modData is saved and sent with the item, so a server can set it.
+`setTexture(tex)` also works (vanilla's opened unlabeled cans) and is saved as the texture's name when it differs from
+`Item_<script Icon>`, but `Texture.trygetTexture` returns nil on a dedicated server, so only clients can set one.
 
 ### Admin powers kept by the server
 
