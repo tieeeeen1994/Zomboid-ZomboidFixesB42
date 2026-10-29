@@ -104,6 +104,10 @@ or methods exist.
   written `%%` even when the key takes no arguments (vanilla: `"%% full"`): the Translator runs every string through
   Java's formatter at load and a lone `%` logs `UnknownFormatConversionException ... ERROR: Formatting "<key>"`. Escaped double quotes (`\"`) inside a
   translation string do not work in game; quote with single quotes instead.
+  A **dedicated server has no mod translations** (42.21 `GameServer.main` runs `Translator.loadFiles` once, before
+  `doMinimumInit` loads the mods): `getText` of a mod key returns the key, `getTextOrNull` nil, and item scripts keep
+  their `DisplayName`. A name the server writes into an item (`setName`) must not come from a mod translation.
+  Java setters typed with game classes (`HandWeapon:setMuzzleFlashModelKey(ModelKey)`) throw when passed a string.
 - Server load from Lua: `getServerFPS()` is a constant 10; `getAverageFPS` / `getCPUTime` read `GameWindow` (client
   loop). `getPerformanceLocal()` (`PerformanceStatistic`) has `avg-update-period`, `max-update-period`, `min-update-period`
   (ms per server update), `fps`, memory counters, but the table is refilled only every `MultiplayerStatisticsPeriod`
