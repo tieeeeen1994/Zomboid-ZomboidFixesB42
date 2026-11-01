@@ -24,6 +24,14 @@ option ZomboidFixesB42.AnimalCarryAll
     translation = ZomboidFixesB42_AnimalCarryAll,
 }
 
+option ZomboidFixesB42.AnimalGroupCheats
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_AnimalGroupCheats,
+}
+
 option ZomboidFixesB42.ForagingDebugFixes
 {
     type = boolean,

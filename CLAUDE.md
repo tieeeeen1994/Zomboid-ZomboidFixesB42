@@ -920,6 +920,22 @@ Traced 2026-10-08 while reviewing Animals Attack Zombies (`~/Zomboid/Workshop/An
   single player). `animal:setDebugStress(v)` sets stress outright (Java `changeStress` has no hook, so holding an
   animal calm means resetting it). A remote animal takes the packet's facing only while not
   moving (`IsoPlayer.updateRemotePlayer` ~6952), so a server `faceThisObject` shows up to ~1 s late.
+  Re-read in 42.21 (2026-11-01): it also carries, to receivers with `AnimalCheats` or within 20 tiles (Manhattan),
+  age (days), weight, pregnant + `pregnantTime` (flag 16) and fertilized + `fertilizedTime` (2048) (both only for
+  `AnimalCheats` or Husbandry > 2; the client sets pregnant / fertilized false whenever the flag is absent), milk +
+  last milked (32), `maxMilkActual` (1024, cheats only), male `lastImpregnateTime` (4096), custom name, mother;
+  hutched animals too (`location` 1). Not carried: invincible, genome, `canHaveMilk` beyond the milk flag.
+- Breeding (42.21, `AnimalData`): `growUp` (each new day of age) adds 1 to `pregnantTime` while pregnant;
+  `checkPregnancy` (every `AnimalData.update`) births `Rand(minBaby, maxBaby)` once `pregnantTime >=
+  getPregnantPeriod()` (definition days × sandbox `AnimalPregnancyTime`, at least 8), only while `pregnantTime > 0`,
+  and above 80 stress loses the baby 1 in 50 per update. Natural mating (`IsoAnimal.fertilize(male, force)`): egg
+  layers get `fertilized` + `fertilizedTime = 1` (counts up daily, cleared past `fertilizedTimeMax`; eggs laid
+  meanwhile are fertile), others `pregnant` + `pregnantTime = 0`, `maleGenome` = the male's (null: the baby takes
+  the mother's, `AnimalGene.initGenesFromParents`). Vanilla's debug Impregnate / Fertilize just flip the flag.
+  `setCanHaveMilk(true)` refuses geriatric (> 0.8) and `nomilk` animals; `setMilkQuantity` clamps to
+  `maxMilkActual`. Hutch contents: `getAnimal(i)` (roosts 0 .. `getMaxAnimals() - 1`), `getAnimalInNestBox(i)`
+  (0 .. `getMaxNestBox()`); every square of a hutch has an `IsoHutch` whose `getHutch()` is the master;
+  `zone:getHutchsConnected()`.
 - Animal voices: `playBreedSound(id)` (missing id = silent) → `AnimalSoundState.start` → the emitter (nothing on a
   server) plus, with sandbox `AnimalSoundAttractZombies` (default off), a world sound of the definition's
   `idleSoundRadius/Volume` (cattle 50/30), which every MP client playing it sends to the server.
@@ -1962,7 +1978,8 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   limit): the first run resolves and confirms as usual (answers memoised), each later run re-resolves synchronously
   with them from `onRepeatTick` (at most one run a frame, a stall's backlog dropped); `hold`
   starts on `SlotButton:onMouseDown` / `OnKeyStartPressed` and polls `isMouseButtonDown(0)` / `isKeyDown(key)`, and
-  falls back to `click` when the first run had to ask or confirm. Keep-picking slots ignore it. Focus (`Bar:updateFocus`): many vanilla windows never `bringToTop` on a
+  falls back to `click` when the first run had to ask or confirm; a slot that picks a square or vehicle on the map
+  (`Hotbar.picksSquare`) is never offered `hold` and runs a saved one as `click`. Keep-picking slots ignore it. Focus (`Bar:updateFocus`): many vanilla windows never `bringToTop` on a
   click (ISInventoryPage), so on each press the bar brings itself, or the window it covers that was clicked, to the front. The walk stops at the first element that consumes mouse events (a context menu over the bar), else the bar came above the menu between press and release and the release clicked a slot instead of the option.
   Single player: only with `-debug` (`isDebugEnabled()`), every capability assumed, each action has vanilla's single
   player branch, server-only actions greyed out; the sidebar button goes under the lowest button (no Admin button),
@@ -2018,6 +2035,11 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   (`doInventoryMenu`) puts all of a kind down over the 3x3 round the admin with `AddWorldInventoryItem`, only once
   the zones under those squares have been fully loaded for 3.5 s (refused after 15 s; the client refuses first if its
   own copy is not), so a zone's catch-up replay never lands on animals just put down (see "Pen catch-up").
+- `*_AnimalGroupCheats.lua` (shared/server/client, option `AnimalGroupCheats`, beta): admin hotbar actions
+  `animals.cheat.<id>` (stress, hunger, thirst, health, age, breed, birth, milk, wool, acceptance, invincible),
+  each with value, picked square, scope (pen = zone + joined zones + their hutches, hutch, radius 5-30) and type
+  filter. One `animalGroupCheat` command; the server applies vanilla's setters to its animals (`Cheats.run`) and
+  answers with the count and online IDs, which the client outlines for 2.5 s. Values reach clients by AnimalPacket.
 - `*_AnimalZoneResync.lua` (client/server/shared, option `AnimalZoneResync`): the client mirrors `checkStreamed`
   per animal zone every second; a zone back after an hour boundary is checked 5 s later with its connected zones,
   in 10x10 blocks (`animalZoneCheck`: world items `x,y,id,fingerprint`, troughs' water and items). The server

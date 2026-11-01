@@ -314,13 +314,23 @@ end
 
 --- A slot's "Repeat" (slot.repeatMode, see "Repeating a slot"): nil runs it once per
 -- click, REPEAT_CLICK runs it again and again until it is clicked again, REPEAT_HOLD
--- while its mouse button or key is held.
+-- while its mouse button or key is held. A slot that picks a square on the map has
+-- no REPEAT_HOLD: the press is over by the time the square is picked, so it repeats
+-- until clicked again instead.
 local REPEAT_CLICK = "click"
 local REPEAT_HOLD = "hold"
 
-function Hotbar.repeatModeOf(slot)
-    if slot.repeatMode == REPEAT_CLICK or slot.repeatMode == REPEAT_HOLD then return slot.repeatMode end
+--- The saved value made safe, whatever the slot does.
+local function validRepeatMode(mode)
+    if mode == REPEAT_CLICK or mode == REPEAT_HOLD then return mode end
     return nil
+end
+
+--- How the slot repeats when used.
+function Hotbar.repeatModeOf(slot)
+    local mode = validRepeatMode(slot.repeatMode)
+    if mode == REPEAT_HOLD and Hotbar.picksSquare(slot) then return REPEAT_CLICK end
+    return mode
 end
 
 --- A repeating slot's interval in milliseconds, at least REPEAT_MIN_MS.
@@ -480,7 +490,7 @@ function Hotbar.save()
         flatten({
             action = slot.action, label = slot.label, icon = slot.icon, tint = slot.tint,
             confirm = slot.confirm, window = slot.window, syncMode = slot.syncMode,
-            repeatMode = Hotbar.repeatModeOf(slot), repeatMs = slot.repeatMs, repeatTimes = slot.repeatTimes,
+            repeatMode = validRepeatMode(slot.repeatMode), repeatMs = slot.repeatMs, repeatTimes = slot.repeatTimes,
         }, "", fields)
         flatten(slot.settings or {}, "s.", fields)
         -- steps.#1.action, steps.#1.settings.<key>, steps.#1.window...
@@ -567,7 +577,7 @@ function Hotbar.load()
                 confirm = record.confirm,
                 window = record.window == true,
                 syncMode = syncMode,
-                repeatMode = Hotbar.repeatModeOf(record),
+                repeatMode = validRepeatMode(record.repeatMode),
                 repeatMs = tonumber(record.repeatMs),
                 repeatTimes = tonumber(record.repeatTimes),
                 settings = type(record.s) == "table" and record.s or {},
@@ -1580,6 +1590,22 @@ function Hotbar.keepsPicking(slot)
     return false
 end
 
+--- Does a part pick a square or vehicle on the map when used ("Ask when used", "@pick"
+-- or "@pickmany")? Such a slot cannot repeat while held (see Hotbar.repeatModeOf).
+function Hotbar.picksSquare(slot)
+    for _, part in ipairs(Hotbar.partsOf(slot)) do
+        local action = Hotbar.getAction(part.action)
+        if action and not (part.window and action.openUI) then
+            for _, spec in ipairs(action.params) do
+                local raw = settingOf(part, spec)
+                if spec.type == "location" and (raw == nil or isPick(raw)) then return true end
+                if spec.type == "vehicle" and isPick(raw) then return true end
+            end
+        end
+    end
+    return false
+end
+
 --- Does a part pick a vehicle on the map?
 local function picksVehicle(slot)
     for _, part in ipairs(Hotbar.partsOf(slot)) do
@@ -1651,8 +1677,11 @@ end
     for the mouse), and the key's release (OnKeyPressed fires on release) or the
     mouse button's does nothing more. A slot that has to ask something or confirm
     first cannot know it is still held after the answer, so it repeats until clicked
-    again instead. Dragging a held slot to move it ends the repeat as the drag
-    begins. A slot that keeps picking squares already runs on every click on the map,
+    again instead. For a square or vehicle picked on the map that is always so (the
+    slot is clicked, then the map), and holding the mouse on the map does not count,
+    so such a slot is not offered While held at all, and one saved with it repeats
+    until clicked again (Hotbar.picksSquare). Dragging a held slot to move it ends
+    the repeat as the drag begins. A slot that keeps picking squares already runs on every click on the map,
     and does that instead of repeating.
 --]]
 local repeating = {}
@@ -3088,11 +3117,15 @@ function Settings:createChildren()
     end
 
     local repeatLabel = self:addLabel(txt("Repeat"), y)
-    self.repeatCombo = self:addCombo(cx, y, self.controlWidth, {
+    local repeatModes = {
         { text = txt("RepeatOff"), data = "off" },
         { text = txt("RepeatClick"), data = REPEAT_CLICK },
-        { text = txt("RepeatHold"), data = REPEAT_HOLD },
-    }, Hotbar.repeatModeOf(self.slot) or "off")
+    }
+    -- Not for a slot that picks a square: see Hotbar.repeatModeOf.
+    if not Hotbar.picksSquare(self.slot) then
+        table.insert(repeatModes, { text = txt("RepeatHold"), data = REPEAT_HOLD })
+    end
+    self.repeatCombo = self:addCombo(cx, y, self.controlWidth, repeatModes, Hotbar.repeatModeOf(self.slot) or "off")
     y = y + BUTTON_HGT + 2
     y = self:addModeHint(self.repeatCombo, {
         off = txt("RepeatOffHint"),
@@ -3380,7 +3413,12 @@ function Settings:onSaveClicked()
         if self.syncCombo then
             slot.syncMode = self.syncCombo:getOptionData(self.syncCombo.selected)
         end
-        slot.repeatMode = Hotbar.repeatModeOf({ repeatMode = self.repeatCombo:getOptionData(self.repeatCombo.selected) })
+        slot.repeatMode = validRepeatMode(self.repeatCombo:getOptionData(self.repeatCombo.selected))
+        -- While held was offered, but the location set in this same dialog picks a square.
+        if slot.repeatMode == REPEAT_HOLD
+                and Hotbar.picksSquare({ action = slot.action, settings = slot.settings, window = slot.window, steps = self.slot.steps }) then
+            slot.repeatMode = REPEAT_CLICK
+        end
         -- Empty entries keep the defaults; kept while Off, for turning it on again.
         local interval = tonumber(self.repeatMsEntry:getText())
         if interval then slot.repeatMs = Hotbar.repeatInterval({ repeatMs = interval }) end

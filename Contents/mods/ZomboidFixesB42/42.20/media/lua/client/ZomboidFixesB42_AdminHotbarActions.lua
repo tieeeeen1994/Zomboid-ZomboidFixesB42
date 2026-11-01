@@ -2134,6 +2134,95 @@ register({
     end,
 })
 
+--- Vanilla's per-animal Debug cheats, on every animal of a pen, a hutch or a radius
+-- (optionally one type), run by the server (ZomboidFixesB42_AnimalGroupCheats.lua).
+local AnimalCheats = ZomboidFixesB42.AnimalGroupCheats
+
+local ANIMAL_CHEAT_ICONS = {
+    stress = "item:Base.PillsBeta", hunger = "item:Base.AnimalFeedBag", thirst = "item:Base.WaterBottle",
+    health = "sym:MedCross", age = "sym:Sun", breed = "sym:Heart", birth = "item:Base.FeedingBottle",
+    milk = "item:Base.Milk", wool = "item:Base.WoolRaw", acceptance = "sym:FaceHappy", invincible = "sym:Armor",
+}
+
+local function animalScopeChoices()
+    local list = {
+        { text = txt("AnimalScopePen"), data = "pen" },
+        { text = txt("AnimalScopeHutch"), data = "hutch" },
+    }
+    for _, scope in ipairs(AnimalCheats.SCOPES) do
+        local radius = AnimalCheats.RADIUS[scope]
+        if radius then table.insert(list, { text = txt("AnimalScopeRadius", int(radius)), data = scope }) end
+    end
+    return list
+end
+
+local animalKindChoices = nil
+local function animalKinds()
+    if animalKindChoices then return animalKindChoices end
+    local kinds = {}
+    local defs = getAllAnimalsDefinitions()
+    for i = 0, defs:size() - 1 do
+        local def = defs:get(i)
+        local animalType = def:getAnimalType()
+        -- The carcass "types" (deerdead, fawndead) are no living animal.
+        if not string.find(animalType, "dead$") then
+            table.insert(kinds, {
+                text = getText("IGUI_AnimalType_" .. animalType) .. " (" .. tostring(def:getGroup()) .. ")",
+                data = animalType,
+            })
+        end
+    end
+    table.sort(kinds, function(a, b) return a.text < b.text end)
+    table.insert(kinds, 1, { text = txt("AnimalKindAny"), data = AnimalCheats.ANY_KIND })
+    animalKindChoices = kinds
+    return kinds
+end
+
+for _, cheat in ipairs(AnimalCheats.LIST) do
+    local key = "AnimalCheat_" .. cheat.id
+    local valueSpec
+    if cheat.choices then
+        local options = {}
+        for _, choice in ipairs(cheat.choices) do
+            table.insert(options, { text = txt(key .. "_" .. choice), data = choice })
+        end
+        valueSpec = { key = "value", type = "choice", title = txt(key .. "Value"), options = options, default = cheat.default, noAsk = true }
+    else
+        valueSpec = numberParam("value", txt(key .. "Value"), cheat.default, cheat.min, cheat.max, true, txt(key .. "Hint"))
+    end
+
+    register({
+        id = "animals.cheat." .. cheat.id,
+        category = "animals",
+        title = function(slot)
+            local value = slot and slot.settings and slot.settings.value
+            if value == nil then value = cheat.default end
+            if value == nil then return txt(key) end
+            local shown = cheat.choices and Hotbar.choiceText(valueSpec, value) or int(value)
+            return txt(key .. "Named", shown)
+        end,
+        tooltip = txt(key .. "Tooltip") .. "\n\n" .. txt("AnimalCheatScopeTooltip"),
+        icon = ANIMAL_CHEAT_ICONS[cheat.id] or "sym:Pawprint",
+        params = {
+            valueSpec,
+            locationParam("@pick"),
+            { key = "scope", type = "choice", title = txt("ParamAnimalScope"), options = animalScopeChoices, default = "pen", noAsk = true },
+            { key = "kind", type = "choice", title = txt("ParamAnimalKind"), options = animalKinds, default = AnimalCheats.ANY_KIND, noAsk = true, search = true },
+        },
+        available = function(admin)
+            if not AnimalCheats.isEnabled() then return false, txt("AnimalCheatsOff") end
+            return needs("AnimalCheats")(admin)
+        end,
+        run = function(ctx)
+            local l = ctx.values.location
+            AnimalCheats.send(ctx.admin, {
+                cheat = cheat.id, value = ctx.values.value, x = l.x, y = l.y, z = l.z,
+                scope = ctx.values.scope or "pen", kind = ctx.values.kind or AnimalCheats.ANY_KIND,
+            })
+        end,
+    })
+end
+
 -- 12. Server ----------------------------------------------------------------------------------------------------
 
 register({

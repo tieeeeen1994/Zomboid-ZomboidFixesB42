@@ -32,6 +32,7 @@ description=- Turbo Game cartridges, batteries, best scores and mood effects wor
 description=- Admins who join are fully healed and briefly in god mode, so a revived admin does not die again (off by default).
 description=- Admins can change any player's body stats (hunger, mood, health, calories, weight and more) like the debug Body panel, and the changes stick for everyone; a Health button opens any nearby player's health window without asking.
 description=- Admins can pick up every loose animal of one type and breed in a pen at once and put them all down elsewhere (beta).
+description=- Admins can set stress, hunger, health, age, milk, wool, pregnancy and days until birth for every animal in a pen at once from the admin hotbar (beta).
 description=- Admins can toggle bites, fractures, bleeding and other conditions on any body part of any player from the admin hotbar, and heal a part or the body without taking bandages off (beta).
 description=- Admins can send and stop the chopper from the right-click Debug menu; stopping it ends today's chopper event so it stays gone, and reaches every player, even one who still hears a chopper that already left.
 description=- A Storm tab in Climate Control: choose where a storm comes from, what it passes over, its strength, thunder clouds, lightning and wind (beta).

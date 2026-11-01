@@ -90,6 +90,17 @@ Changing an animal's gender in the animal info window also changes its model and
 Option: [i][BETA] Admins Carry All Animals of a Kind[/i]
 Moving a flock used to mean carrying animals one at a time. Admins (Animal Cheats permission) can now right-click an animal and pick up every loose animal of the same type and breed in its animal zone, and the zones joined to it, into their inventory at once: every Rhode Island Red hen, for example. A carried animal's menu then puts all of that kind down around the admin at once. Animals in hutches, tied up or on a rope stay put. Carried animals are heavy (about 20 per hen), so turn on Unlimited Carry first, and put them down soon: they still get hungry and thirsty, and hens lay eggs into your inventory.
 
+[b]Animal cheats for a whole pen (beta)[/b]
+Option: [i][BETA] Admin Animal Cheats for a Whole Pen[/i]
+Vanilla's animal cheats work on one animal at a time. The admin hotbar now has them for a group: admins (Animal Cheats permission) pick a square and the cheat goes to every animal in the animal zone there and the zones joined to it, hutches included, or only the hutch there, or every animal within 5 to 30 tiles, of every type or only one (only the hens, say).
+[list]
+[*]Set stress, hunger, thirst, health (never below 1%), age, milk, wool, or how much the animals accept you.
+[*]Make every adult female pregnant, or fertilize egg layers so their eggs hatch, or end it.
+[*]Choose how many days until the pregnant ones give birth, 0 for right away.
+[*]Make them invincible, or not.
+[/list]
+The animals it changed are outlined for a moment.
+
 [b]Admin hotbar[/b]
 Option: [i]Admin Hotbar[/i]
 Admins and moderators get a new sidebar button under Admin that opens a floating bar of one-click shortcuts to every admin tool: admin powers, admin panel windows, the Tools and Debug menus, weather and climate, meta events, foraging and player actions.
