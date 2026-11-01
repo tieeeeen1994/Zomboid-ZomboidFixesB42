@@ -1169,6 +1169,26 @@ Traced 2026-10-18 for `*_Throwables.lua`.
   a server's 10 Hz), game-time based, aim = `screenToIsoX/Y` + 1.5 tiles, detonation = `instanceItem(type)` forced
   instant (would break remote / sensor items).
 
+### Body locations and alternative clothing models (42.21)
+
+Traced 2026-11-01 for Tien's Chest Rig Over Suspenders (`~/Zomboid/Workshop/TienChestRigOverSuspenders`).
+- Chest Rig, Tarp Chest Rig and the three ALICE belts with suspenders all use `base:webbing`; the shoulder holster
+  is a separate location exclusive with it. Mod locations: `ItemBodyLocation.register("ns:name")` in
+  `media/registries.lua`, then `BodyLocations.getGroup("Human"):getOrCreateLocation(...)`; `moveLocationToIndex`
+  sets the render order. `BodyLocation` has no getters for its rule lists; ask `group:isExclusive / isHideModel /
+  isAltModel(a, b)` per pair (`getAllLocations()`).
+- A worn item draws its clothing XML's `m_AltMaleModel` / `m_AltFemaleModel` when another worn item's location
+  lists its location (`PopTemplateManager.isItemModelAlt`: `isAltModel(other, own)`, by the script items'
+  `BodyLocation`); vanilla links jacket, sweater, hoodie up, cuirass and bulletproof vest to webbing (the rig's
+  jacket model). One alt model per item.
+- `InventoryItem.getBodyLocation` reads the script live; `InventoryContainer.canBeEquipped` (what `ISWearClothing`
+  wears a bag at) is copied from the script at `InstanceItem` and not saved; `Item:DoParam("BodyLocation" |
+  "CanBeEquipped", "ns:name")` changes both for items created later. `IsoGameCharacter.readInventory` wears saved
+  items at the saved location string (skipped when unknown); `SyncClothingPacket` carries each item's location and
+  re-seats by it on the server (`process`, which casts to `Clothing`, so bags always take the re-seat path).
+- Text `.x` skinned meshes: a mesh frame's translation (the ALICE files: 0, -0.0012, 0.0037) is folded into the
+  SkinWeights offset matrices, so the game draws vertices at raw + translation.
+
 ### Hands, hand models and attacks (42.20)
 
 - Primary = **right** hand: `getPrimaryHandItem()` returns a field named `leftHandItem` (`IsoGameCharacter` ~3205), but its
