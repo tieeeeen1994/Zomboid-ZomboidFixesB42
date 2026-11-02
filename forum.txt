@@ -221,6 +221,10 @@ Being unhappy or drunk, having sore hands or arms, or being too hot or cold slow
 Option: [i]Rooms You Build Shelter From Corpse Smell[/i]
 A map house shelters you from the Bad Smell moodle because the game counts the corpses in the building you stand in. A room you build yourself has no map building, so the game counted every corpse nearby as if you stood in the street. Now a room with no map building counts as a shelter, like a map house: no corpse sickness and no moodle in it. A room is a square where you can plumb a sink. Map buildings are unchanged.
 
+[b]Chest rig over ALICE suspenders (off by default) (beta)[/b]
+Option: [i][BETA] Chest Rig Over ALICE Suspenders (Requires Restart)[/i]
+The Chest Rig, the Tarp Chest Rig and the ALICE Belt and Suspenders all went in the same webbing slot, so putting on one took the other off. Now the rigs and the ALICE belts each have a slot of their own, so a rig can be worn over the suspenders, and the belt keeps its knife and walkie slots. What could not be worn with webbing (shoulder holsters, fanny packs, bulky jackets, full suits) still cannot be worn with either. The models are vanilla's, so the two can overlap a little. A rig or belt you were already wearing moves to its new slot once you take it off and put it on again.
+
 [b]Spiked armor hurts zombies[/b]
 Option: [i]Spiked Armor Hurts Zombies[/i]
 When a zombie scratched or bit a part of you covered by spiked armor (with no hole there), the game made it spike itself, with blood and the sound of a hit, but took no health from it; only a bite that got through killed it. Now each spike takes what an ice pick hit would, 0.6 to 0.9 health, so two or three spikes kill a zombie of normal toughness. In multiplayer the game running the zombie applies it, so everyone sees it fall.

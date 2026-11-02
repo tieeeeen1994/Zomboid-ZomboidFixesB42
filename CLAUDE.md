@@ -1171,12 +1171,19 @@ Traced 2026-10-18 for `*_Throwables.lua`.
 
 ### Body locations and alternative clothing models (42.21)
 
-Traced 2026-11-01 for Tien's Chest Rig Over Suspenders (`~/Zomboid/Workshop/TienChestRigOverSuspenders`).
+Traced 2026-11-01 for Tien's Chest Rig Over Suspenders (a modelled mod, dropped 2026-11-02; the slot part is
+`*_WebbingSlots.lua` here).
 - Chest Rig, Tarp Chest Rig and the three ALICE belts with suspenders all use `base:webbing`; the shoulder holster
   is a separate location exclusive with it. Mod locations: `ItemBodyLocation.register("ns:name")` in
   `media/registries.lua`, then `BodyLocations.getGroup("Human"):getOrCreateLocation(...)`; `moveLocationToIndex`
   sets the render order. `BodyLocation` has no getters for its rule lists; ask `group:isExclusive / isHideModel /
   isAltModel(a, b)` per pair (`getAllLocations()`).
+- `media/registries.lua` (version folder, else common) is run by `ModRegistries.init` for every active mod, after
+  `RegistryReset.resetAll` (drops every non-base registration) and before `ScriptManager.Load`, at start-up
+  (`GameWindow`), on every Lua reset (`Core` / `IngameState`, which also run `BodyLocations.reset` before the shared
+  Lua rebuilds the groups) and in `GameServer.doMinimumInit`. `Registry.register` throws on a duplicate; an unknown
+  name in a script or `DoParam("BodyLocation" | "CanBeEquipped")` resolves to null. Worn items sit in the group's
+  order (`WornItems.setItem`), which is the hit-layer order too.
 - A worn item draws its clothing XML's `m_AltMaleModel` / `m_AltFemaleModel` when another worn item's location
   lists its location (`PopTemplateManager.isItemModelAlt`: `isAltModel(other, own)`, by the script items'
   `BodyLocation`); vanilla links jacket, sweater, hoodie up, cuirass and bulletproof vest to webbing (the rig's
@@ -2087,6 +2094,11 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   `ZomboidFixesB42_Storm`, and in `OnClimateTick` replaces the storm stage's clouds (count, radius, strength,
   ratio, centred on a player) and retargets the wind overrides; it is "ours" while the running period's first stage
   start equals the saved `startHour`.
+- `shared/*_WebbingSlots.lua` + `media/registries.lua` (option `ChestRigOverSuspenders`, off by default, beta): the ALICE belts
+  and the chest rigs move from `base:webbing` to `zomboidfixesb42:suspenders` / `zomboidfixesb42:chestrig`
+  (`DoParam` BodyLocation + CanBeEquipped at OnLoadMapZones), placed after webbing in that order; each copies every
+  webbing rule both ways and stays exclusive with webbing, but not with the other. Locations are registered and
+  set up whatever the option, so items saved as worn there still load worn. Vanilla models, no mesh changes.
 - `*_ZombieCarDamage.lua` (client/server, option `ZombieCarDamageSync`): the client snapshots door / bodywork
   conditions of every vehicle a known player sits in each tick; a drop while a zombie it owns is in "attackvehicle"
   for someone in that car goes to the server (`zombieCarDamage`), which checks the owner (`getOwnerPlayer`), the

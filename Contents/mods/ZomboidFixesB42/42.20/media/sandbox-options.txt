@@ -113,6 +113,14 @@ option ZomboidFixesB42.SpikedArmorHurtsZombies
     translation = ZomboidFixesB42_SpikedArmorHurtsZombies,
 }
 
+option ZomboidFixesB42.ChestRigOverSuspenders
+{
+    type = boolean,
+    default = false,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_ChestRigOverSuspenders,
+}
+
 option ZomboidFixesB42.ThrowableBallistics
 {
     type = boolean,
