@@ -475,6 +475,13 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
   it (no `netAction` yet).
   PZ's `KahluaTableImpl.rawget` falls back to the metatable, so class methods are found. `netAction:setDuration(ms)`
   moves a running action's end (`endTime = startTime + ms`).
+- Body needs follow the multiplier by themselves (42.21, traced 2026-11-07): on the server, hunger, thirst and
+  fatigue (`IsoGameCharacter.calculateStats`, sleeping in `IsoPlayer`) use `GameTime.getMultiplier()`. So do the
+  food timer that drives the Food Eaten moodle and health from food (`BodyDamage.Update` ~2190). `Nutrition.update`
+  (from `IsoPlayer.updateInternal2` ~2171) scales carbs, lipids, proteins, calories and weight by
+  `getGameWorldSecondsSinceLastUpdate()` (= `getTimeDelta()`, built from the multiplier). So `setMultiplier`
+  speeds them all up and fast forward needs no catch-up for them. Only `applyTraitFromWeight` counts updates
+  (every 2000, so about every 200 real seconds on a server).
 - Items on a server update only every 5 real s (`IsoCell` ProcessItems) with a real-time step
   (`InventoryItem.calculateTimeMultiplier`), so heat and cooking ignore the multiplier; `getCell():getProcessItems()` is
   public, and `*_FastForwardCooking.lua` pays the missing heat and cooking steps. Item transfers are timed by Java
@@ -1093,6 +1100,9 @@ vehicle stories and road foraging use. Vanilla, Raven Creek and NagaCity ship on
   (logged in `-debug`). A recipe that needs an optional mod: an empty placeholder filled by `recipe:Load` from Lua,
   hidden without the mod with `{ OnAddToMenu = False, NeedToBeLearn = True, }` (the crafting lists call OnAddToMenu
   through `callLuaBool`; a missing function is false, so the recipe is skipped; Ammo Maker's own trick).
+  `callLuaBool(name, params)` looks the name up with `env.rawget(name)`: an OnAddToMenu must be a plain global name
+  (a dotted `Mod.Fn` is never found = hidden from everyone; the right-click craft menu does not ask it), while
+  OnTest / OnCreate go through `LuaManager.getFunctionObject`, which follows dots (42.21, traced 2026-11-08).
 - AnimSet `x_extends` on Linux (42.21, traced 2026-10-24 from a Linux server log): `PZXmlUtil.parseXml` resolves
   the target with `ZomboidFileSystem.resolveRelativePath` → `getRelativeFile`, which lower-cases the whole absolute
   path and relativizes it against the lower-cased game folder; for a mod under the game folder (Steam workshop
