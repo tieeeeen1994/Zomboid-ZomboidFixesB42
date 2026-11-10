@@ -1281,6 +1281,15 @@ Body-stat editing belongs to `Capability.CanModifyBodyStats` (admin and moderato
 
 - `client/DebugUIs/DebugMenu/ISDebugMenu.lua`: `ISDebugMenu.OnOpenPanel` only opens with `getCore():getDebug()`
   (the `-debug` launch flag) or `ISDebugMenu.forceEnable`. So without `-debug` an admin never sees General Debuggers.
+- Hidden Ctrl hotkeys on a `-debug` MP client (42.22, Java `NetworkPlayerAI.checkDebugInput`, every update while Ctrl
+  is held, no role check on the client; nothing in the key bindings or Lua): Ctrl+A sends `animal.add` for an Angus
+  bull in front of the player (a real server animal, age 0 = "juvenile"), Ctrl+D `setHealth(0)` (kills the local
+  player), Ctrl+R repairs the current / near vehicle, Ctrl+S `resetState`, Ctrl+V `/addvehicle Base.SportsCar`,
+  Ctrl+Z `/createhorde2` of one zombie in front. Ctrl+A is also the inventory's select-all
+  (`ISInventoryPane` ~1986), so selecting all items spawns a bull (reported 2026-11-10). Lua cannot block it, and
+  the Lua console needs `-debug` (Java `UIDebugConsole`), so admins keep the flag (a sidebar Debug button without
+  it was built and dropped 2026-11-10 for that reason). The user's pzopt fork (`D:\PZ_Optimization`) overrides
+  `NetworkPlayerAI` instead: `checkDebugInput` returns at once with Config `noDebugShortcuts` (default on).
 - `client/DebugUIs/DebugMenu/General/ISStatsAndBody.lua` is the Body panel. It edits `getPlayer()` only, sliders
   write the local copy and then call `sendPlayerStat` / `sendPlayerNutrition`. Everything else it edits
   (HealthFromFoodTimer, TimeSinceLastSmoke, ColdDamageStage, OverallBodyHealth, ColdStrength, the Fitness perk level,
