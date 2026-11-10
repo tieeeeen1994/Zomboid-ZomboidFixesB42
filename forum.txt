@@ -1,6 +1,6 @@
-[h1]Zomboid Fixes B42.20+: what every fix does[/h1]
+[h1]Zomboid Fixes B42.22.2: what every fix does[/h1]
 
-A set of fixes for Build 42.20, mostly for multiplayer. Install it on both the server and the clients.
+A set of fixes for Build 42.22.2, mostly for multiplayer. Install it on both the server and the clients.
 
 Every fix can be turned off on the [b]Zomboid Fixes[/b] page of the sandbox settings, and is on by default unless it says otherwise. Each one below names its option; the item and recipe fixes share two options. If you are updating from a version before 3.0.0, check [i]Admin Tag[/i], [i]Item Data Fixes (Requires Restart)[/i] and [i]Recipe And Repair Fixes (Requires Restart)[/i]: they replace older options and start at their default. Fixes marked [b](beta)[/b] are new and not fully tested yet.
 
@@ -324,6 +324,10 @@ Running into a stair railing no longer vaults you over it.
 [b]Rescue animals lost in hutch nest boxes[/b]
 Option: [i]Rescue Animals Lost In Hutch Nest Boxes[/i]
 Chickens the game deletes after laying in a full hutch are put back.
+
+[b]Baby animals catch up once (beta)[/b]
+Option: [i][BETA] Baby Animals Catch Up Once[/i]
+Coming back to an animal pen, the game makes up the time you were away. Since 42.22 it does that once for each grown animal but, for each baby, once for every animal in the pen, so in a pen of 20 the chicks, calves, lambs and piglets aged, got hungry and thirsty and ate from the troughs as if you had been gone 20 times as long, and could grow up, starve or die at once. Now each baby is made up once, like the grown animals. A baby that comes back into the world, or a pen whose far end comes back, at the very moment the game makes up the pen still gets the game's count, about one return in 25.
 
 [b]Hutch dirt speed[/b]
 Option: [i]Hutch Dirt Speed[/i] (0.25 by default, 1 = vanilla)

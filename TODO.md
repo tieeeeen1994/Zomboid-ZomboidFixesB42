@@ -1,14 +1,22 @@
 # TODO
 
 Open work only. Done items are in git history, and everything learned while doing them is in CLAUDE.md.
-For a new fix: check the bug is still there in the installed build (42.21.0; patch notes:
-theindiestone.com/forums/topic/101693), then follow the mod conventions in CLAUDE.md (a sandbox option
+For a new fix: check the bug is still there in the installed build (42.22.2; patch notes:
+theindiestone.com/forums/topic/102705), then follow the mod conventions in CLAUDE.md (a sandbox option
 per fix, default on, README / forum.txt / mod.info lines, Sandbox.json tooltip, `[BETA]` until played in
 game, and a test scenario in the Beta section below).
 
 ## Open
 
 - [ ] Play every `[BETA]` feature in game and drop its label (what each needs is in the next section).
+- [ ] Made redundant by 42.22 (reviewed 2026-11-10, see CLAUDE.md "42.22 changes that touch this mod"), still in
+      the mod and harmless meanwhile: MapSymbolsSave (vanilla now syncs map markings; turn the file into a one-time
+      restore of markings saved in modData before 42.22, then drop it), the Fast Timed Actions half of FastTransfers
+      (keep the fast forward transfers, drop the option), the two remembered tick boxes of UserPanelDisplay (keep
+      Show game version / Show coordinates), and the paper map half of PrintMediaSync (the `onCheckMap` wrapper).
+- [ ] 42.22 pen catch-up gap: an animal the worker puts back after its zone's `doMeta` stays frozen (`fromMeta`)
+      until the next away and return (~7% of returns in the lupa port). BabyAnimalCatchUp rescues babies only;
+      a general fix would make up any animal with no zone that turns up in a zone already made up.
 - [ ] Deferred: security hardening of unchecked vanilla client commands. Full list in CLAUDE.md ("Vanilla
       client-command handlers with no permission check"). Most serious: `player.onHealthCheatCurrentPlayer`
       lets any client bite / infect any player; `object.clearContainerExplore` re-rolls any container's loot;
@@ -74,6 +82,15 @@ game, and a test scenario in the Beta section below).
       and run crafts through the vanilla action. Big; other mods' hooks into the vanilla window would not see it.
 
 ## Beta features: what playing each one should check
+
+- [ ] BabyAnimalCatchUp (2026-11-10, 42.22), on a dedicated server and in single player: a pen with several adults
+      and two or three babies (chicks, a calf, lambs); note a baby's age and hunger (animal info, Animal Cheat for
+      the values). Walk until the whole pen unloads, let a game day or more pass, come back: the server log (console
+      in single player) shows "BabyAnimalCatchUp: made up N baby animal(s) once for H hour(s)", and the baby aged
+      about H / 24 days, not that times the number of animals in the pen; with the option off it ages that many
+      times over. Then a pen wider than the load range: stand by the babies at one end so only the far end unloads,
+      come back to it the same way. The babies never freeze or look hooked (no hook pose, no missing shadow), and
+      nothing in the pen stops wandering afterwards. No Lua errors.
 
 - [ ] GunworksGripSync (2026-10-26), with Guns of Tien (and Post-93) on a server, two clients: player B holds an Uzi,
       an MP5K or an MP7 (or Heavy Ordnance's RPG); A sees the custom pose. B walks out of A's range (over 5 s) and

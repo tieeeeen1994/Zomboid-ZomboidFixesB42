@@ -1,4 +1,4 @@
-Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly for multiplayer. Install it on both the server and clients. Every fix is on by default and can be turned off in the sandbox options; the few that are off by default say so. Fixes marked beta are new and not fully tested yet.
+Zomboid Fixes B42.22.2 is a set of fixes for Project Zomboid Build 42.22.2, mostly for multiplayer. Install it on both the server and clients. Every fix is on by default and can be turned off in the sandbox options; the few that are off by default say so. Fixes marked beta are new and not fully tested yet.
 
 - Fast Timed Actions makes item transfers and grabbing items off the ground quick in multiplayer, like in single player, and a quick transfer the server cannot make is done the normal way instead of not at all.
 - Changing an animal's gender in the animal info window also changes its model and type, and no longer reverts for other players.
@@ -13,6 +13,7 @@ Zomboid Fixes B42.20+ is a set of fixes for Project Zomboid Build 42.20, mostly 
 - Clothing wear down rework for multiplayer: zombie attacks that clothing or armor stops wear it down like in single player, so armor with full protection no longer lasts forever; clothing destroyed while worn falls off for everyone and stays destroyed after relogging, with no plain copy of itself left on your character (a white scarf for a green one).
 - Picking up a floor item in multiplayer no longer removes a different one, which happened on the spot where a hat, helmet, mask or pair of glasses was knocked off when something else dropped there at the same time, like the scarf the same zombie attack tore off (beta).
 - Chickens the game deletes after laying in a full hutch are put back.
+- Baby animals in a pen you come back to live the time you were away once, like the grown animals, instead of once for every animal in the pen as 42.22 does, which could make them grow up, starve or die at once (beta).
 - Hutches and nest boxes get dirty at a quarter of the normal speed. The speed can be changed, or set back to vanilla.
 - Grab Eggs takes every egg in the nest box, also with Timed Action Instant on a server or fast forward in single player, which used to leave most of them behind (beta).
 - Running into a stair railing no longer vaults you over it.

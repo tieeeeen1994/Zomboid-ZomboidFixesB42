@@ -5,6 +5,32 @@ Engine findings for Project Zomboid Build 42, recorded so they never have to be 
 written against 42.20.4 (revision b0bbce05d5). Line numbers refer to the Vineflower decompile described below and to
 the vanilla Lua of **42.21.0** (all re-checked 2026-10-05); they shift between builds. A heading or note marked
 (42.20) holds findings first made on 42.20 whose behaviour has not been re-traced in 42.21 (its line numbers have).
+Since 2026-11-10 the install is **42.22.2** (Steam build 26486631; 42.22 notes: theindiestone.com/forums/topic/102705,
+the forum blocks plain fetches, curl with a browser user agent works). Notes say "42.21" until re-traced; what 42.22
+changed for this mod is in "42.22 changes that touch this mod" below, and notes marked (42.22) were traced on it.
+
+## 42.22 changes that touch this mod
+
+Reviewed 2026-11-10 by diffing a full Vineflower decompile of the 42.22.2 jar against the 42.21 one (486 changed
+classes) and reading every changed vanilla Lua file a fix wraps. Now vanilla (the fixes are listed as redundant in
+TODO.md; each is harmless while it stays):
+- Map item markings sync: `ISWorldMapSymbolTool:syncMapItem` → `syncItemFields` after every edit, and
+  `SyncItemFieldsPacket` carries a `MapItem`'s symbols (`MapItem.saveData/loadData`, `clearUserAnnotations` before
+  loading). Maps whose markings only live in `*_MapSymbols.lua`'s modData still need one restore.
+- `Transaction.getDuration` returns 0 when the player `isTimedActionInstant()`, so Fast Timed Actions transfers and
+  grabs are instant on a server. `TransactionManager.removeItemTransaction(id, connection)` now removes only that
+  connection's transaction (a Reject no longer cancels another player's with the same id).
+- `NetworkAIParams.setShowConnectionInfo/ServerInfo` save to `Core` options and `Init` reads them back on a client.
+- Reading a paper map is `ISReadMapItem` (shared), whose server `complete` calls `addReadMap`.
+Still broken in 42.22.2 (checked): every other fix's bug, including the refill-container command chain, nest box
+hand-back (`removeAnimalFromNestBox` ignores `addAnimalInside`'s result; only loading now falls back to any free
+position), `BodyDamageSync` restoring the patient's stats, `PZNetKahluaTableImpl.loadComponent` on a missing entity,
+battery double drain, both remove-bush bugs (vanilla added a `FIXME` on the loop), pickaxe wear, the farming
+`currentPlant` typo, plank barricade 1 nail, `BuildAction` Handy going negative, the reload timers, the zombie attack
+wear path. New in 42.22: `ThrownItemManager` (the server throws on `PlayerDropHeldItems` with flag
+`throwPrimaryItem`, sent by `CombatManager` after `OnWeaponSwingHitPoint` only while the weapon still has a physics
+object, so `*_Throwables.lua` clearing it keeps vanilla's throw off), climbable ladders (`ClimbState` and friends),
+medical check and trading accept / reject packets, and the pen catch-up changes under "Pen catch-up".
 
 ## Paths
 
@@ -911,6 +937,22 @@ forces god mode / invisible / noclip / admin tag / hear all from the flags byte 
   away hours replayed on top of living them, and animals put down there before the far corner loads age days and
   starve at once (reported 2026-10-20 after a Carry All drop). `AnimalManagerMain` (virtual → real) also calls
   `updateStatsAway(now - zone.hourLastSeen)` with the animal's zone at load.
+  (42.22, traced 2026-11-10) The load-time call is gone: `AnimalManagerMain.fromWorker` sets `fromMeta = true` on an
+  animal coming back into any animal zone (not while `IngameState.loading`), `IsoAnimal.updateInternal` does nothing
+  while it is set, and only `updateStatsAway` clears it; an animal that arrives after its zone's `doMeta` stays frozen
+  until the next away and return (in a lupa port, ~7% of returns when the worker lags 0-3 updates). The zone's set is
+  now a `HashSet` (`getAnimals()` renamed `getAnimalsInZone()`, a copy), and `doMeta`'s baby loop runs once per
+  animal in the zone (`for i < size: for each animal: if baby updateStatsAway(hours)`), so every baby is made up N
+  times (`*_BabyAnimalCatchUp.lua`). `check()` rebuilds the set from `IsoGridSquare.getAnimals(list)`, which skips
+  `isOnHook()` animals, and sets `setDZone(this)` on each; `setDZone` is the only writer of `dZone` (also
+  `checkZone` from the animal's own update), so a baby with no zone has not been counted. `IsoAnimal.setOnHook` is a
+  plain flag (saved only with a real hook, in no packet). `DesignationZone` has `loading()` / `unloading()` (public,
+  no Java caller), `isFullyStreamed()`, `getId()`; `streamed` / `hourLastSeen` have no getters and only
+  `hourLastSeen` is saved (vanilla starts every zone streamed and overwrites it at its first away sample).
+  Update order: server `ServerMap.preupdate` (chunks in) → `IngameState.updateInternal`: `OnTickEvenPaused` → single
+  player chunk map `ProcessChunkPos` → `IsoWorld.update` (cell objects, whose `IsoMovingObject.postupdate` re-adds
+  each object to its square with `setMovingSquare`, then `CollisionManager.ResolveContacts` = animals from the
+  worker, then `DesignationZone.update`) → `OnTick`.
 
 ### Animal AI, animal sync and animals vs zombies (42.21)
 
@@ -2077,6 +2119,16 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   each with value, picked square, scope (pen = zone + joined zones + their hutches, hutch, radius 5-30) and type
   filter. One `animalGroupCheat` command; the server applies vanilla's setters to its animals (`Cheats.run`) and
   answers with the count and online IDs, which the client outlines for 2.5 s. Values reach clients by AnimalPacket.
+- `server/*_BabyAnimalCatchUp.lua` (option `BabyAnimalCatchUp`, beta, 42.22): mirrors `checkStreamed` per animal
+  zone every update (the hour it was first seen not fully loaded); while a zone is back but not made up, its babies
+  that no `check()` has counted (no zone yet, or all of them when it came back in the server's preupdate or, in
+  single player, when probes say no check ran) get `setOnHook(true)` + `setDZone(zone)` in `OnTickEvenPaused` and
+  the flag off in `OnTick`; a flagged baby whose zone is gone by then means `check()` (and so the zone's first
+  `doMeta`) ran without it, so each is given `updateStatsAway(hours)` + `forceWanderNow` once. Single player
+  probes: while a zone is away, up to 3 animals still on it get the zone appended to `getConnectedDZone()` (live
+  ArrayList, `check()` clears and refills it) for one update; still there = no check ran. Checked in lupa against a
+  Lua port of the 42.22 Java (2026-11-10): babies 1 call instead of N; a baby arriving, or a
+  far corner loading in single player, in the very update of the check keeps vanilla's N (~4-7%), never N + 1.
 - `*_AnimalZoneResync.lua` (client/server/shared, option `AnimalZoneResync`): the client mirrors `checkStreamed`
   per animal zone every second; a zone back after an hour boundary is checked 5 s later with its connected zones,
   in 10x10 blocks (`animalZoneCheck`: world items `x,y,id,fingerprint`, troughs' water and items). The server

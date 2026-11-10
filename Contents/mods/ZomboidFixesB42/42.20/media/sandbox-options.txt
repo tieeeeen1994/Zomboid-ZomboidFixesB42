@@ -137,6 +137,14 @@ option ZomboidFixesB42.RescueHutchAnimals
     translation = ZomboidFixesB42_RescueHutchAnimals,
 }
 
+option ZomboidFixesB42.BabyAnimalCatchUp
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_BabyAnimalCatchUp,
+}
+
 option ZomboidFixesB42.HutchDirtSpeed
 {
     type = double,
