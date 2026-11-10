@@ -199,10 +199,10 @@ local function registerAgain(obj)
     if obj:hasComponent(ComponentType.MetaTag) then
         GameEntityFactory.RemoveComponentType(obj, ComponentType.MetaTag)
     end
-    if not obj:isAddedToEngine() then
+    if not obj:isAddedOrScheduledForEngine() then
         obj:addToWorld()
     end
-    return obj:isAddedToEngine()
+    return obj:isAddedOrScheduledForEngine()
 end
 
 -- Sends a repaired entity to the clients and registers it on the server.
@@ -214,7 +214,7 @@ local function publish(obj)
     if canAddAgain(obj) then
         obj:addToWorld()
     end
-    if not obj:isAddedToEngine() and obj:getFluidContainer() then
+    if not obj:isAddedOrScheduledForEngine() and obj:getFluidContainer() then
         obj:sync()
     end
 end
@@ -238,7 +238,7 @@ local function onEntityObjectLoaded(obj)
             log("Rebuilt the " .. script:getName() .. " at " .. where(obj)
                 .. ", which had lost its entity (contents lost)")
         end
-    elseif not obj:isAddedToEngine() and entityGoesToMeta(obj) and canAddAgain(obj) then
+    elseif not obj:isAddedOrScheduledForEngine() and entityGoesToMeta(obj) and canAddAgain(obj) then
         if registerAgain(obj) then
             obj:sendSyncEntity(nil)
             log("Registered the " .. script:getName() .. " at " .. where(obj) .. " again")
@@ -321,7 +321,7 @@ local function repairWorldItem(worldItem)
         end
         publish(worldItem)
         log("Rebuilt the fluid container of the " .. item:getFullType() .. " on the ground at " .. where(worldItem))
-    elseif worldItem:hasComponents() and not worldItem:isAddedToEngine() and entityGoesToMeta(worldItem) then
+    elseif worldItem:hasComponents() and not worldItem:isAddedOrScheduledForEngine() and entityGoesToMeta(worldItem) then
         if registerAgain(worldItem) then
             worldItem:sendSyncEntity(nil)
             log("Registered the " .. item:getFullType() .. " on the ground at " .. where(worldItem) .. " again")

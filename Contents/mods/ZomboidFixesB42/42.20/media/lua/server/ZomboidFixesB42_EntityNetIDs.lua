@@ -50,7 +50,7 @@ local function refreshAround(cell, player)
                     local object = objects:get(i)
                     -- Only entities in the engine have a map entry to move; calling it
                     -- on anything else would give that object an ID with no entry.
-                    if object and object:hasComponents() and object:isAddedToEngine() then
+                    if object and object:hasComponents() and object:isAddedOrScheduledForEngine() then
                         object:getEntityNetID()
                     end
                 end

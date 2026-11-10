@@ -31,6 +31,10 @@ wear path. New in 42.22: `ThrownItemManager` (the server throws on `PlayerDropHe
 `throwPrimaryItem`, sent by `CombatManager` after `OnWeaponSwingHitPoint` only while the weapon still has a physics
 object, so `*_Throwables.lua` clearing it keeps vanilla's throw off), climbable ladders (`ClimbState` and friends),
 medical check and trading accept / reject packets, and the pen catch-up changes under "Pen catch-up".
+Renamed for Lua: `GameEntity.isAddedToEngine()` is now `isAddedOrScheduledForEngine()` (also true while the
+engine add is deferred, and the net ID map entry is written at that point too); `*_LostEntities.lua` and
+`*_EntityNetIDs.lua` errored on 42.22 until switched. A scan of every public Java method name present in 42.21 and
+gone in 42.22 (63) against all the mods' Lua found no other call.
 
 ## Paths
 
