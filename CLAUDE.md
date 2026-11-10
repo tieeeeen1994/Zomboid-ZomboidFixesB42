@@ -31,6 +31,11 @@ wear path. New in 42.22: `ThrownItemManager` (the server throws on `PlayerDropHe
 `throwPrimaryItem`, sent by `CombatManager` after `OnWeaponSwingHitPoint` only while the weapon still has a physics
 object, so `*_Throwables.lua` clearing it keeps vanilla's throw off), climbable ladders (`ClimbState` and friends),
 medical check and trading accept / reject packets, and the pen catch-up changes under "Pen catch-up".
+A recipe is walkable only through its `CanBeDoneWhileWalking` tag (`ISHandcraftAction:new`; vanilla's recipes moved
+to it). The old `canWalk = true` key still loads (`CraftRecipe:isCanWalk()`), but only the crafting window reads it.
+So mod recipes that only say `canWalk` (Guns of Marz's ammo boxes) now stop on walk, and the walk clears the whole
+queue. Guns of Tien's `GoMFixes.lua` adds the tag to every `isCanWalk()` recipe at `OnLoadMapZones` (`getModTags()`
+is the live list behind `getTags()`).
 Renamed for Lua: `GameEntity.isAddedToEngine()` is now `isAddedOrScheduledForEngine()` (also true while the
 engine add is deferred, and the net ID map entry is written at that point too); `*_LostEntities.lua` and
 `*_EntityNetIDs.lua` errored on 42.22 until switched. A scan of every public Java method name present in 42.21 and
