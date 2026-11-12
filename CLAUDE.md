@@ -363,6 +363,10 @@ Bag max item size (42.21): `Item.maxItemSize` (script `MaxItemSize`, `DoParam`-a
 weight passed; `hasRoomFor(chr, item)` passes the item's. Lua's drag (`ISInventoryPaneDraggedItems:update` ~1439) and
 `TransferSameTypeMultiContainer:consumeItems` pass running totals, and Java `TransactionManager.isConsistent` passes
 item + pending transactions into the same bag for floor pickups (`*_MaxItemSize.lua`, `*_RemoveMaxItemSize.lua`).
+Container filters (42.22): `ItemContainer.isItemAllowed` runs the script's `AcceptItemFunction` (a Lua function name,
+looked up with `LuaManager.getFunctionObject`, cached on first use) for every check on both sides; vanilla's live in
+`server/Items/AcceptItemFunction.lua`. The shoulder holster's (`HolsterShoulder`) allows pistol magazines only, two at
+most (Capacity 1); `*_ShoulderHolster.lua` replaces it at file load and swaps the script `Tooltip` (`DoParam`).
 Bag capacity / weight reduction (42.21): both persist per instance and travel in the item bytes (`ItemContainer.save`
 writes `capacity`, `InventoryContainer.save` writes `weightReduction`, so saves, chunk data and every item send carry a
 `setCapacity` / `setWeightReduction` made on the server), but `SyncItemFieldsPacket` carries neither (only modData),

@@ -70,6 +70,7 @@ Zomboid Fixes B42.22.2 is a set of fixes for Project Zomboid Build 42.22.2, most
 - Crafted items show their real values in multiplayer: fish fillets have their share of the fish's calories instead of 205 kcal until dropped, and the same for other recipes that adjust what they make (beta).
 - Bags with a max item size check it per item, so a whole stack of magazines goes into ALICE webbing in one drag instead of 1 to 4 at a time (beta).
 - Optional: no max item size at all, so only a bag's capacity limits what goes in (off by default).
+- Optional: the shoulder holster's pouch takes any item that fits, not only two pistol magazines (off by default, beta).
 - Symbols and notes drawn on a paper map are kept in multiplayer after relogging, when the area reloads, and for anyone the map is given to (beta).
 - Brochures, fliers and maps you read show on the world map in multiplayer right away and are remembered after relogging, and their locations follow your own auto-reveal option (beta).
 - Admins with Timed Action Instant and the Handy trait build instantly in multiplayer instead of waiting half an hour per build (beta).

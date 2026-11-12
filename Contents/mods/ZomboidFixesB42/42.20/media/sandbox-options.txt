@@ -576,6 +576,14 @@ option ZomboidFixesB42.RemoveMaxItemSize
     translation = ZomboidFixesB42_RemoveMaxItemSize,
 }
 
+option ZomboidFixesB42.ShoulderHolsterAnyItem
+{
+    type = boolean,
+    default = false,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_ShoulderHolsterAnyItem,
+}
+
 option ZomboidFixesB42.MapSymbolsSave
 {
     type = boolean,

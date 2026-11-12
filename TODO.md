@@ -83,6 +83,12 @@ game, and a test scenario in the Beta section below).
 
 ## Beta features: what playing each one should check
 
+- [ ] ShoulderHolsterAnyItem (2026-11-12, off by default), on a dedicated server and in single player, option on:
+      wear a shoulder holster and drag in a lighter, a pill bottle, a magazine (anything up to weight 1), from the
+      inventory and from the floor; it goes in and stays after a relog. A pistol still hangs on the holster slot and
+      does not fit the pouch (capacity 1). The holster's tooltip reads "Can be used to store any small item." after
+      a restart. Option off: only pistol magazines, two at most, and vanilla's tooltip. No Lua errors.
+
 - [ ] BabyAnimalCatchUp (2026-11-10, 42.22), on a dedicated server and in single player: a pen with several adults
       and two or three babies (chicks, a calf, lambs); note a baby's age and hunger (animal info, Animal Cheat for
       the values). Walk until the whole pen unloads, let a game day or more pass, come back: the server log (console

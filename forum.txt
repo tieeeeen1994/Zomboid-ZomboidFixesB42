@@ -297,6 +297,10 @@ Bags with a max item size (ALICE belts and chest rigs, toolboxes, totes, first a
 Option: [i]No Max Item Size Limit (Off By Default) (Requires Restart)[/i]
 Removes the max item size of every bag that has one, mods' bags included, so only the bag's capacity limits what goes in. A balance change rather than a fix, so it is off unless the server turns it on.
 
+[b]Shoulder holster stores any item (off by default, beta)[/b]
+Option: [i][BETA] Shoulder Holster Stores Any Item (Off By Default)[/i]
+The shoulder holster's pouch only took pistol magazines, two at most. With this on it takes any item that fits its capacity, like the other bags; the pistol still hangs on its hotbar slot. A balance change rather than a fix, so it is off unless the server turns it on.
+
 [b]Paper map markings are kept (beta)[/b]
 Option: [i][BETA] Paper Map Markings Are Kept[/i]
 In multiplayer, symbols and notes drawn on a paper map vanished after a relog, when the area reloaded, or when the map was given to someone else, because the server saved the map blank. They are now stored with the map when you close it and drawn back whenever it is opened.
