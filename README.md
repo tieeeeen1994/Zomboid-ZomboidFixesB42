@@ -6,6 +6,7 @@ Zomboid Fixes B42.22.2 is a set of fixes for Project Zomboid Build 42.22.2, most
 - Item editor changes save for items in crates, vehicles, on the floor and in other players' inventories.
 - Debug Add Fluid fills rain collectors and other world containers instead of emptying them.
 - The hutch window's debug Remove Egg puts the egg in your inventory in multiplayer instead of losing it until you relog (beta).
+- The debug Delete options delete on the server too: Selection deletes every item instead of only the first ~300 a second (the rest came back after relogging and could grow a character too big to save and log in with), items in a bag inside furniture, a corpse, a floor bag or a bag in a car are deleted instead of coming back, and One item deletes the item you right-clicked (beta).
 - The admin tag shows for every admin panel cheat. It can also be set to never show, or left as vanilla.
 - Shin armor run speeds follow the same pattern as thigh armor: articulated is faster than plain metal, spiked slower.
 - No fall damage on stairs while Fast Move is on.

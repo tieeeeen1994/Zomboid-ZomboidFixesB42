@@ -331,6 +331,18 @@ the server's inventory holds what is worn there (by then the preview copy). Remo
 `removeWornItem` unwears on the server through SyncClothing but the item stays in the server's inventory. The server
 saves players (`ServerPlayerDB.serverUpdateNetworkCharacter` → `IsoPlayer.save`), so leftovers persist.
 `*_MakeUp.lua` fixes both; ClothingWear's ghost check never takes make-up off.
+Player saves with no data (42.22, traced 2026-11-13): `ServerPlayerDB.NetworkCharacterData` serialises the player into
+a buffer grown from 32 KB to at most 1 MB; past that (`BufferOverflowException` logged) or on an IOException `buffer`
+stays null and the UPDATE writes `data = NULL` over the good copy. On the next join `LoadPlayerProfilePacket.processServer`
+finds the row and its `write` throws an NPE at `this.buffer.length` (~66), so no reply is sent and the client hangs at login.
+Fix by hand in the save's `players.db`: restore that `networkPlayers` row's `data` from a backup, or delete the row.
+One way inventories balloon: debug Delete > Selection (`ISRemoveItemTool.removeItems`) sends one
+RemoveInventoryItemFromContainer per item, so past MaxPacketsPerSecond the server keeps the rest
+(`*_DeleteItems.lua` batches them with `sendRemoveItemsFromContainer`; the server side needs Edit Item + Add Item).
+`ContainerID.set` (42.22) for a bag whose outermost container belongs to a world object, a corpse or a floor bag
+calls `setObject`, whose `containerIndex = o.getContainerIndex(bag's container)` is -1, so packets into or out of it
+resolve to nil on the server (a bag in your own inventory: `InventoryContainer` by ID; directly in a vehicle part:
+`ObjectInVehicle`, both fine). `*_DeleteItems.lua` sends its own command (bag ID + square / vehicle) for those.
 Knocked-off hats (42.21): `IsoGameCharacter.helmetFall` (server only; `AddRandomDamageFromZombie` ~1433 on any
 non-thump roll, +40 for head / neck, before that roll's holes; falls; weapon hits on zombies) drops a `ChanceToFall`
 item with `AddWorldInventoryItem(..., false)` and sends `ZombieHelmetFalling`; every client throws an

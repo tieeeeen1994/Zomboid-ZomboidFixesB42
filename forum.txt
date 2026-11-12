@@ -175,6 +175,13 @@ Debug Add Fluid fills rain collectors and other world containers instead of empt
 Option: [i][BETA] Working Hutch Remove Egg Cheat[/i]
 In multiplayer, the debug Remove Egg option on a hutch nest box (Animal Cheat on) puts the egg in your inventory. It used to take the egg out of the nest box without ever showing it to you, so it seemed lost until you relogged, and it ended in an error on a nest box someone had just emptied.
 
+[b]Debug Delete removes items on the server (beta)[/b]
+Option: [i][BETA] Debug Delete Removes Items On The Server[/i]
+In multiplayer, the debug Delete > One item / Selection options (right-click items, for roles with the Edit Item permission) could delete items only on your screen; they came back after relogging.
+- Selection sent the server one message per item, and the game drops anything past about 300 a second, so most of a big stack stayed and the saved character kept growing. A character too big to save (about 1 MB) is saved empty and can no longer log in. Now the deletions go out in a few messages per container, and floor items at a steady pace.
+- Items in a bag lying in furniture, a corpse, on the floor or in a bag in a car were never deleted on the server, which could not find that bag. Now the server looks it up itself.
+- With several rows selected, One item deleted any one of them. Now it deletes the one you right-clicked.
+
 [b]Working foraging debug tools[/b]
 Option: [i]Working Foraging Debug Tools[/i]
 The foraging debug menu can add, move and refresh icons, and added icons can be picked up.

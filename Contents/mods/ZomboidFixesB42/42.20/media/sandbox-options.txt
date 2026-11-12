@@ -64,6 +64,14 @@ option ZomboidFixesB42.HutchRemoveEggCheat
     translation = ZomboidFixesB42_HutchRemoveEggCheat,
 }
 
+option ZomboidFixesB42.DeleteSelectionSync
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_DeleteSelectionSync,
+}
+
 option ZomboidFixesB42.AdminTag
 {
     type = enum,

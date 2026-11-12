@@ -10,6 +10,7 @@ description=- The foraging debug menu works, and added icons can be picked up.
 description=- Item editor changes save for items anywhere, not just your own inventory.
 description=- The debug Add Fluid option fills rain collectors and other fluid containers for real, and everyone sees it.
 description=- The hutch debug Remove Egg option gives you the egg in multiplayer instead of losing it (beta).
+description=- The debug Delete options delete on the server too: every item of a selection, items in bags inside furniture or on the floor, and One item takes the item you clicked (beta).
 description=- Admins with Fast Move on no longer die from falls on stairs.
 description=- The admin tag shows for every admin cheat, or never, or as in vanilla.
 description=- Items with negative weight are deleted automatically.
