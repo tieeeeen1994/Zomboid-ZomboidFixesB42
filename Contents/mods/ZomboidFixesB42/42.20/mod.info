@@ -73,6 +73,7 @@ description=- Scrapping a key ring, sack or hollow book no longer deletes what i
 description=- Plank barricades take 2 nails, and barricading stops once you run out of planks (beta).
 description=- The daily Mechanics XP limit per vehicle part survives reloads (beta).
 description=- Fish fillets and other crafted items show their real values in multiplayer (beta).
+description=- Crafts done while walking, like opening ammo boxes, are not lost when you walk away from a crate or car (beta).
 description=- A bag's max item size is checked per item: drag a whole stack of magazines into ALICE webbing at once (beta).
 description=- Optional: remove the max item size of bags entirely (off by default).
 description=- Optional: the shoulder holster stores any item that fits, not only pistol magazines (off by default, beta).

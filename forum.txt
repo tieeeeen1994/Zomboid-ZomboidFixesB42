@@ -296,6 +296,10 @@ Installing, uninstalling and repairing a part gives Mechanics XP once a day per 
 Option: [i][BETA] Crafted Items Show Their Real Values[/i]
 In multiplayer, fish fillets showed 205 kcal whatever the fish, until dropped and picked up again, because the server set their real values only after sending them. Crafted items are now sent again once the recipe is done with them, which also fixes other recipes that adjust their results.
 
+[b]Crafts done while walking are not lost (beta)[/b]
+Option: [i][BETA] Crafts Done While Walking Are Not Lost[/i]
+A craft remembers every container that was nearby when it was queued, and when it finished the game gave up without a word if any of them was out of reach by then, even ones the craft took nothing from. So opening ammo boxes (or any other craft that can be done while walking) finished with the box still unopened once you had walked a few tiles from a crate, a car or items on the floor. Containers the craft takes nothing from are now left out; a craft that uses items from a container you walked away from is still refused.
+
 [b]Max item size checks each item (beta)[/b]
 Option: [i][BETA] Max Item Size Checks Each Item[/i]
 Bags with a max item size (ALICE belts and chest rigs, toolboxes, totes, first aid kits...) checked it against everything dragged in at once, so only 1 to 4 magazines went into ALICE webbing per drag. Each item is now checked on its own, when dragging and with the transfer same type button. Picking items up from the floor straight into such a bag still stops at the limit; that check is in Java.

@@ -206,6 +206,9 @@ game, and a test scenario in the Beta section below).
       or walk far away and back), again: still no XP until 24 game hours have passed; new vehicles still get XP.
 - [ ] CraftResultSync, on a server: fillet a big and a small fish: the fillets show different calories and weights
       at once, without dropping them; a jar of food keeps its lid condition; batch crafts still work, no lag.
+- [ ] CraftOutOfReach, on a server and in single player: stand next to a crate (or with items on the floor), queue
+      several ammo box openings from a bag (or Tien's Ammo Bags' Reload (Open Boxes)) and walk 5 tiles away: every
+      box opens. Queue a craft whose input lies in that crate, walk away before it ends: still refused, nothing taken.
 - [ ] MaxItemSizePerItem: drag 10 full M1911 magazines onto ALICE webbing with room: all go in at once; an item
       heavier than 1.3 is refused (red) while the rest go in; the transfer same type button fills the webbing.
 - [ ] RemoveMaxItemSize (off by default): turned on, a heavy item goes into a wallet or toolbox up to capacity,

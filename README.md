@@ -69,6 +69,7 @@ Zomboid Fixes B42.22.2 is a set of fixes for Project Zomboid Build 42.22.2, most
 - Plank barricades take 2 nails, as the menu asks, and the barricade cursor stops once the last plank is used instead of building nothing (beta).
 - The once-a-day Mechanics XP per vehicle part holds after reloading or a server restart; vehicles used to get a new hidden ID every time they loaded, which reset it (beta).
 - Crafted items show their real values in multiplayer: fish fillets have their share of the fish's calories instead of 205 kcal until dropped, and the same for other recipes that adjust what they make (beta).
+- Crafts done while walking (opening ammo boxes, for one) no longer finish with nothing made when you walk a few tiles from a crate, a car or items on the floor that the craft does not even use (beta).
 - Bags with a max item size check it per item, so a whole stack of magazines goes into ALICE webbing in one drag instead of 1 to 4 at a time (beta).
 - Optional: no max item size at all, so only a bag's capacity limits what goes in (off by default).
 - Optional: the shoulder holster's pouch takes any item that fits, not only two pistol magazines (off by default, beta).

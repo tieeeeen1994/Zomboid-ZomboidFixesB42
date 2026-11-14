@@ -568,6 +568,14 @@ option ZomboidFixesB42.CraftResultSync
     translation = ZomboidFixesB42_CraftResultSync,
 }
 
+option ZomboidFixesB42.CraftOutOfReach
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_CraftOutOfReach,
+}
+
 option ZomboidFixesB42.MaxItemSizePerItem
 {
     type = boolean,

@@ -357,6 +357,12 @@ time a vehicle enters the world) ends with `mechanicalId = Rand.Next(100000)` ri
 `ISHandcraftAction:performRecipe` sends results with `Actions.addOrDropItem` before `luaCallOnCreate`, so Java OnCreate
 changes (`RecipeCodeOnCreate.cutFish` fillet values) and the modData record miss the owner
 (`*_MechanicsXP.lua`, `*_CraftResultSync.lua`). `RecipeCodeHelper.addItemToCharacterInventory` sends at once.
+A handcraft keeps the containers it was queued with (`getContainers(player)`, sent with the action; the floor as a
+`ContainerID` Floor at its old square), and `HandcraftLogic.performCurrentRecipe` (42.22 ~139) first runs
+`isContainersAccessible` over all of them (> 2.5 tiles, an unreachable vehicle part, a padlock = false): one stale
+container makes the craft do nothing while `complete` still returns true, so walkable crafts (ammo boxes) "finish"
+unopened after a short walk (`*_CraftOutOfReach.lua`). `getContainers()` is the live list; a context-menu craft is
+manual-input mode, its item sent by ID and re-pointed at the main inventory copy by `fixMovedItems` before the request.
 Map items (42.21): `MapItem.save/load` write its `WorldMapSymbols`; `getSymbols` is @HiddenFromLua and the symbols
 API comes from a map UI (`ISMap.mapAPI` is `getAPIv1()`, which has only `getSymbolsAPI()`; the V2 symbols, same
 data, are `javaObject:getAPIv2():getSymbolsAPIv2()`, V2 symbols: `isUserDefined`, `isText/isTexture`,
