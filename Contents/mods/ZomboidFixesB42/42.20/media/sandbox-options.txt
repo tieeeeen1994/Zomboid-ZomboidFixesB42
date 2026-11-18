@@ -576,6 +576,14 @@ option ZomboidFixesB42.CraftOutOfReach
     translation = ZomboidFixesB42_CraftOutOfReach,
 }
 
+option ZomboidFixesB42.VehicleWorkCancel
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_VehicleWorkCancel,
+}
+
 option ZomboidFixesB42.MaxItemSizePerItem
 {
     type = boolean,

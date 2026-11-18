@@ -1583,7 +1583,12 @@ Actions whose client `update` does the work (`ISWaterPlantAction`: per-use `wate
 `sendServerCommand(p, 'ui', 'dirtyUI')` (ItemUtils, ISBuildUtil, ISMultiStageBuild, GraveHelper) never
 matches the client's `Commands.ui.DirtyUI` (exact-name lookup); `*_RemoveBush.lua` answers it.
 `ISAddFuel:getDuration` (42.21) = 70 + the whole can × 50 while `complete` pours only `min(can, maxFuel - fuel)`;
-`*_GeneratorFuel.lua` times it from what fits. `IsoGenerator.getGeneratorItemType` = generator-tagged item by sprite,
+`*_GeneratorFuel.lua` times it from what fits.
+`ISRemoveBurntVehicle:new` (42.22, 800 - 20 x Welding ticks) sets `stopOnWalk` / `stopOnRun` false, and Java reads
+both only in the `LuaTimedActionNew` constructor (`ISBaseTimedAction:create`, client / SP), so walking away never
+cancelled it. `ISWashVehicle` (looped -1, ends when the side is clean or the water is out; `isValid` = still in that
+side's area) has them off too. `*_VehicleWorkCancel.lua` sets both true in `create` for the two. Other vanilla vehicle
+actions with them off are done from a seat or are short; installs, uninstalls and engine repair stop on walk. `IsoGenerator.getGeneratorItemType` = generator-tagged item by sprite,
 else `Base.Generator`, so `ISTakeGenerator` always has an item type in 42.21.
 `ISRemoveBush:complete` (42.21) removes `canBeCut` objects in a forward loop: removal is immediate
 (`transmitRemoveItemFromSquare`), so it skips the next object and `get(i)` throws past the end unless the bush was last
