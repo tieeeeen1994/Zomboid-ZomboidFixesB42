@@ -34,11 +34,16 @@
     Fixed here, on a client only (single player has no packets):
     - ISRemoveItemTool.removeItem and removeItems are replaced. Vanilla's removeItem
       still does all the local work for each item, but its sendRemoveItemFromContainer
-      calls are collected. Per container they go out as one
-      sendRemoveItemsFromContainer(container, ArrayList) packet (CHUNK IDs each), or,
-      for a container from point 2, as one CMD_DELETE_IN_BAG command (bag ID + the
-      square or vehicle holding it); the server finds the bag by ID there and removes
-      the items (server/ZomboidFixesB42_DeleteItems.lua).
+      calls are collected. Per container they go out as CMD_DELETE_ITEMS commands
+      (CHUNK item IDs each) naming where to look: the player's own inventory tree,
+      the square of the object, corpse or floor item holding the container (at any
+      bag depth), or the vehicle. The server finds each item by ID there and removes
+      it (server/ZomboidFixesB42_DeleteItems.lua). The Lua global
+      sendRemoveItemsFromContainer cannot batch them: on a client it does nothing
+      (LuaManager.GlobalObject ~9985 only sends when GameServer.server), which is
+      why 3.4.0's batching deleted nothing on the server at all (reported
+      2026-11-20: deleted items were back after relogging). A container with no such
+      address still gets vanilla's packet per item.
     - Floor items keep vanilla's sends and are paced through a queue at
       FLOOR_PER_SECOND, well under the limit.
     - After vanilla fills the menu, "One item" is pointed at the row under the mouse
@@ -72,57 +77,60 @@ local function isFloorItem(item)
     return container ~= nil and container:getType() == "floor" and item:getWorldItem() ~= nil
 end
 
---- Where the server can find the bag holding `container`, when vanilla's packet
---- address would not resolve there (point 2 above); nil when vanilla's is fine.
-local function bagAddress(container, playerObj)
-    local bag = container:getContainingItem()
-    if not bag or container:isInCharacterInventory(playerObj) then return nil end
-
-    local top = bag
-    for _ = 1, 20 do
-        local holder = top:getContainer() and top:getContainer():getContainingItem()
-        if not holder then break end
-        top = holder
-    end
-    local topContainer = top:getContainer()
-
-    local part = topContainer and topContainer:getVehiclePart()
-    if part then
-        -- A bag directly in a vehicle part has a working address (ObjectInVehicle).
-        if top == bag then return nil end
-        local vehicle = part:getVehicle()
-        if not vehicle then return nil end
-        return { vehicle = vehicle:getId(), bag = bag:getID() }
-    end
-
-    local square
-    if top:getWorldItem() then
-        square = top:getWorldItem():getSquare()
-    elseif topContainer and topContainer:getParent() then
-        square = topContainer:getParent():getSquare()
-    end
+local function squareAddress(square)
     if not square then return nil end
-    return { x = square:getX(), y = square:getY(), z = square:getZ(), bag = bag:getID() }
+    return { x = square:getX(), y = square:getY(), z = square:getZ() }
+end
+
+--- Where the server should look for the items of `container`: the player's own
+--- inventory tree, the square of the object / corpse / floor item holding it (at
+--- any bag depth), or the vehicle whose part holds it. nil when none is known.
+local function addressOf(container, playerObj)
+    if container == playerObj:getInventory() or container:isInCharacterInventory(playerObj) then
+        return { inv = true }
+    end
+    local current = container
+    for _ = 1, 20 do
+        local part = current:getVehiclePart()
+        if part then
+            local vehicle = part:getVehicle()
+            return vehicle and { vehicle = vehicle:getId() } or nil
+        end
+        local parent = current:getParent()
+        if parent and instanceof(parent, "IsoObject") and parent:getSquare() then
+            return squareAddress(parent:getSquare())
+        end
+        local bag = current:getContainingItem()
+        if not bag then return nil end
+        local worldItem = bag:getWorldItem()
+        if worldItem and worldItem:getSquare() then
+            return squareAddress(worldItem:getSquare())
+        end
+        current = bag:getContainer()
+        if not current then return nil end
+    end
+    return nil
 end
 
 local function sendCollected(groups, order, playerObj)
     for _, container in ipairs(order) do
         local items = groups[container]
-        local address = bagAddress(container, playerObj)
-        local i = 1
-        while i <= #items do
-            local last = math.min(#items, i + CHUNK - 1)
-            if address then
+        local address = addressOf(container, playerObj)
+        if address then
+            local i = 1
+            while i <= #items do
+                local last = math.min(#items, i + CHUNK - 1)
                 local ids = {}
                 for n = i, last do ids[#ids + 1] = items[n]:getID() end
                 address.ids = ids
-                sendClientCommand(playerObj, ZomboidFixesB42.MODULE, ZomboidFixesB42.CMD_DELETE_IN_BAG, address)
-            else
-                local list = ArrayList.new()
-                for n = i, last do list:add(items[n]) end
-                sendRemoveItemsFromContainer(container, list)
+                sendClientCommand(playerObj, ZomboidFixesB42.MODULE, ZomboidFixesB42.CMD_DELETE_ITEMS, address)
+                i = last + 1
             end
-            i = last + 1
+        else
+            -- No address the server could use: vanilla's packet per item.
+            for _, item in ipairs(items) do
+                sendRemoveItemFromContainer(container, item)
+            end
         end
     end
 end

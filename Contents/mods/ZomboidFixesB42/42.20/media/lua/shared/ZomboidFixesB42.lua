@@ -131,7 +131,7 @@ ZomboidFixesB42.CMD_ANIMAL_GROUP_CHEAT = "animalGroupCheat"
 ZomboidFixesB42.CMD_THROW = "throwable"
 ZomboidFixesB42.CMD_STORM = "startStorm"
 ZomboidFixesB42.CMD_FLOOR_ORDER = "floorOrder"
-ZomboidFixesB42.CMD_DELETE_IN_BAG = "deleteInBag"
+ZomboidFixesB42.CMD_DELETE_ITEMS = "deleteItems"
 
 -- server -> clients
 ZomboidFixesB42.CMD_PRINT_MEDIA_READ = "printMediaRead"

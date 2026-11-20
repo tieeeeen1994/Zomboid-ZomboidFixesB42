@@ -342,12 +342,15 @@ stays null and the UPDATE writes `data = NULL` over the good copy. On the next j
 finds the row and its `write` throws an NPE at `this.buffer.length` (~66), so no reply is sent and the client hangs at login.
 Fix by hand in the save's `players.db`: restore that `networkPlayers` row's `data` from a backup, or delete the row.
 One way inventories balloon: debug Delete > Selection (`ISRemoveItemTool.removeItems`) sends one
-RemoveInventoryItemFromContainer per item, so past MaxPacketsPerSecond the server keeps the rest
-(`*_DeleteItems.lua` batches them with `sendRemoveItemsFromContainer`; the server side needs Edit Item + Add Item).
+RemoveInventoryItemFromContainer per item, so past MaxPacketsPerSecond the server keeps the rest. The Lua global
+`sendRemoveItemsFromContainer` (plural) **does nothing on a client** (42.22 `LuaManager.GlobalObject` ~9985 sends only
+when `GameServer.server`; the singular one sends from both), so it cannot batch from a client: 3.4.0 tried and deleted
+nothing on the server (reported 2026-11-20). `*_DeleteItems.lua` sends item IDs in its own `deleteItems` command
+instead (own inventory / square / vehicle; the server needs Edit Item + Add Item, like vanilla's packet).
 `ContainerID.set` (42.22) for a bag whose outermost container belongs to a world object, a corpse or a floor bag
 calls `setObject`, whose `containerIndex = o.getContainerIndex(bag's container)` is -1, so packets into or out of it
 resolve to nil on the server (a bag in your own inventory: `InventoryContainer` by ID; directly in a vehicle part:
-`ObjectInVehicle`, both fine). `*_DeleteItems.lua` sends its own command (bag ID + square / vehicle) for those.
+`ObjectInVehicle`, both fine). `*_DeleteItems.lua`'s command addresses by square / vehicle and finds items by ID.
 Knocked-off hats (42.21): `IsoGameCharacter.helmetFall` (server only; `AddRandomDamageFromZombie` ~1433 on any
 non-thump roll, +40 for head / neck, before that roll's holes; falls; weapon hits on zombies) drops a `ChanceToFall`
 item with `AddWorldInventoryItem(..., false)` and sends `ZombieHelmetFalling`; every client throws an
