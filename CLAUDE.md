@@ -197,7 +197,12 @@ or methods exist.
   and **no timer may poll for it** (user's rule, 2026-10-25, all mods: a performance cost for something admins rarely
   do): load-time work reads the option once at world load, its name ends in " (Requires Restart)" (forum.txt
   quotes it the same way) and its tooltip says a change takes effect after a restart. Code that already runs anyway
-  may read an option live. Recipe edits must wait for
+  may read an option live. In-game sandbox changes (42.22, traced 2026-11-20): in MP the admin window's Apply sends
+  the options to the server, whose `receiveSandboxOptions` runs `load` + `applySettings` + `toLua` and relays them to
+  every client, which runs the same, so `SandboxVars` is live everywhere. In single player (debug menu)
+  `ISServerSandboxOptionsUI:settingsFromUI` only `getSandboxOptions():set`s the Java options, so `SandboxVars` stays
+  stale until a reload unless something calls `getSandboxOptions():toLua()` (TienSkillMastery's
+  `*_SandboxRefresh.lua` wraps `settingsFromUI`). Recipe edits must wait for
   `OnLoadMapZones` (see "Item and recipe scripts at run time"). Leaving a game runs `ScriptManager.Reset` + `Load`
   without always reloading Lua, so a file-level "already applied" flag must be cleared at world load.
   UI strings go in `Translate/EN/IG_UI.json` as `IGUI_ZomboidFixesB42_*`.
@@ -931,6 +936,12 @@ forces god mode / invisible / noclip / admin tag / hear all from the flags byte 
   client's `hourLastSeen` to the server's. `AddItemToMapPacket.processClient` does **not** dedupe by ID (a broadcast
   re-send duplicates the item on clients that have it), `ReplaceInventoryItemInContainerPacket` removes by ID then adds
   (safe to broadcast), the client's `ItemContainer.DoRemoveItem` is local. `*_AnimalZoneResync.lua`.
+  Milking a stressed animal (42.22.2, traced 2026-11-20): `ISMilkAnimal:stress` (once per litre: SP `update`, server
+  emulated "update" event every timePerLiter x 20 ms) computes stress - 5 x Animal Care - 5 x acceptance level for an
+  animal above 40 stress and a milker at Animal Care <= 7, then overwrites it with `chance = 120`, so it always
+  flees, spills the bucket and drops it; `ISShearAnimal:stress` has no override. `*_MilkingStress.lua` (option
+  `MilkingStressFix`, off by default at the user's request); Tien's Skill Mastery carries the same fix always on
+  (either loading order gives the fixed roll).
   Raking (42.21, `ISPickDungCursor` → shared `ISPickupDung`, 250 ticks, 1 with `isTimedActionInstant`): server
   `complete` runs `square:removeAllDung()` (world items whose script `isDung`; feathers and eggs are not) on each
   square of the radius, local removals, adds the items to the raker with `sendAddItemsToContainer`, then

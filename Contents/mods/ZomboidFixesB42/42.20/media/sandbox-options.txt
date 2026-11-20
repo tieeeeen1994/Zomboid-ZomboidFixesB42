@@ -470,6 +470,14 @@ option ZomboidFixesB42.WashingTimeFix
     translation = ZomboidFixesB42_WashingTimeFix,
 }
 
+option ZomboidFixesB42.MilkingStressFix
+{
+    type = boolean,
+    default = false,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_MilkingStressFix,
+}
+
 option ZomboidFixesB42.WaterDispenserCheck
 {
     type = boolean,

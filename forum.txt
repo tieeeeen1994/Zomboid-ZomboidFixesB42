@@ -224,6 +224,10 @@ Adding fuel to a generator takes as long as the fuel that actually goes in. It u
 Option: [i][BETA] Washing Time Fix[/i]
 Being unhappy or drunk, having sore hands or arms, or being too hot or cold slows every timed action down. Washing clothes counted all of that twice, so the slowdowns multiplied with themselves: a very unhappy and very drunk character washed 16 times slower instead of 4. Now washing is slowed down once, like everything else.
 
+[b]Stressed animal milking fix (off by default) (beta)[/b]
+Option: [i][BETA] Stressed Animal Milking Fix[/i]
+Milking an animal with more than 40 stress always failed for anyone at Animal Care 7 or lower: on the first litre it ran off, the milk was spilt and the bucket ended up on the ground. The game worked out a chance from the stress, your Animal Care and how much the animal trusts you, then ignored it. Now milking uses that chance, checked once per litre, as shearing always did: a calmer animal, a better farmer or a friendlier animal break off less often.
+
 [b]Corpse smell and rooms you build[/b]
 Option: [i]Rooms You Build Shelter From Corpse Smell[/i]
 A map house shelters you from the Bad Smell moodle because the game counts the corpses in the building you stand in. A room you build yourself has no map building, so the game counted every corpse nearby as if you stood in the street. Now a room with no map building counts as a shelter, like a map house: no corpse sickness and no moodle in it. A room is a square where you can plumb a sink. Map buildings are unchanged.

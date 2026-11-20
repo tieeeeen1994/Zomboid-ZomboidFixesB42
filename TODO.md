@@ -122,7 +122,7 @@ game, and a test scenario in the Beta section below).
 - [ ] RepairLostEntities: a killed server and a restored backup with rain collectors, drying racks and a bucket on
       the floor; chunk re-saves while a backup runs.
 - [ ] One session each on a server: TransferResync, ReloadAnimTiming, WaterPlantOnce, RemoveBushToolWear,
-      RemoveBushWholeSquare, VehicleBatteryDrain, GasTankWelding, GeneratorRefuelTime, WaterDispenserCheck,
+      RemoveBushWholeSquare, VehicleBatteryDrain, GasTankWelding, GeneratorRefuelTime, MilkingStressFix, WaterDispenserCheck,
       InstantBuildHandy, MapAdminCapabilities, RememberSeenRooms, BooksStayRead, NoStairAutoVault, GrabAmount,
       FirearmRadialNoBlanks, GoMMagazineTooltip, ReturnKeepsQueue (eat all, then a queued eat still runs),
       CraftClickQueue (several Craft clicks all craft), NoFastMoveFallDamage, ChopperControls, AdminFullBright,
