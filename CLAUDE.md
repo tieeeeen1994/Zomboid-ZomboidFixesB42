@@ -347,6 +347,12 @@ RemoveInventoryItemFromContainer per item, so past MaxPacketsPerSecond the serve
 when `GameServer.server`; the singular one sends from both), so it cannot batch from a client: 3.4.0 tried and deleted
 nothing on the server (reported 2026-11-20). `*_DeleteItems.lua` sends item IDs in its own `deleteItems` command
 instead (own inventory / square / vehicle; the server needs Edit Item + Add Item, like vanilla's packet).
+The area Remove Item Tool (`ISRemoveItemTool` window, 42.22, traced 2026-11-22): Items = `object.removeWorldItemsInArea`
+(server Lua, UseDebugContextMenu, index-relayed `transmitRemoveItemFromSquare`); Corpses = client
+`square:removeCorpse(body, false)` per body, local first, then one `RemoveCorpseFromMap` each, which the server allows
+for ManipulateZombie (zombie) / AnimalCheats (animal) / ConnectWithDebug (`isPlayer()` = a private `player` field set
+only at death, never saved, so a reloaded player corpse is refused for everyone); a refusal is only a log warning.
+`*_RemoveItemTool.lua` removes both on the server (`removeCorpse(body, false)` there relays by object ID and frees it).
 `ContainerID.set` (42.22) for a bag whose outermost container belongs to a world object, a corpse or a floor bag
 calls `setObject`, whose `containerIndex = o.getContainerIndex(bag's container)` is -1, so packets into or out of it
 resolve to nil on the server (a bag in your own inventory: `InventoryContainer` by ID; directly in a vehicle part:
@@ -1107,6 +1113,13 @@ Traced 2026-10-08 while reviewing Animals Attack Zombies (`~/Zomboid/Workshop/An
 - `getCell():getVehicles()` is a **Set** in 42.21 (vanilla `ISVehicleBloodUI` still calls `:get`); copy it with
   `ArrayList.new()` + `addAll`. `sendReplaceItemInContainer(container, item, item)` re-sends an item (same ID) to the
   owner or players near the container; the client removes by ID and adds the parsed copy (hand/hotbar keep the old one).
+- Saved tiles (42.22, traced 2026-11-22): `IsoObject.save` writes the main sprite as its numeric id and `load`
+  resolves it with `IsoSprite.getSprite(manager, id)`; attached anim sprites are ids too. The id comes from the
+  tiledef file number, the sheet's position in the .tiles file and the tile index (`IsoWorld.getSpriteID`), not
+  from names. `spriteName` and overlay sprites are saved by name (WorldDictionary or a string). So a tile pack
+  that renames its sheets but keeps the file number and sheet order (Arcadia's `arcadia_raven` 783 = Raven Creek
+  B42's `RCBucho` 783 with an `arcadia_raven__` prefix) still draws chunks already saved; only name-saved
+  references (overlays, Moveables items carrying a sprite name) miss.
 - Dead bodies have a persistent ID: `IsoDeadBody:getObjectIDAsLong()` (`zombie/network/id/ObjectID`, type DeadBody,
   a short, "permanent": written in `IsoDeadBody.save`, so in the chunk data clients get, and the type's last ID is
   saved by `ObjectIDManager`). Allocated only on the server / single player (`addObject` returns early on a client
@@ -1171,6 +1184,11 @@ vehicle stories and road foraging use. Vanilla, Raven Creek and NagaCity ship on
   sounds, Food weight (scaled). Copied into the instance at `InstanceItem` and **not saved**: clothing combat speed /
   condition chance / chance to fall, container sounds, WeaponPart MountOn, food ReplaceOnUse, item weight (saved only
   when custom). Saved per instance: food nutrition (calories, carbs, lipids, proteins, base hunger).
+- Item kind (42.22, traced 2026-11-22): only `ItemType = base:x` is read (`ItemType.get(ResourceLocation.of(v))`);
+  the B41 key `Type = Normal` is silently ignored, leaving `getItemType()` nil. `InstanceItem` then has no class
+  to build and NPEs (every spawn fails), and the admin Item List (`ISItemsListTable:initList` ~244,
+  `getItemType():toString()`) errors and never opens. Slocan Lake (3840538932) ships five such maps;
+  `*_UntypedItems.lua` (option `UntypedModItems`) gives any untyped item `base:normal` at OnLoadMapZones.
 - Tag caches: `ItemTags.tagItemMap` (read only by `InputScript.OnPostWorldDictionaryInit`); each tags[...] input's
   `itemScriptCache` = `input:getPossibleInputItems()` (mutable ArrayList; `CraftRecipeManager` matches with
   `input.containsItem`); `ScriptManager.getItemsTag(tag)` (lazy, mutable list); `Item.getUsedInRecipes()`. Per-item input

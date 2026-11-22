@@ -182,6 +182,13 @@ In multiplayer, the debug Delete > One item / Selection options (right-click ite
 - Items in a bag lying in furniture, a corpse, on the floor or in a bag in a car were never deleted on the server, which could not find that bag. Now the server looks it up itself.
 - With several rows selected, One item deleted any one of them. Now it deletes the one you right-clicked.
 
+[b]Working debug Remove Item Tool (beta)[/b]
+Option: [i][BETA] Working Debug Remove Item Tool[/i]
+In multiplayer, the Remove Item Tool (debug menu, or Tools > Remove item tool) now has the server do the removing in both modes.
+- Corpses were removed on your own screen first and only then asked of the server, which refused some of them without telling you, so they came back after relogging: the corpse of a player who died before the last restart (for everyone), any player's corpse for moderators, and everything past about 300 corpses a second. An unloaded square in the area stopped the removal halfway with an error.
+- Floor items your screen showed but the server did not have (ghost items) stayed after the server removed the rest. Now your leftover copies go too.
+Permissions are vanilla's: Use Debug Context Menu for the tool, plus Manipulate Zombie for zombie corpses, Animal Cheats for animal corpses and Connect With Debug for players' corpses.
+
 [b]Working foraging debug tools[/b]
 Option: [i]Working Foraging Debug Tools[/i]
 The foraging debug menu can add, move and refresh icons, and added icons can be picked up.
@@ -481,4 +488,8 @@ Plysken Attachments Reborn's bag attachment slot box is drawn at the tooltip's r
 [b]Turbo Game in multiplayer[/b]
 Option: [i]Turbo Game In Multiplayer[/i]
 Turbo Game cartridges and batteries go in and come out on multiplayer servers, including in consoles spawned from the item list. The battery charge, best scores and mood effects are kept, and best scores belong to the console they were set on. Your character no longer walks around while a game is open, and the game closes when a zombie is near or it is too dark.
+
+[b]Mod items without an item type (beta)[/b]
+Option: [i][BETA] Mod Items Without An Item Type (Requires Restart)[/i]
+Build 42 reads an item's kind only from [i]ItemType = base:normal[/i]. Mods ported from Build 41 that still write [i]Type = Normal[/i] leave their items with no item type: such an item can never be spawned (loot, /additem and the Item List all fail with an error), and the admin Item List stops with an error and does not open while one is loaded. Slocan Lake's five maps are like this. When the world loads, every such item becomes a plain item, and each one is named in the console log so its mod's author can correct it.
 

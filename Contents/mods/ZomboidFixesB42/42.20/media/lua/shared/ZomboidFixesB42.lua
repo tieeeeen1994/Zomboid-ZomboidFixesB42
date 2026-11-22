@@ -132,6 +132,7 @@ ZomboidFixesB42.CMD_THROW = "throwable"
 ZomboidFixesB42.CMD_STORM = "startStorm"
 ZomboidFixesB42.CMD_FLOOR_ORDER = "floorOrder"
 ZomboidFixesB42.CMD_DELETE_ITEMS = "deleteItems"
+ZomboidFixesB42.CMD_REMOVE_ITEM_TOOL = "removeItemTool"
 
 -- server -> clients
 ZomboidFixesB42.CMD_PRINT_MEDIA_READ = "printMediaRead"
@@ -152,6 +153,7 @@ ZomboidFixesB42.CMD_THROWABLE_FLY = "throwableFly"
 ZomboidFixesB42.CMD_THROWABLE_END = "throwableEnd"
 ZomboidFixesB42.CMD_STORM_RESULT = "stormResult"
 ZomboidFixesB42.CMD_FLOOR_ORDER_REPLY = "floorOrderReply"
+ZomboidFixesB42.CMD_REMOVE_ITEM_TOOL_DONE = "removeItemToolDone"
 
 -- The single player speed buttons, as zombie.ui.SpeedControls sets them: play,
 -- fast forward, faster forward and wait. Multiplayer fast forward offers exactly

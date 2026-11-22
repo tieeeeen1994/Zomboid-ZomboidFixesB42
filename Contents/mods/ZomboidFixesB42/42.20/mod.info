@@ -11,6 +11,7 @@ description=- Item editor changes save for items anywhere, not just your own inv
 description=- The debug Add Fluid option fills rain collectors and other fluid containers for real, and everyone sees it.
 description=- The hutch debug Remove Egg option gives you the egg in multiplayer instead of losing it (beta).
 description=- The debug Delete options delete on the server too: every item of a selection, items in bags inside furniture or on the floor, and One item takes the item you clicked (beta).
+description=- The debug Remove Item Tool removes corpses on the server in multiplayer, players' corpses included, and clears your ghost floor items (beta).
 description=- Admins with Fast Move on no longer die from falls on stairs.
 description=- The admin tag shows for every admin cheat, or never, or as in vanilla.
 description=- Items with negative weight are deleted automatically.
@@ -31,6 +32,7 @@ description=- Grab amount... between Grab one and Grab all takes exactly as many
 description=- Empty slices are left out of the firearm radial menu, so it only shows what can be done.
 description=- Context menu options over the equipment hotbar no longer click the hotbar slot under them (beta).
 description=- Turbo Game cartridges, batteries, best scores and mood effects work on servers, best scores are kept per console, playing no longer moves your character, and games close near zombies or in the dark.
+description=- Mod items left with no item type (Build 41 "Type =", e.g. Slocan Lake's maps) become plain items, so they spawn and the Item List opens (beta).
 description=- Admins who join are fully healed and briefly in god mode, so a revived admin does not die again (off by default).
 description=- Admins can change any player's body stats (hunger, mood, health, calories, weight and more) like the debug Body panel, and the changes stick for everyone; a Health button opens any nearby player's health window without asking.
 description=- Admins can pick up every loose animal of one type and breed in a pen at once and put them all down elsewhere (beta).

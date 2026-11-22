@@ -72,6 +72,14 @@ option ZomboidFixesB42.DeleteSelectionSync
     translation = ZomboidFixesB42_DeleteSelectionSync,
 }
 
+option ZomboidFixesB42.RemoveItemToolSync
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_RemoveItemToolSync,
+}
+
 option ZomboidFixesB42.AdminTag
 {
     type = enum,
@@ -285,6 +293,14 @@ option ZomboidFixesB42.TurboGameMultiplayer
     default = true,
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_TurboGameMultiplayer,
+}
+
+option ZomboidFixesB42.UntypedModItems
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_UntypedModItems,
 }
 
 option ZomboidFixesB42.AdminSpawnProtection
