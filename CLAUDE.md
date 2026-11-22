@@ -1171,6 +1171,14 @@ is drawn as street labels on the world map (`ISMapDefinitions` `MapUtils.initDef
 "Nav" zones (`IsoWorld.registerNavZones` from `metazoneHandler` on `OnLoadMapZones`; rects for straight pieces,
 polyline zones for diagonal runs, `width` wide; names containing a railroad word are skipped), which randomized
 vehicle stories and road foraging use. Vanilla, Raven Creek and NagaCity ship one.
+Zombie density (42.22, traced 2026-11-22): the last 1024 bytes of each lotheader, read in `IsoMetaGrid` and scaled
+by the world seed's `ZombieVoronoi` cutoffs, handed to the native population library at every start
+(`MapCollisionData` `n_initMetaChunk`). B42 maps use a small scale: vanilla Muldraugh max 10, a town cell averages
+~0.5 a chunk (B41 maps used up to 255); the Arcadia maps follow vanilla's scale. The population itself is native
+state saved per cell in `<save>/zpop/zpop_X_Y.bin`, written only for cells that have been loaded. Not traced
+(native code): a cell with no file is seeded from the current density when first needed, while an existing file
+keeps its zombies. So a map added to a running save fills cells nobody visited, but cells already loaded keep the
+old map's population (wilderness = almost none) until their zpop file is moved away with the server stopped.
 
 ### Item and recipe scripts at run time (42.21)
 
