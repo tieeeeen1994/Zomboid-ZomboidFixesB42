@@ -991,7 +991,11 @@ forces god mode / invisible / noclip / admin tag / hear all from the flags byte 
   (42.22, traced 2026-11-10) The load-time call is gone: `AnimalManagerMain.fromWorker` sets `fromMeta = true` on an
   animal coming back into any animal zone (not while `IngameState.loading`), `IsoAnimal.updateInternal` does nothing
   while it is set, and only `updateStatsAway` clears it; an animal that arrives after its zone's `doMeta` stays frozen
-  until the next away and return (in a lupa port, ~7% of returns when the worker lags 0-3 updates). The zone's set is
+  until the next away and return (in a lupa port, ~7% of returns when the worker lags 0-3 updates). Such an animal is
+  also **invisible to every client** (traced 2026-11-23, an empty barn on clients): `updateInternal` skips
+  `super.update()`, so `IsoPlayer.updateInternal1` never calls `AnimalInstanceManager.update` →
+  `AnimalSynchronizationManager.setSendToClients`, the server never sends an AnimalPacket for it, and a client never
+  learns its online ID to request it. `updateStatsAway(hours)` is public and clears the flag. The zone's set is
   now a `HashSet` (`getAnimals()` renamed `getAnimalsInZone()`, a copy), and `doMeta`'s baby loop runs once per
   animal in the zone (`for i < size: for each animal: if baby updateStatsAway(hours)`), so every baby is made up N
   times (`*_BabyAnimalCatchUp.lua`). `check()` rebuilds the set from `IsoGridSquare.getAnimals(list)`, which skips
