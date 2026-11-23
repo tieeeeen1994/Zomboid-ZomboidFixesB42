@@ -632,6 +632,12 @@ Lua: `player:getStats():get(CharacterStat.X)` / `:set(CharacterStat.X, v)` (`set
   update, so a period is rounded up to the next update (555 ms ≈ 600), and its first firing is one period after
   the start. `*_ReloadTiming.lua` swaps `emulateAnimEvent` during those `serverStart`s, keeps the per-round event
   and pays it from OnTick by elapsed ms × `fastForwardSpeed` / period (a magazine owes one at start).
+  Re-checked against the 2026-11-22 Gunworks (2026-11-23): no change needed. The skip rule (`timesFor`, a gun with
+  a `ReloadAnim.GetHandlerForGun` profile) is the same test as Gunworks' `getHandlerForAction`; its
+  `CustomSystemHooks` InsertBullet / RemoveBullet now guard with `loadedThisLoop`, but only when `self:isLocal()`
+  (vanilla: SP or a client), false on a dedicated server, so the server's per-loop pacing is still ours; the new
+  `ISStackedMagazine` (jungle pack flip) calls `getReloadTime(1200 / 1500)` only as its fallback, outside any
+  `serverStart` this file wraps.
 
 ### Vehicle parts and batteries
 
@@ -1293,7 +1299,8 @@ Traced 2026-10-18 for `*_Throwables.lua`.
   server `RemoveOneOf`, `*_Throwables.lua`'s `DoRemoveItem` by ID).
 - Gunworks' `ExplosivesSystems` (client/server/shared, `OrdnanceFactory.Register(fullType, params)`) is what Guns of
   Marz grenades use: arc from `computeLaunchVelocity`, one Euler step scaled by frame time (tunnels through walls at
-  a server's 10 Hz), game-time based, aim = `screenToIsoX/Y` + 1.5 tiles, detonation = `instanceItem(type)` forced
+  a server's 10 Hz; since 2026-11-22 drag is `math.pow(DRAG, scale)`), game-time based, aim = `screenToIsoX/Y` +
+  the item's `aimOffset` (default 1.5 thrown, 0 launched ammo), detonation = `instanceItem(type)` forced
   instant (would break remote / sensor items).
 
 ### Body locations and alternative clothing models (42.21)
@@ -1775,7 +1782,15 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   `modData.MagazineType`, and its `complete` attaches the magazine as a `Clip` (or `Magazine`) weapon part;
   `SyncHandWeaponFieldsPacket` carries the parts and modData but neither of those, so the client keeps the previous pair
   until `Magazine.RestoreMagazineType` (game start, OnCreatePlayer, OnEquipPrimary/Secondary), and the cached name can
-  stay wrong after that.
+  stay wrong after that. Stacked packs (Gunworks `WeaponSystems/Utils/StackedMagazines`, 2026-11-22; GoM registers
+  the 2x30 jungle STANAG and MP5 packs, each side an item with MaxAmmo 60): the insert seats one side (gun MagazineType
+  = that side's item, MaxAmmo = `GetSideCapacity` = 60 / 2), keeps the other side in the gun's modData `GW_Stacked`
+  `{ group, side, rounds, lists }` and attaches the seated side's item as the part; a reload flips sides
+  (`ISStackedMagazine`). Its `GetGunState` / `GetReserveRounds` test `Sides[gun:getMagazineType()]`, stale on a
+  client, so `*_GoMTooltips.lua` reads `GW_Stacked` itself (line "30 / 30 (+30)"). Gunworks'
+  `client/WeaponSystems/CanShootMessage.lua` appends `IGUI_ChamberOpen` (modData `gunworksBoltOpen`) from a
+  `HandWeapon.DoTooltip` metatable wrapper called with the tooltip alone; `DoTooltipEmbedded` never reaches it, so
+  `*_GoMTooltips.lua` adds the row to guns it redraws (2026-11-23).
 - Item bytes (`InventoryItem.save` / `HandWeapon.save`, used for saves and every network copy) carry `currentAmmoCount`
   but not `ammoType`, `maxAmmo` or `magazineType`, and `SyncItemFieldsPacket` carries only the count: a rebuilt item has
   its script values again, and a client/server difference in them never heals. Gunworks uses a magazine's `ammoType` as
@@ -2305,7 +2320,10 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   (reproduced with lupa against the real GripAnim.lua). Gunworks' reload selector (`ReloadAnim/Sync.lua`) already
   compares with the character's variable; the fix does the same for the grip every 10 ticks (local players, plus
   `getOnlinePlayers()` on a client), with Gunworks' own `GripAnim.GetGripForGun`. Users: Heavy Ordnance's RPG, Guns
-  of Tien's short SMG stance.
+  of Marz's SMG stance (MP5, MP5SD, MP5A2, Thompson, FAMAS) and foregrip stances. Since 2026-11-22 the grip also
+  follows installed parts (`RegisterForegrip(s)` → "Foregrip" on any gun; a gun's `variants` → "ForegripSMG"), so it
+  changes with a foregrip too; the per-check `GetGripForGun` call already covers that (re-checked 2026-11-23, the
+  `lastGripByOnlineId` early return is still in Gunworks).
 - `shared/ZomboidFixesB42_ScriptFixes.lua` + `*_ItemFixesClothing/Weapons/Food.lua`: item and recipe data fixes, behind
   `ItemDataFixes` / `RecipeFixes`, applied once at `OnLoadMapZones` (a changed option waits for the next world load)
   (`ScriptFixes.register(option, name, apply)`, several fixes per option, `name` for the log;

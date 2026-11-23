@@ -21,8 +21,8 @@ Zomboid Fixes B42.22.2 is a set of fixes for Project Zomboid Build 42.22.2, most
 - Running into a stair railing no longer vaults you over it.
 - Speed controls are back in multiplayer. The game fast forwards once every player votes for it, timed actions (milking, shearing, reading and reloading included), looting and cooking speed up with it, and right-clicking a fast forward button makes your timed actions vote for that speed automatically once you have been busy for a few seconds (5 by default).
 - Guns of Marz tooltips wrap instead of stretching across the screen: an attachment's list of guns (200 characters a line by default) and every Information line, kept as wide as the item's own rows.
-- A Guns of Marz gun's tooltip names the magazine really in it, with its capacity, instead of an earlier one.
-- Guns with a Gunworks held pose of their own (Heavy Ordnance's RPG, Guns of Tien's short SMG stance) keep it when a player comes back into range, relogs or respawns, and in split screen, instead of showing the vanilla pose until they change weapons (beta).
+- A Guns of Marz gun's tooltip names the magazine really in it, with its capacity, instead of an earlier one; with jungle (clamped) magazines it counts the side in the gun and shows the other side's rounds.
+- Guns with a Gunworks held pose of their own (Heavy Ordnance's RPG, Guns of Marz's SMG and foregrip stances) keep it when a player comes back into range, relogs or respawns, and in split screen, instead of showing the vanilla pose until they change weapons (beta).
 - Plysken Attachments Reborn's bag attachment slot box is drawn at the tooltip's font size (the slot names no longer overlap or spill out of the box with bigger fonts) and under the lines other mods add to a bag's tooltip, such as Dynamic Backpack Upgrades' upgrade slots, in any load order.
 - Grab amount... between Grab one and Grab all takes exactly as many items from a stack as you type, in loot windows and search mode.
 - Empty slices are left out of the firearm radial menu, so it only shows what can be done.

@@ -3,9 +3,13 @@
 
     Gunworks (workshop 3722064198, WeaponSystems/Utils/GripAnim.lua) lets a gun mod give a gun a held pose of its own:
     while a registered gun is in the primary hand it sets the animation variable GunworksGripAnim to the gun's animId,
-    and the mod's AnimSet nodes gate on it (Heavy Ordnance's RPG, Guns of Tien's short SMG stance). It derives the
-    variable for the local player from OnPlayerUpdate and for remote players from an OnTick sweep, and writes it only
-    when it changes:
+    and the mod's AnimSet nodes gate on it (Heavy Ordnance's RPG7 "RPG"; Guns of Marz's "SMG" for the MP5, MP5SD,
+    MP5A2, Thompson and FAMAS, Registries/GripStances.lua). Since its 22 Nov 2026 update the choice also follows the
+    gun's installed parts (GetGripForGun: a matches predicate, then the gun's fullType, then a registered part; a gun's
+    own grip may name a variant per part grip): any gun carrying one of Guns of Marz's vertical foregrips (Stub, MKC,
+    MK2, Registries/Foregrips.lua) plays "Foregrip", and the SMGs above "ForegripSMG". So the value changes when a
+    foregrip goes on or comes off, not only when the gun in hand changes. It derives the variable for the local player
+    from OnPlayerUpdate and for remote players from an OnTick sweep, and writes it only when it changes:
 
         local lastGripByOnlineId = {}
         ...
@@ -26,9 +30,10 @@
     problem and compares against the variable on the character instead; the grip does not.
 
     So every few ticks each local player, and on a client every player it has loaded, is compared the same way:
-    the grip Gunworks would choose (GripAnim.GetGripForGun, its own lookup) against the variable the character really
-    has, and a mismatch is written. Gunworks' own pass still does every change of weapon; this only repairs the
-    characters its cache skipped. Does nothing unless Gunworks is loaded.
+    the grip Gunworks would choose now (GripAnim.GetGripForGun, its own lookup, called afresh each time, so a foregrip
+    put on or taken off counts like a change of gun) against the variable the character really has, and a mismatch is
+    written. Gunworks' own pass still does every change of weapon or foregrip; this only repairs the characters its
+    cache skipped. Does nothing unless Gunworks is loaded.
 --]]
 
 local VARIABLE = "GunworksGripAnim"

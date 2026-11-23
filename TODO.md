@@ -98,12 +98,18 @@ game, and a test scenario in the Beta section below).
       come back to it the same way. The babies never freeze or look hooked (no hook pose, no missing shadow), and
       nothing in the pen stops wandering afterwards. No Lua errors.
 
-- [ ] GunworksGripSync (2026-10-26), with Guns of Tien (and Post-93) on a server, two clients: player B holds an Uzi,
-      an MP5K or an MP7 (or Heavy Ordnance's RPG); A sees the custom pose. B walks out of A's range (over 5 s) and
+- [ ] GunworksGripSync (2026-10-26), with Guns of Marz on a server, two clients: player B holds a GoM MP5, or an M16
+      with a Stub Foregrip (or Heavy Ordnance's RPG); A sees the custom pose. B walks out of A's range (over 5 s) and
       back, then relogs, then dies and respawns holding one: A sees the custom pose again within a fraction of a
-      second each time (with the option off it stays vanilla until B changes weapons). B swaps guns and puts the gun
-      away: the pose follows at once. Single player and split screen: a second player picking up the same gun as the
-      first gets its pose. No errors without Gunworks loaded.
+      second each time (with the option off it stays vanilla until B changes weapons). B swaps guns, puts a foregrip
+      on or takes it off (the MP5 goes SMG / ForegripSMG), and puts the gun away: the pose follows at once. Single
+      player and split screen: a second player picking up the same gun as the first gets its pose. No errors without
+      Gunworks loaded.
+- [ ] GoMMagazineTooltip, stacked packs and the open chamber (2026-11-23), on a server: insert a 2x30 STANAG jungle
+      pack into an M16: the line reads "30 / 30 (+30)" (not "/ 60"), the count and the "+n" follow firing and a flip
+      (reload key), also before any re-equip; a pack inserted whole before the 22 Nov Gunworks keeps the plain line.
+      Open the bolt (Gunworks rack) on a GoM gun with a magazine in: "Chamber is open..." shows once, in red, before
+      the Information block; with both tooltip options off it still shows once (Gunworks' own row).
 
 - [ ] GoMTooltipLineLength, Information lines (2026-10-19): with Guns of Tien, hover a Double Barrel (its sawn-off stock
       line), an M60 (its bipod line) and a 7.62x39 US round: every Information line wraps to the width of the item's own

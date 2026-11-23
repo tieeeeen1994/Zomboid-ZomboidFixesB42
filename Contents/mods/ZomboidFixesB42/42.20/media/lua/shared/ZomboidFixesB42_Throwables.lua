@@ -30,13 +30,16 @@
     ExplosivesSystems (Workshop 3722064198, mod id SWMG: Physics.lua, used by Guns
     of Marz's grenades), adapted: the item flies in an arc to the point under the
     mouse (screenToIsoX/Y at the player's floor, as ISPlace3DItemCursor places 3D
-    items; Gunworks adds a fixed 1.5 tiles to both, which is not needed), at most
+    items; Gunworks adds a per-item aimOffset to both, by default 1.5 tiles for a
+    thrown item and 0 for launched ammo, which is not needed), at most
     the weapon's MaxRange away in any direction, bounces off closed doors, windows
     and walls (low walls only below 0.25 height) and ceilings, drops to the floor
     below when thrown off a ledge, and comes to rest after a few bounces. Changes
     from Gunworks: fixed 60 Hz steps on every side (Gunworks scales one step by the
-    frame time, so a server at 10 updates a second moved up to 1.2 tiles a step and
-    went through walls, and its path differed from the clients'), real time instead
+    frame time, scale = dt x 60: the move linearly and, since its 22 Nov 2026
+    update, the drag as math.pow(DRAG, scale); so a server at 10 updates a second
+    still moves up to 1.2 tiles a step and goes through walls, and its path differs
+    from the clients'), real time instead
     of game time (fast forward does not speed the throw up), and the explosion is
     vanilla's: the thrown item itself becomes an IsoTrap (IsoTrap:place, see the
     server file), so remote, sensor and timer bombs keep their remote ID and lie

@@ -475,11 +475,11 @@ Guns of Marz tooltips wrap instead of stretching across the screen: the list of 
 
 [b]Guns of Marz magazine tooltip[/b]
 Option: [i]Guns of Marz Magazine Tooltip[/i]
-A Guns of Marz gun's tooltip names the magazine really in it, with its capacity, instead of an earlier one.
+A Guns of Marz gun's tooltip names the magazine really in it, with its capacity, instead of an earlier one. With jungle magazines (two clamped together) it counts the side in the gun against that side's 30 and shows the other side's rounds after it, such as "30 / 30 (+30)". Gunworks' "Chamber is open" warning still shows on the guns it redraws.
 
 [b]Gunworks held poses (beta)[/b]
 Option: [i][BETA] Gunworks Held Pose Sync[/i]
-Gunworks lets a gun mod give a gun a held pose of its own, such as Heavy Ordnance's RPG or Guns of Tien's short SMG stance. Gunworks only set that pose when the gun in a player's hands changed, and remembered it per player number rather than per character, so a player who left your range and came back, relogged or respawned, or a second split-screen player, was shown in the vanilla pose (the gun often off their hands) until they changed weapons. Each player's pose is now checked a few times a second and given back.
+Gunworks lets a gun mod give a gun a held pose of its own, such as Heavy Ordnance's RPG or Guns of Marz's SMG and foregrip stances. Gunworks only set that pose when the gun in a player's hands (or its foregrip) changed, and remembered it per player number rather than per character, so a player who left your range and came back, relogged or respawned, or a second split-screen player, was shown in the vanilla pose (the gun often off their hands) until they changed weapons. Each player's pose is now checked a few times a second and given back.
 
 [b]Bag attachment slots tooltip box[/b]
 Option: [i]Bag Attachment Slots Tooltip Box[/i]

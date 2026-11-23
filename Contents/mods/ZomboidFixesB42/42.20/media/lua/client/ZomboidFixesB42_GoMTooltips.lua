@@ -99,6 +99,32 @@
     whether the cached name is right cannot be read, and the MagazineType and MaxAmmo
     it could be checked against may be the stale ones.
 
+    Stacked packs (Gunworks' StackedMagazines, 22 Nov 2026). Guns of Marz registers
+    two jungle packs, 556x45Magazine60_STANAG + _STANAG_2 and 9x19Magazine60_MP5 +
+    _MP5_2: two 30 round magazines clamped together, each side its own item with
+    MaxAmmo 60 (the pack). Gunworks' insert seats one side: the gun takes that side's
+    item type and GetSideCapacity = the item's MaxAmmo / number of sides (30), keeps
+    the other side's rounds in the gun's modData.GW_Stacked { group, side, rounds,
+    lists }, and attaches the seated side's item as the magazine part; a reload flips
+    to the other side. So counted against the part's own MaxAmmo the line read
+    "30 / 60" where the game says 30. For such a part (GetGroupForType) with a split
+    in the gun for its group, the line counts against GetSideCapacity and adds the
+    rounds the other sides hold: "30 / 30 (+30)". The split is read from the gun's
+    modData directly, which reaches the owner with the weapon sync: Gunworks'
+    GetGunState / GetReserveRounds first test Sides[gun:getMagazineType()], and the
+    client's MagazineType is the stale one described above. A pack inserted before
+    Gunworks split packs has no split, sits whole in the gun and keeps the plain line.
+
+    The open chamber warning. Gunworks (client/WeaponSystems/CanShootMessage.lua)
+    wraps HandWeapon.DoTooltip through the class metatable and, when called with the
+    tooltip alone and the gun's modData.gunworksBoltOpen is true, appends
+    IGUI_ChamberOpen in the bad-highlight colour in a layout of its own. The layout
+    override here calls DoTooltipEmbedded, a separate Java method that never reaches
+    that wrapper, so every gun drawn here gets the same row added after the game's
+    rows (before the Information block, where Gunworks' row sits under Guns of Marz's
+    own render). Tooltips handed on to the previous render still go through
+    DoTooltip and get Gunworks' own row, never both.
+
     The Information block. Guns of Marz appends its tooltipsPergun lines (and so do
     mods that add to that table, such as Guns of Tien) one label each, so a long one
     widens the tooltip the same way. Every item with such lines is drawn here while the
@@ -299,15 +325,80 @@ local function attachedMagazine(item)
     return magazine
 end
 
+--- Gunworks' stacked magazine module, or nil without it (or with a Gunworks from
+-- before it). Looked up once, from install.
+local StackedMagazines = nil
+
+local function loadStackedMagazines()
+    local ok, module = pcall(require, "WeaponSystems/Utils/StackedMagazines")
+    if not ok or type(module) ~= "table" then return nil end
+    if type(module.GetGroupForType) ~= "function" or type(module.GetSideCapacity) ~= "function" then return nil end
+    return module
+end
+
+--- For one side of a stacked pack in the gun: the rounds a side holds and the rounds
+-- waiting on the other sides, read from the split in the gun's modData. nil when the
+-- attached magazine is no side of a pack, or the gun holds no split for its group (a
+-- pack inserted before Gunworks split them goes in whole, and Gunworks leaves the
+-- gun counting against the item's own MaxAmmo). See the header for why modData is
+-- read here rather than Gunworks' GetGunState.
+local function stackedCounts(weapon, magazine)
+    if not StackedMagazines then return nil end
+    local group = StackedMagazines.GetGroupForType(magazine:getFullType())
+    if not group then return nil end
+
+    local state = weapon:getModData()[StackedMagazines.STATE_KEY or "GW_Stacked"]
+    if type(state) ~= "table" or state.group ~= group.name or type(state.rounds) ~= "table" then return nil end
+
+    local wellSide = tonumber(state.side)
+    local reserve = 0
+    for side, rounds in pairs(state.rounds) do
+        if tonumber(side) ~= wellSide then
+            reserve = reserve + math.max(0, tonumber(rounds) or 0)
+        end
+    end
+    return StackedMagazines.GetSideCapacity(group), reserve
+end
+
 --- The line HandWeapon.DoTooltip would have written, counted against the magazine
--- actually in the gun. Same colours and the same "+1" for a chambered round.
+-- actually in the gun. Same colours and the same "+1" for a chambered round. For one
+-- side of a stacked pack it counts against that side, followed by the rounds the
+-- other side still holds (nothing when it is empty).
 local function addMagazineLine(layout, weapon, magazine)
     local count = string.format("%d", weapon:getCurrentAmmoCount())
     if weapon:isRoundChambered() then count = count .. "+1" end
 
+    local value = nil
+    local capacity, reserve = stackedCounts(weapon, magazine)
+    if capacity then
+        value = count .. " / " .. string.format("%d", capacity)
+        if reserve > 0 then
+            value = value .. " " .. getText("IGUI_ZomboidFixesB42_GoMStackedReserve", string.format("%d", reserve))
+        end
+    else
+        value = count .. " / " .. string.format("%d", magazine:getMaxAmmo())
+    end
+
     local row = layout:addItem()
     row:setLabel(magazine:getDisplayName() .. ":", 1.0, 1.0, 0.8, 1.0)
-    row:setValue(count .. " / " .. string.format("%d", magazine:getMaxAmmo()), 1.0, 1.0, 1.0, 1.0)
+    row:setValue(value, 1.0, 1.0, 1.0, 1.0)
+end
+
+--- Gunworks' "Chamber is open" warning (client/WeaponSystems/CanShootMessage.lua),
+-- which it appends from a wrapper of HandWeapon.DoTooltip that the layout override
+-- never goes through. Its own text and colour, in a layout of its own as Gunworks
+-- draws it. Returns the y below it.
+local function addChamberOpenLine(tooltip, item, padSide, y)
+    if not instanceof(item, "HandWeapon") or item:getModData().gunworksBoltOpen ~= true then return y end
+    local text = getTextOrNull("IGUI_ChamberOpen")
+    if not text then return y end
+
+    local color = getCore():getBadHighlitedColor()
+    local layout = tooltip:beginLayout()
+    layout:addItem():setLabel(text, color:getR(), color:getG(), color:getB(), 1.0)
+    y = layout:render(padSide, y, tooltip)
+    tooltip:endLayout(layout)
+    return y
 end
 
 -- ---------------------------------------------------------------------------
@@ -401,6 +492,8 @@ local function drawTooltip(tooltip, item, gomLines, limit, magazine, state)
         local y = layout:render(padSide, layoutTop(tooltip, item, padEnd), tooltip)
         tooltip:endLayout(layout)
         if state.baseWidth == nil then state.baseWidth = tooltip:getWidth() end
+
+        y = addChamberOpenLine(tooltip, item, padSide, y)
 
         if gomLines then
             y = addInfoBlock(tooltip, gomLines, limit, infoWidth(state.baseWidth, padSide, limit), padSide, y)
@@ -556,6 +649,7 @@ end
 -- read.
 local function install(module)
     local previousRender = ISToolTipInv.render
+    StackedMagazines = loadStackedMagazines()
 
     -- Everything this reaches across the Java bridge is reached by name and cannot
     -- be checked for up front, so the first call of each fix is made under pcall. A
