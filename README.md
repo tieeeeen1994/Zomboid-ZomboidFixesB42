@@ -54,6 +54,7 @@ Zomboid Fixes B42.22.2 is a set of fixes for Project Zomboid Build 42.22.2, most
 - Adding fuel to a generator takes as long as the fuel that actually goes in, not as long as the whole can (beta).
 - Washing clothes is slowed down by unhappiness, drunkenness, sore hands and body temperature once, like every other action, instead of twice, which multiplied the slowdowns with themselves (beta).
 - Milking a stressed animal fails only as often as its stress, your Animal Care and its trust in you say, as shearing does, instead of every time at Animal Care 7 or lower (off by default) (beta).
+- Milking moves on to the next container in your inventory with room once one is full, instead of stopping unless you carry another of exactly the same kind, and the Milk menu no longer offers full containers or shows sizes like 0.20000000298023224L (beta).
 - A room you built yourself, with no map building behind it, shelters you from corpse smell the way a map house does: no Bad Smell moodle and no corpse sickness in it, instead of the full count of corpses nearby as if you were in the street.
 - A chest rig can be worn over ALICE belt and suspenders: each gets a slot of its own instead of sharing the webbing slot (off by default) (beta).
 - Spiked armor hurts the zombies that scratch or bite it: each spike takes what an ice pick hit would (0.6 to 0.9 health, two or three for a normal zombie), where the game only made the zombie bleed.

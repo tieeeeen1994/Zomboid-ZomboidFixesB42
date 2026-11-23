@@ -494,6 +494,14 @@ option ZomboidFixesB42.MilkingStressFix
     translation = ZomboidFixesB42_MilkingStressFix,
 }
 
+option ZomboidFixesB42.MilkingContainers
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_MilkingContainers,
+}
+
 option ZomboidFixesB42.WaterDispenserCheck
 {
     type = boolean,

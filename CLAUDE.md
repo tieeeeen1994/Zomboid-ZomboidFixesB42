@@ -957,6 +957,13 @@ forces god mode / invisible / noclip / admin tag / hear all from the flags byte 
   flees, spills the bucket and drops it; `ISShearAnimal:stress` has no override. `*_MilkingStress.lua` (option
   `MilkingStressFix`, off by default at the user's request); Tien's Skill Mastery carries the same fix always on
   (either loading order gives the fixed roll).
+  Milking containers (42.22.2, traced 2026-11-24): every milk entry point picks containers with
+  `getAvailableFluidContainer` / `getFirstAvailableFluidContainer` = `InventoryItem.isAvailableFluidContainer`
+  (empty, or primary fluid = the milk), which passes **full** containers and ones whose whitelist refuses milk
+  (`FluidContainer.canAddFluid`; `addFluid` then adds nothing and the action loops). `ISMilkAnimal:milk` moves on
+  only to "All"'s first available (can be full) and then the same full type, so milking stops when the picked kind
+  is full; its stress roll runs before that check. The Milk submenu concatenates `getCapacity()` (a float) raw:
+  "0.20000000298023224L". `*_MilkingContainers.lua` (option `MilkingContainers`, beta).
   Raking (42.21, `ISPickDungCursor` → shared `ISPickupDung`, 250 ticks, 1 with `isTimedActionInstant`): server
   `complete` runs `square:removeAllDung()` (world items whose script `isDung`; feathers and eggs are not) on each
   square of the radius, local removals, adds the items to the raker with `sendAddItemsToContainer`, then
