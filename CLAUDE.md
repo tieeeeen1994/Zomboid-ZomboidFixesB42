@@ -443,6 +443,13 @@ and weapon syncs the server sent just before it. Vanilla firearm actions change 
 queued action begins in the same call that handles the Done, so client code planning from the inventory right after
 such an action can see the state from before it (TienMagazineBag's `ContinueReload` waits for it). A synced HandWeapon
 is updated in place (`getItemWithID` then setters: count, chambered, containsClip, spent rounds, jammed, parts, modData).
+`SyncHandWeaponFieldsPacket` is server → owner only (42.22, traced 2026-11-24): handlingType 2, and the Lua global
+`syncHandWeaponFields` sends only when `GameServer.server` (LuaManager ~9883), so a client's call does nothing;
+`processClient` clears and refills the weapon's parts and, when both copies have mod data, wipes the client's mod
+data and copies the server's in. So anything a client writes only on its own gun (Gunworks' `gunworksBoltOpen`, the
+bolt part it swaps on rackStart / rackEnd) lasts until the server's next weapon sync. A client's `ISRackFirearm`
+ends itself on its clip's `rackingFinished` (`forceComplete`), while `ISInsertMagazine` / `ISEjectMagazine` wait for
+the server's Done; a new Request makes the server stop the player's unfinished action without telling the client.
 `ISInsertMagazine:perform` on an MP client queues an `ISRackFirearm` whenever the client's copy shows no chambered
 round and at least `getAmmoPerShoot()` rounds; for a gun with `HaveChamber = false` (revolvers) `canRack` is true, and
 `rackBullet` gives one round back. Whether it is queued depends on that sync having arrived.
