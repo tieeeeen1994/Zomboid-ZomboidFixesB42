@@ -168,14 +168,41 @@ end
 --- Items that have arrived in the character's inventory but are still lying on
 -- the client's floor: the server removed them from the ground (its removal comes
 -- before the item on the same ordered channel), so what is left is a ghost.
-function ZomboidFixesB42.clearGhostsOf(character, items)
-    if not isEnabled() or not character then return end
-    local inventory = character:getInventory()
-    local any = false
-    for _, item in ipairs(items or {}) do
+-- One walk of the inventory tree and one of the 3x3 floor per batch: checking each item on its own walked both again
+-- for every item, which with a big inventory cost ~2 s over a profiled session of floor pickups (2026-11-28).
+local function markHeld(container, wanted, held, depth)
+    if not container or depth > 10 then return end
+    local list = container:getItems()
+    for i = 0, list:size() - 1 do
+        local item = list:get(i)
         local id = item:getID()
-        if ZomboidFixesB42.findItemById(inventory, id) and removeLocalWorldItem(character, id, nil) then
-            any = true
+        if wanted[id] and not held[id] then
+            held[id] = true
+            held.count = held.count + 1
+        end
+        if instanceof(item, "InventoryContainer") then
+            markHeld(item:getInventory(), wanted, held, depth + 1)
+        end
+    end
+end
+
+function ZomboidFixesB42.clearGhostsOf(character, items)
+    if not isEnabled() or not character or not items or #items == 0 then return end
+    local wanted, held = {}, { count = 0 }
+    for _, item in ipairs(items) do wanted[item:getID()] = true end
+    markHeld(character:getInventory(), wanted, held, 0)
+    if held.count == 0 then return end
+    local any = false
+    for _, square in ipairs(squaresAround(character, nil)) do
+        local worldObjects = square:getWorldObjects()
+        for i = worldObjects:size() - 1, 0, -1 do
+            local worldObject = worldObjects:get(i)
+            local item = worldObject and worldObject:getItem()
+            if item and held[item:getID()] then
+                square:removeWorldObject(worldObject)
+                item:setWorldItem(nil)
+                any = true
+            end
         end
     end
     if any then ISInventoryPage.renderDirty = true end

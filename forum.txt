@@ -2,7 +2,7 @@
 
 A set of fixes for Build 42.22.2, mostly for multiplayer. Install it on both the server and the clients.
 
-Every fix can be turned off on the [b]Zomboid Fixes[/b] page of the sandbox settings, and is on by default unless it says otherwise. Each one below names its option; the item and recipe fixes share two options. If you are updating from a version before 3.0.0, check [i]Admin Tag[/i], [i]Item Data Fixes (Requires Restart)[/i] and [i]Recipe And Repair Fixes (Requires Restart)[/i]: they replace older options and start at their default. Fixes marked [b](beta)[/b] are new and not fully tested yet.
+Every fix can be turned off on the [b]Zomboid Fixes[/b] page of the sandbox settings, and is on by default unless it says otherwise. Each one below names its option; the item and recipe fixes share two options. If you are updating from a version before 3.0.0, check [i]Admin Tag[/i], [i]Item Data Fixes (Requires Restart)[/i] and [i]Recipe And Repair Fixes (Requires Restart)[/i]: they replace older options and start at their default.
 
 Found a problem? Post it in this thread and say which fix, whether it was single player or a server, and what you did.
 
@@ -20,28 +20,28 @@ Right-click a fast forward button to turn it yellow. While it is yellow, once yo
 Option: [i]Fast Item Transfers With Fast Timed Actions[/i]
 The Fast Timed Actions cheat makes item transfers and grabbing items off the ground (right-click Grab, search mode icons) quick in multiplayer too, like in single player. A quick transfer the server cannot make is done the normal way instead of not at all.
 
-[b]Failed item transfers repair themselves (beta)[/b]
-Option: [i][BETA] Failed Item Transfers Repair Themselves[/i]
+[b]Failed item transfers repair themselves[/b]
+Option: [i]Failed Item Transfers Repair Themselves[/i]
 Sometimes the server fails a transfer without telling you. Now the game checks with the server and fixes what you see: items only your game still shows on the floor or in a container are removed, items the server moved but you could not see (until relogging) appear, a transfer the server dropped is tried again, and one that did happen ends instead of hanging for up to 20 seconds.
 
-[b]Bags in cars and furniture show what the server changed (beta)[/b]
-Option: [i][BETA] Bags In Cars And Furniture Show What The Server Changed[/i]
+[b]Bags in cars and furniture show what the server changed[/b]
+Option: [i]Bags In Cars And Furniture Show What The Server Changed[/i]
 Whatever the server itself puts into or takes out of a bag lying in a car (a cooler or a backpack in the trunk, the glove box or a seat) or in furniture (a crate, shelf or fridge, reachable with container mods) was never shown to anyone. Items moved with Fast Timed Actions or during fast forward stayed where they were on screen while the transfer hung for 10 seconds, and other mods' changes in such a bag (spent ice in a cooler, for one) never appeared. Now they reach the players nearby. Bags you carry or that lie on the floor were not affected, and neither were normal transfers.
 
-[b]Zombie car damage for everyone (beta)[/b]
-Option: [i][BETA] Zombie Car Damage For Everyone[/i]
+[b]Zombie car damage for everyone[/b]
+Option: [i]Zombie Car Damage For Everyone[/i]
 A zombie banging on a car someone sits in dented the door or body panel only on the screen of the player whose game runs that zombie. The server's car stayed whole, nobody else saw it, and the dent was gone once the car loaded again. Now each hit goes to the server and damages the car for everyone, as in single player. Windows already worked.
 
 [b]Animal pens resync[/b]
 Option: [i]Animal Pens Resync[/i]
 When you come back to an animal pen, the game makes up the time it was out of range, and in multiplayer your own game did that too, on its own copy: you saw about twice the eggs, feathers and dung, half of them fake and impossible to pick up, and food and trough water missing that was still there. Now your game checks each pen it made up time for with the server: fake items go, food and trough contents are put back as the server has them, and items on those squares line up with the server again.
 
-[b]Putting items back never cancels the queue (beta)[/b]
-Option: [i][BETA] Putting Items Back Never Cancels The Queue[/i]
+[b]Putting items back never cancels the queue[/b]
+Option: [i]Putting Items Back Never Cancels The Queue[/i]
 Eating or using something from a bag takes it out first and puts it back afterwards. When the item is gone by then (Eat All, used up), putting it back failed and cancelled everything queued after it, so eating all of one thing and queueing another never ate the second. Now the put-back just ends and the queue carries on.
 
-[b]Every craft click is queued (beta)[/b]
-Option: [i][BETA] Every Craft Click Is Queued[/i]
+[b]Every craft click is queued[/b]
+Option: [i]Every Craft Click Is Queued[/i]
 The crafting window greyed out the Craft button while one of its crafts was running, so clicking Craft several times only crafted the first one or two. Now the button stays clickable, and each click made during a craft is kept (the button shows how many, such as Craft (+2)) and started once the crafts before it are done, with fresh ingredients. Cancelling, picking another recipe or closing the window drops the kept clicks.
 
 [b]Reloads keep pace with the animation[/b]
@@ -56,28 +56,28 @@ In vanilla multiplayer, only the cook hears an ingredient going into a soup, ste
 Option: [i]Clothing Wear Down Rework (Requires Restart)[/i]
 In vanilla multiplayer, a zombie attack that your clothing or armor stops does not wear it down, so armor with full protection lasts forever, and clothing destroyed while worn drops only on your own screen and comes back on relog. Now your own game rolls every zombie attack that lands on you, from any zombie, and sends each one to the server, which wears your clothing down like in single player. Destroyed clothing falls off for everyone and stays destroyed, and no plain copy of it (a white scarf for a green one) is left on your character. Wounds work as before.
 
-[b]Fallen clothing sync (beta)[/b]
-Option: [i][BETA] Fallen Clothing Sync[/i]
+[b]Fallen clothing sync[/b]
+Option: [i]Fallen Clothing Sync[/i]
 In vanilla multiplayer, the server tells every player's game which floor item to remove by its place in the spot's list, so a game holding the items in another order removes the wrong one: the item picked up stays on other players' floors, and a different one vanishes for everyone until a relog. Items knocked off a player or a zombie (hats, helmets, masks, glasses) land on everyone's floor a moment later than on the server's, so anything that drops on the same spot in that moment, like a scarf torn off by the same zombie attack, ends up in another order. Now each player's game puts the items on that spot back in the server's order once the knocked off item lands.
 
-[b]Watering plants uses water once (beta)[/b]
-Option: [i][BETA] Watering Plants Uses Water Once[/i]
+[b]Watering plants uses water once[/b]
+Option: [i]Watering Plants Uses Water Once[/i]
 Watering a plant in multiplayer no longer gives it twice the water or empties the can twice as fast.
 
-[b]Clearing bushes, rocks and stumps wears the tool (beta)[/b]
-Option: [i][BETA] Clearing Bushes, Rocks And Stumps Wears The Tool[/i]
+[b]Clearing bushes, rocks and stumps wears the tool[/b]
+Option: [i]Clearing Bushes, Rocks And Stumps Wears The Tool[/i]
 Removing a bush or wall vines with a cutting tool costs endurance and arm strain and wears the tool again. Breaking up rocks, ore, flint and limestone boulders and stumps wears the hammer, sledgehammer, pickaxe or other tool used, which never happened before. A broken tool is swapped for another. In multiplayer the inventory window also refreshes when the server swaps a tool or uses up building materials.
 
-[b]Removing a bush clears the whole square (beta)[/b]
-Option: [i][BETA] Removing A Bush Clears The Whole Square[/i]
+[b]Removing a bush clears the whole square[/b]
+Option: [i]Removing A Bush Clears The Whole Square[/i]
 Removing a bush clears every bush on its square. It used to end in an error whenever anything else was on the square after the bush (in multiplayer the server rejected the action, though the bush was gone), and could leave a second bush behind.
 
-[b]Finished books stay read (beta)[/b]
-Option: [i][BETA] Finished Books Stay Read[/i]
+[b]Finished books stay read[/b]
+Option: [i]Finished Books Stay Read[/i]
 Finished skill books stay read after relogging, including books read with the instant timed actions cheat.
 
-[b]Rain collectors and drying racks survive crashes (beta)[/b]
-Option: [i][BETA] Rain Collectors And Drying Racks Survive Crashes[/i]
+[b]Rain collectors and drying racks survive crashes[/b]
+Option: [i]Rain Collectors And Drying Racks Survive Crashes[/i]
 Rain collectors, wells, amphoras, drying racks, and buckets, pots and other items that catch rain, no longer break after a server crash, a killed server or a restored backup. Ones already broken are rebuilt, empty, when their area loads. Broken items already picked up are fixed when their owner joins or their vehicle loads.
 
 [b]Working animal gender change[/b]
@@ -86,12 +86,12 @@ Changing an animal's gender in the animal info window also changes its model and
 
 [h2]Admin tools[/h2]
 
-[b]Carry all animals of a kind (beta)[/b]
-Option: [i][BETA] Admins Carry All Animals of a Kind[/i]
+[b]Carry all animals of a kind[/b]
+Option: [i]Admins Carry All Animals of a Kind[/i]
 Moving a flock used to mean carrying animals one at a time. Admins (Animal Cheats permission) can now right-click an animal and pick up every loose animal of the same type and breed in its animal zone, and the zones joined to it, into their inventory at once: every Rhode Island Red hen, for example. A carried animal's menu then puts all of that kind down around the admin at once. Animals in hutches, tied up or on a rope stay put. Carried animals are heavy (about 20 per hen), so turn on Unlimited Carry first, and put them down soon: they still get hungry and thirsty, and hens lay eggs into your inventory.
 
-[b]Animal cheats for a whole pen (beta)[/b]
-Option: [i][BETA] Admin Animal Cheats for a Whole Pen[/i]
+[b]Animal cheats for a whole pen[/b]
+Option: [i]Admin Animal Cheats for a Whole Pen[/i]
 Vanilla's animal cheats work on one animal at a time. The admin hotbar now has them for a group: admins (Animal Cheats permission) pick a square and the cheat goes to every animal in the animal zone there and the zones joined to it, hutches included, or only the hutch there, or every animal within 5 to 30 tiles, of every type or only one (only the hens, say).
 [list]
 [*]Set stress, hunger, thirst, health (never below 1%), age, milk, wool, or how much the animals accept you.
@@ -121,7 +121,7 @@ Single player gets the hotbar with the -debug launch option.
 Option: [i]Body Stats Editor For Admins[/i]
 Admins and moderators can change any online player's hunger, mood, health, nutrition, weight and other body stats, like the debug menu's Body panel, from a Body button in the Player Stats window, the admin panel or the scoreboard. The changes are made on the server, so they stick and the player sees them. A Health button next to Body opens the player's health window straight away, without asking them for a medical check.
 
-[b]Body part conditions (beta)[/b]
+[b]Body part conditions[/b]
 Option: [i]Body Stats Editor For Admins[/i]
 A Body part condition shortcut for the admin hotbar: one click turns a bite, scratch, laceration, deep wound, bleeding, glass shards, a lodged bullet, a burn, a fracture, a wound infection or a muscle strain on or off on any body part of any online player, or heals the part. It has the same permission checks and admin log as the body stats editor (vanilla's own health cheat has none in multiplayer). The health window's Cheat menu also gets Full Health, Keep Treatment for a part or the whole body: every injury healed, while bandages, poultices, splints and stitches stay on (vanilla's Full Health takes them off).
 
@@ -129,7 +129,7 @@ A Body part condition shortcut for the admin hotbar: one click turns a bite, scr
 Option: [i]Admin Chopper Controls[/i]
 Admins and moderators can send and stop the chopper from the right-click Debug menu, and the debug menu's chopper buttons work on servers. Stopping it ends today's chopper event, so it does not fly straight back, and it reaches every player, including anyone who still hears a chopper that already left.
 
-[b]Admin storm controls (beta)[/b]
+[b]Admin storm controls[/b]
 Option: [i]Admin Storm Controls[/i]
 The admin Climate Control window gets a Storm tab. Vanilla's Trigger Storm, Tropical Storm and Blizzard buttons only set the length: every storm they make has the same strength, comes from the west, and its lightning lands wherever chance puts it, often far from everyone. The Storm tab chooses the type, the side it comes from (or a random one), what it passes over (a random player, yourself, any online player or a random spot), its length and strength, and whether it gets colder or warmer. Optionally also the number of thunder clouds, how wide the storm is, how often it flashes or rumbles and how much of that is lightning, the wind speed, and the wind blowing from the storm's side; blizzards can get lightning too. A storm started there keeps its thunder clouds after a server restart, which vanilla storms lose. For roles with the Climate Manager capability (admins and moderators by default). Each storm is written to the admin log.
 
@@ -171,19 +171,19 @@ Changes made in the item editor save for items in crates, vehicles, on the floor
 Option: [i]Working Debug Add Fluid On World Objects[/i]
 Debug Add Fluid fills rain collectors and other world containers instead of emptying them.
 
-[b]Working hutch Remove Egg cheat (beta)[/b]
-Option: [i][BETA] Working Hutch Remove Egg Cheat[/i]
+[b]Working hutch Remove Egg cheat[/b]
+Option: [i]Working Hutch Remove Egg Cheat[/i]
 In multiplayer, the debug Remove Egg option on a hutch nest box (Animal Cheat on) puts the egg in your inventory. It used to take the egg out of the nest box without ever showing it to you, so it seemed lost until you relogged, and it ended in an error on a nest box someone had just emptied.
 
-[b]Debug Delete removes items on the server (beta)[/b]
-Option: [i][BETA] Debug Delete Removes Items On The Server[/i]
+[b]Debug Delete removes items on the server[/b]
+Option: [i]Debug Delete Removes Items On The Server[/i]
 In multiplayer, the debug Delete > One item / Selection options (right-click items, for roles with the Edit Item permission) could delete items only on your screen; they came back after relogging.
 - Selection sent the server one message per item, and the game drops anything past about 300 a second, so most of a big stack stayed and the saved character kept growing. A character too big to save (about 1 MB) is saved empty and can no longer log in. Now the deletions go out in a few messages per container, and floor items at a steady pace.
 - Items in a bag lying in furniture, a corpse, on the floor or in a bag in a car were never deleted on the server, which could not find that bag. Now the server looks it up itself.
 - With several rows selected, One item deleted any one of them. Now it deletes the one you right-clicked.
 
-[b]Working debug Remove Item Tool (beta)[/b]
-Option: [i][BETA] Working Debug Remove Item Tool[/i]
+[b]Working debug Remove Item Tool[/b]
+Option: [i]Working Debug Remove Item Tool[/i]
 In multiplayer, the Remove Item Tool (debug menu, or Tools > Remove item tool) now has the server do the removing in both modes.
 - Corpses were removed on your own screen first and only then asked of the server, which refused some of them without telling you, so they came back after relogging: the corpse of a player who died before the last restart (for everyone), any player's corpse for moderators, and everything past about 300 corpses a second. An unloaded square in the area stopped the removal halfway with an error.
 - Floor items your screen showed but the server did not have (ghost items) stayed after the server removed the rest. Now your leftover copies go too.
@@ -215,36 +215,36 @@ No fall damage on stairs while Fast Move is on.
 
 [h2]Gameplay[/h2]
 
-[b]Vehicle battery drain fix (beta)[/b]
-Option: [i][BETA] Vehicle Battery Drain Fix[/i]
+[b]Vehicle battery drain fix[/b]
+Option: [i]Vehicle Battery Drain Fix[/i]
 Vehicle batteries no longer drain twice as fast as intended from headlights, the radio, the lightbar, the siren and the heater.
 
-[b]Gas tank welding fix (beta)[/b]
-Option: [i][BETA] Gas Tank Welding Fix[/i]
+[b]Gas tank welding fix[/b]
+Option: [i]Gas Tank Welding Fix[/i]
 Welding a gas tank that is still on a vehicle finishes the repair. The game stopped with an error right after using up the blowtorch and the sheet metal, so the materials were gone and, in multiplayer, the tank still looked broken until the vehicle was loaded again.
 
-[b]Generator refuel time fix (beta)[/b]
-Option: [i][BETA] Generator Refuel Time Fix[/i]
+[b]Generator refuel time fix[/b]
+Option: [i]Generator Refuel Time Fix[/i]
 Adding fuel to a generator takes as long as the fuel that actually goes in. It used to take as long as emptying the whole can, so topping up a nearly full generator from a full can took as long as filling an empty one.
 
-[b]Washing time fix (beta)[/b]
-Option: [i][BETA] Washing Time Fix[/i]
+[b]Washing time fix[/b]
+Option: [i]Washing Time Fix[/i]
 Being unhappy or drunk, having sore hands or arms, or being too hot or cold slows every timed action down. Washing clothes counted all of that twice, so the slowdowns multiplied with themselves: a very unhappy and very drunk character washed 16 times slower instead of 4. Now washing is slowed down once, like everything else.
 
-[b]Stressed animal milking fix (off by default) (beta)[/b]
-Option: [i][BETA] Stressed Animal Milking Fix[/i]
+[b]Stressed animal milking fix (off by default)[/b]
+Option: [i]Stressed Animal Milking Fix[/i]
 Milking an animal with more than 40 stress always failed for anyone at Animal Care 7 or lower: on the first litre it ran off, the milk was spilt and the bucket ended up on the ground. The game worked out a chance from the stress, your Animal Care and how much the animal trusts you, then ignored it. Now milking uses that chance, checked once per litre, as shearing always did: a calmer animal, a better farmer or a friendlier animal break off less often.
 
-[b]Milking fills every container (beta)[/b]
-Option: [i][BETA] Milking Fills Every Container[/i]
+[b]Milking fills every container[/b]
+Option: [i]Milking Fills Every Container[/i]
 Milking stopped as soon as the container you picked was full, unless you carried another container of exactly the same kind: empty bottles, cartons or buckets of another kind were ignored, and "All" could stop at once on a full container. The Milk menu also offered containers that were already full and showed some sizes as long decimals (0.20000000298023224L). Now milking moves on to the next container in your inventory with room, the same kind first, then any empty container or one holding the same milk, and the menu lists only containers with room, with sizes rounded.
 
 [b]Corpse smell and rooms you build[/b]
 Option: [i]Rooms You Build Shelter From Corpse Smell[/i]
 A map house shelters you from the Bad Smell moodle because the game counts the corpses in the building you stand in. A room you build yourself has no map building, so the game counted every corpse nearby as if you stood in the street. Now a room with no map building counts as a shelter, like a map house: no corpse sickness and no moodle in it. A room is a square where you can plumb a sink. Map buildings are unchanged.
 
-[b]Chest rig over ALICE suspenders (off by default) (beta)[/b]
-Option: [i][BETA] Chest Rig Over ALICE Suspenders (Requires Restart)[/i]
+[b]Chest rig over ALICE suspenders (off by default)[/b]
+Option: [i]Chest Rig Over ALICE Suspenders (Requires Restart)[/i]
 The Chest Rig, the Tarp Chest Rig and the ALICE Belt and Suspenders all went in the same webbing slot, so putting on one took the other off. Now the rigs and the ALICE belts each have a slot of their own, so a rig can be worn over the suspenders, and the belt keeps its knife and walkie slots. What could not be worn with webbing (shoulder holsters, fanny packs, bulky jackets, full suits) still cannot be worn with either. The models are vanilla's, so the two can overlap a little. A rig or belt you were already wearing moves to its new slot once you take it off and put it on again.
 
 [b]Spiked armor hurts zombies[/b]
@@ -255,100 +255,104 @@ When a zombie scratched or bit a part of you covered by spiked armor (with no ho
 Option: [i]Throwables Land Where You Aim[/i]
 Pipe bombs, Molotovs, aerosol bombs, smoke bombs, noise makers, firecrackers and their remote, sensor and timer versions used to aim at whatever tile was under the mouse when the swing began (a wall or a tall object could stand in for the floor behind it), could be thrown further on diagonals than straight, got a random push that made a one-tile throw miss by half its length, and landed elsewhere depending on your frame rate. Now they are thrown the way Guns of Marz throws its grenades: in an arc to the point under the mouse (straight ahead on a controller), up to the item's range in any direction, bouncing off walls, closed doors, windows and ceilings, dropping off ledges, and rolling a little before they stop. Pipe bombs and Molotovs still go off on impact, smoke bombs, noise makers and aerosol bombs after their fuse, and remote and sensor bombs still lie down to wait for their signal. In multiplayer the server decides where it lands and everyone sees it fly. Grenades that Guns of Marz or another Gunworks mod already throws are left to that mod.
 
-[b]Less lag with many items (beta)[/b]
-Option: [i][BETA] Less Lag With Many Items[/i]
-With hundreds or thousands of items in your inventory or a nearby container, the inventory windows rebuilt their lists item by item whenever almost anything nearby changed, on every step and turn, and aged every item of a food stack every frame, and right-clicking a big stack could freeze the game for seconds. Now rebuilds that take long wait for each other for a moment, big food stacks age a slice at a time, and the right-click menu does its checks once per stack instead of once per item. The windows show the same things.
+[b]Less lag with many items[/b]
+Option: [i]Less Lag With Many Items[/i]
+With hundreds or thousands of items in your inventory or a nearby container, the inventory windows rebuilt their lists item by item whenever almost anything nearby changed, on every step and turn, and aged every item of a food stack every frame, and right-clicking a big stack could freeze the game for seconds. Now rebuilds that take long wait for each other for a moment, and the right-click menu does its checks once per stack instead of once per item. The windows show the same things.
 
-[b]Smoother crafting window (beta)[/b]
-Option: [i][BETA] Smoother Crafting Window[/i]
+[b]Hovering big floor piles without lag[/b]
+Option: [i]Hovering Big Floor Piles Without Lag[/i]
+Hovering a stack in the loot window lights up its items on the floor, and the game drew each lit item again together with everything lying above it on its tile, so a pile of a few thousand items on one tile held the game near 20 fps while the mouse was over it. Now a stack lights up only its top 8 items on each tile, the ones you see on top of the pile.
+
+[b]Smoother crafting window[/b]
+Option: [i]Smoother Crafting Window[/i]
 The crafting window checks every recipe against every item nearby, and did it again for every change around you, every step with the window pinned and every item of a batch craft, so it stuttered with many items nearby. Now it refreshes once things have settled and once after a batch of crafts, and stops redoing some work every frame. The build window waits for the last change the same way.
 
-[b]Water dispenser bottle duplication fix (beta)[/b]
-Option: [i][BETA] Water Dispenser Bottle Duplication Fix[/i]
+[b]Water dispenser bottle duplication fix[/b]
+Option: [i]Water Dispenser Bottle Duplication Fix[/i]
 Taking the bottle off an office water dispenser twice in a row, or two players taking it at once, no longer gives a second full bottle and a second dispenser on the same tile, and putting a bottle on from a bag no longer leaves the full bottle in the bag.
 
-[b]Make-up fixes in multiplayer (beta)[/b]
-Option: [i][BETA] Make-Up Fixes In Multiplayer[/i]
+[b]Make-up fixes in multiplayer[/b]
+Option: [i]Make-Up Fixes In Multiplayer[/i]
 Removing make-up in the make-up window deletes it on the server. It used to only come off, and the hidden make-up item stayed in your inventory for good, as did every make-up that new make-up replaced; applying make-up now deletes the one it replaces, and any left over from before. Applied make-up also no longer comes off two seconds later when Clothing Wear Down Rework is on.
 
-[b]Medical check stats reset fix (beta)[/b]
-Option: [i][BETA] Medical Check Stats Reset Fix[/i]
+[b]Medical check stats reset fix[/b]
+Option: [i]Medical Check Stats Reset Fix[/i]
 In multiplayer, a second medical check on a player while the first health window on them is still open, or pressing the admin Health button again, no longer resets all of their stats on the server: hunger, thirst, tiredness, pain, panic, stress, boredom, unhappiness, sickness and drunkenness stay as they are.
 
-[b]Notebook fixes in multiplayer (beta)[/b]
-Option: [i][BETA] Notebook Fixes In Multiplayer[/i]
+[b]Notebook fixes in multiplayer[/b]
+Option: [i]Notebook Fixes In Multiplayer[/i]
 A notebook or note you lock in the writing window stays locked after relogging and for whoever you give it to; the lock used to exist only on your own screen. What you write is saved the moment you press OK, also for a second split-screen player or after leaving the window open for over half an hour. Only the player who locked it, or someone allowed to edit any item, can unlock it.
 
-[b]Padlock fixes in multiplayer (beta)[/b]
-Option: [i][BETA] Padlock Fixes In Multiplayer[/i]
+[b]Padlock fixes in multiplayer[/b]
+Option: [i]Padlock Fixes In Multiplayer[/i]
 A padlock taken off a door or gate can be put on again straight away; it used to come back with no keys until you relogged. A key taken from a key ring no longer stays on the ring.
 
-[b]Small text and menu fixes (beta)[/b]
-Option: [i][BETA] Small Text And Menu Fixes[/i]
+[b]Small text and menu fixes[/b]
+Option: [i]Small Text And Menu Fixes[/i]
 Faction invitations name the faction instead of "null faction", the admin Manage Inventory window centres its title, and right-clicking a crop with a trowel or shovel in your inventory no longer adds a greyed out "Not enough soil to plant here" to the Gardening menu.
 
-[b]Unstick timed actions (beta)[/b]
-Option: [i][BETA] Unstick Timed Actions After (Seconds)[/i] (15 by default, 0 = off)
+[b]Unstick timed actions[/b]
+Option: [i]Unstick Timed Actions After (Seconds)[/i] (15 by default, 0 = off)
 In multiplayer a timed action the server never answers (crafting at a forge or kiln, eating, reading, moving furniture) used to stay at 100% for good, with every action queued after it stuck behind it until you restarted the game. It is now stopped once it has waited at 100% for the set time plus as long again as it took to get there, as if the server had refused it, and you can act again.
 
-[b]Crafting stations stay reachable (beta)[/b]
-Option: [i][BETA] Crafting Stations Stay Reachable[/i]
+[b]Crafting stations stay reachable[/b]
+Option: [i]Crafting Stations Stay Reachable[/i]
 Once something below a forge, kiln, furnace or other crafting station on its tile was removed, the server could no longer find the station, and every craft there stuck at 100%. The server now keeps the stations near each player up to date.
 
-[b]Scrapping never deletes container contents (beta)[/b]
-Option: [i][BETA] Scrapping Never Deletes Container Contents (Requires Restart)[/i]
+[b]Scrapping never deletes container contents[/b]
+Option: [i]Scrapping Never Deletes Container Contents (Requires Restart)[/i]
 Scrapping a forged gold or silver key ring used to delete every key on it, and cutting up a sack, sandbag, laundry or mail bag, or making a hollow book from one that already hid something, deleted what was inside. Those recipes now only take an empty container, like the bag recipes already do; empty it first.
 
-[b]Barricade fixes (beta)[/b]
-Option: [i][BETA] Barricade Fixes (Requires Restart)[/i]
+[b]Barricade fixes[/b]
+Option: [i]Barricade Fixes (Requires Restart)[/i]
 A plank barricade takes 2 nails, as the right-click menu (which asks for 2) and the barricade itself show; it took only 1. Once the last plank is used, the barricade cursor turns red and a queued barricade stops, instead of running to the end and building nothing.
 
-[b]Mechanics XP limit survives reloads (beta)[/b]
-Option: [i][BETA] Mechanics XP Limit Survives Reloads[/i]
+[b]Mechanics XP limit survives reloads[/b]
+Option: [i]Mechanics XP Limit Survives Reloads[/i]
 Installing, uninstalling and repairing a part gives Mechanics XP once a day per part. The game gave every vehicle a new hidden ID each time it loaded (world load, server restart, or walking away and back), so the same parts gave XP again at once. Vehicles now keep their ID and the limit holds.
 
-[b]Crafted items show their real values (beta)[/b]
-Option: [i][BETA] Crafted Items Show Their Real Values[/i]
+[b]Crafted items show their real values[/b]
+Option: [i]Crafted Items Show Their Real Values[/i]
 In multiplayer, fish fillets showed 205 kcal whatever the fish, until dropped and picked up again, because the server set their real values only after sending them. Crafted items are now sent again once the recipe is done with them, which also fixes other recipes that adjust their results.
 
-[b]Crafts done while walking are not lost (beta)[/b]
-Option: [i][BETA] Crafts Done While Walking Are Not Lost[/i]
+[b]Crafts done while walking are not lost[/b]
+Option: [i]Crafts Done While Walking Are Not Lost[/i]
 A craft remembers every container that was nearby when it was queued, and when it finished the game gave up without a word if any of them was out of reach by then, even ones the craft took nothing from. So opening ammo boxes (or any other craft that can be done while walking) finished with the box still unopened once you had walked a few tiles from a crate, a car or items on the floor. Containers the craft takes nothing from are now left out; a craft that uses items from a container you walked away from is still refused.
 
-[b]Moving cancels work on a car (beta)[/b]
-Option: [i][BETA] Moving Cancels Work On A Car[/i]
+[b]Moving cancels work on a car[/b]
+Option: [i]Moving Cancels Work On A Car[/i]
 Two jobs at a car could not be stopped by moving once started. Taking a burnt or smashed car apart with a blowtorch went on until the bar was full wherever you walked, and washing a car went on until that side was clean or the water ran out unless you left that side of the car. Walking or running now cancels both, as it cancels other work; what was already washed stays clean.
 
-[b]Max item size checks each item (beta)[/b]
-Option: [i][BETA] Max Item Size Checks Each Item[/i]
+[b]Max item size checks each item[/b]
+Option: [i]Max Item Size Checks Each Item[/i]
 Bags with a max item size (ALICE belts and chest rigs, toolboxes, totes, first aid kits...) checked it against everything dragged in at once, so only 1 to 4 magazines went into ALICE webbing per drag. Each item is now checked on its own, when dragging and with the transfer same type button. Picking items up from the floor straight into such a bag still stops at the limit; that check is in Java.
 
 [b]No max item size limit (off by default)[/b]
 Option: [i]No Max Item Size Limit (Off By Default) (Requires Restart)[/i]
 Removes the max item size of every bag that has one, mods' bags included, so only the bag's capacity limits what goes in. A balance change rather than a fix, so it is off unless the server turns it on.
 
-[b]Shoulder holster stores any item (off by default, beta)[/b]
-Option: [i][BETA] Shoulder Holster Stores Any Item (Off By Default)[/i]
+[b]Shoulder holster stores any item (off by default)[/b]
+Option: [i]Shoulder Holster Stores Any Item (Off By Default)[/i]
 The shoulder holster's pouch only took pistol magazines, two at most. With this on it takes any item that fits its capacity, like the other bags; the pistol still hangs on its hotbar slot. A balance change rather than a fix, so it is off unless the server turns it on.
 
-[b]Paper map markings are kept (beta)[/b]
-Option: [i][BETA] Paper Map Markings Are Kept[/i]
+[b]Paper map markings are kept[/b]
+Option: [i]Paper Map Markings Are Kept[/i]
 In multiplayer, symbols and notes drawn on a paper map vanished after a relog, when the area reloaded, or when the map was given to someone else, because the server saved the map blank. They are now stored with the map when you close it and drawn back whenever it is opened.
 
-[b]Read brochures and maps show on the world map (beta)[/b]
-Option: [i][BETA] Read Brochures And Maps Show On The World Map[/i]
+[b]Read brochures and maps show on the world map[/b]
+Option: [i]Read Brochures And Maps Show On The World Map[/i]
 In multiplayer, brochures and fliers you read only showed on the world map after a relog, their locations were revealed by the server's settings instead of your own, and paper maps you opened were forgotten after a relog. All three now work as in single player.
 
-[b]Instant building with Handy (beta)[/b]
-Option: [i][BETA] Instant Building With Handy[/i]
+[b]Instant building with Handy[/b]
+Option: [i]Instant Building With Handy[/i]
 In multiplayer, admins with Timed Action Instant switched on and the Handy trait build instantly. The server gave them a negative build time, which the game turned into half an hour: an empty bar, and the building only appeared 30 minutes later.
 
-[b]World map admin tools by role (beta)[/b]
-Option: [i][BETA] World Map Admin Tools By Role[/i]
+[b]World map admin tools by role[/b]
+Option: [i]World Map Admin Tools By Role[/i]
 The world map's admin tools (right-click Teleport Here, the cell and tile grids, the virtual animal tools, and the full list of map options) show for every role that may teleport to coordinates or use the debug context menu, so moderators and custom staff roles get them too, not only the role named admin.
 
-[b]Seen rooms stay lit after relogging (beta)[/b]
-Option: [i][BETA] Seen Rooms Stay Lit After Relogging[/i]
+[b]Seen rooms stay lit after relogging[/b]
+Option: [i]Seen Rooms Stay Lit After Relogging[/i]
 In multiplayer, the rooms you have seen no longer go dark again every time you log back in or come back from far away. Your own game remembers the rooms you have seen on each server (a small file in Zomboid/Lua) and lights them again. Rooms are remembered whole, so one you only glimpsed from its doorway comes back fully lit.
 
 [b]No auto vault over stair railings[/b]
@@ -359,16 +363,16 @@ Running into a stair railing no longer vaults you over it.
 Option: [i]Rescue Animals Lost In Hutch Nest Boxes[/i]
 Chickens the game deletes after laying in a full hutch are put back.
 
-[b]Baby animals catch up once (beta)[/b]
-Option: [i][BETA] Baby Animals Catch Up Once[/i]
+[b]Baby animals catch up once[/b]
+Option: [i]Baby Animals Catch Up Once[/i]
 Coming back to an animal pen, the game makes up the time you were away. Since 42.22 it does that once for each grown animal but, for each baby, once for every animal in the pen, so in a pen of 20 the chicks, calves, lambs and piglets aged, got hungry and thirsty and ate from the troughs as if you had been gone 20 times as long, and could grow up, starve or die at once. Now each baby is made up once, like the grown animals. A baby that comes back into the world, or a pen whose far end comes back, at the very moment the game makes up the pen still gets the game's count, about one return in 25.
 
 [b]Hutch dirt speed[/b]
 Option: [i]Hutch Dirt Speed[/i] (0.25 by default, 1 = vanilla)
 Hutches and nest boxes get dirty at a quarter of the normal speed. Set any speed you like, or 1 for vanilla.
 
-[b]Grabbing eggs takes every egg (beta)[/b]
-Option: [i][BETA] Grabbing Eggs Takes Every Egg[/i]
+[b]Grabbing eggs takes every egg[/b]
+Option: [i]Grabbing Eggs Takes Every Egg[/i]
 Grab Eggs on a hutch nest box takes every egg in it. With Timed Action Instant on a server, the action used to end after about a fifth of the eggs, and fast forward in single player skipped eggs the same way.
 
 [b]Delete negative weight items[/b]
@@ -383,8 +387,8 @@ A new Grab amount... option between Grab one and Grab all takes exactly as many 
 Option: [i]No Empty Slices In The Firearm Radial Menu[/i]
 Empty slices are left out of the firearm radial menu, so it only shows what can be done.
 
-[b]Hotbar ignores clicks meant for menus (beta)[/b]
-Option: [i][BETA] Hotbar Ignores Clicks Meant For Menus[/i]
+[b]Hotbar ignores clicks meant for menus[/b]
+Option: [i]Hotbar Ignores Clicks Meant For Menus[/i]
 Clicking a context menu option that lies over the equipment hotbar chooses the option instead of sometimes using the hotbar slot under it. A hotbar slot is only used by a click that starts and ends on the hotbar.
 
 [b]Mod options of unloaded mods are kept[/b]
@@ -470,6 +474,34 @@ Boxing ammunition always saves weight: the .44 Magnum, .357 Magnum, .38 Special 
 Option: [i]Item Data Fixes (Requires Restart)[/i]
 The Rangers baseball shirt covers the arms, the red baseball cap falls off like the others, the seafood cooler makes cooler sounds, and the metal, copper, gold, silver and tumbler hot drinks and the clay bowl fruit salad have names.
 
+[h2]Java part (optional)[/h2]
+A few lag fixes cannot be made in Lua, so they come as a small Java add-on you install separately. It is optional: the mod works without it.
+
+[b]Crafting with many items nearby (beta)[/b]
+Turned off in: [i]ProjectZomboid\ZomboidFixesB42\java.ini[/i]
+Finishing a craft no longer freezes the game with thousands of items nearby, and the crafting window refreshes faster: recipe checks look only at the items each recipe line can use, instead of comparing every nearby item against every type it accepts. The window's recipe list also no longer piles up hundreds of dead entries in memory each time it refreshes.
+
+[b]Requirements[/b]
+[list]
+[*]Project Zomboid Build 42.22.2. On another build each Java fix checks the game's code first and skips itself (see ProjectZomboid/ZomboidFixesB42/agent.log).
+[*]The Zomboid Fixes mod, subscribed and downloaded (the add-on ships inside it).
+[*]On the game: [url=https://github.com/xD3I/PZ_Optimization]PZ Optimization[/url], installed first by its own guide, including its Steam launch option. The Java add-on loads right after it and uses that same launch option.
+[*]A dedicated server needs neither PZ Optimization nor a launch option (PZ Optimization is not for servers). Windows: PowerShell, built in. Linux: bash and Python 3.
+[/list]
+
+[b]Install (Windows, the game or a dedicated server)[/b]
+Close the game, subscribe and let Steam download the mod, then paste this into PowerShell (change the drive if your Steam library is elsewhere):
+[code]powershell -ExecutionPolicy Bypass -File "C:\Program Files (x86)\Steam\steamapps\workshop\content\108600\3800148259\mods\ZomboidFixesB42\42.20\java\install.ps1"[/code]
+On the game, one more step or it closes at start: put the line the installer prints (also copied to the clipboard) into Steam > Project Zomboid > Properties > General > Launch Options, keeping anything you had after %command%. With PZ Optimization installed that line is its own launch option, already in place, so there is nothing more to do. A dedicated server needs no launch option.
+After a game update or Steam's Verify integrity, run the installer again. Turn a fix off by setting its line to false in java.ini and restarting. Uninstall on Windows: the same command with -Uninstall at the end, then clear the launch option.
+
+[b]Install (Linux, the game or a dedicated server)[/b]
+Close the game or stop the server, let Steam download the mod, then run the installer with PZ_DIR set to the folder that holds projectzomboid.jar. The game, from a default Steam library:
+[code]PZ_DIR="$HOME/.steam/steam/steamapps/common/ProjectZomboid" bash "$HOME/.steam/steam/steamapps/workshop/content/108600/3800148259/mods/ZomboidFixesB42/42.20/java/install.bash" install[/code]
+A dedicated server installed with SteamCMD keeps its Workshop downloads in its own folder:
+[code]PZ_DIR=/path/to/server bash /path/to/server/steamapps/workshop/content/108600/3800148259/mods/ZomboidFixesB42/42.20/java/install.bash install[/code]
+It adds the add-on to ProjectZomboid64.json, which both the game and the server start from. No launch option is needed. Uninstall with uninstall in place of install.
+
 [h2]Fixes for other mods[/h2]
 These only do something when that mod is installed.
 
@@ -481,9 +513,17 @@ Guns of Marz tooltips wrap instead of stretching across the screen: the list of 
 Option: [i]Guns of Marz Magazine Tooltip[/i]
 A Guns of Marz gun's tooltip names the magazine really in it, with its capacity, instead of an earlier one. With jungle magazines (two clamped together) it counts the side in the gun against that side's 30 and shows the other side's rounds after it, such as "30 / 30 (+30)". Gunworks' "Chamber is open" warning still shows on the guns it redraws.
 
-[b]Gunworks held poses (beta)[/b]
-Option: [i][BETA] Gunworks Held Pose Sync[/i]
+[b]Gunworks held poses[/b]
+Option: [i]Gunworks Held Pose Sync[/i]
 Gunworks lets a gun mod give a gun a held pose of its own, such as Heavy Ordnance's RPG or Guns of Marz's SMG and foregrip stances. Gunworks only set that pose when the gun in a player's hands (or its foregrip) changed, and remembered it per player number rather than per character, so a player who left your range and came back, relogged or respawned, or a second split-screen player, was shown in the vanilla pose (the gun often off their hands) until they changed weapons. Each player's pose is now checked a few times a second and given back.
+
+[b]Better Containers Smart Deposit without freezes[/b]
+Option: [i]Better Containers Smart Deposit Without Freezes[/i]
+Better Containers' Smart Deposit (dropping items on its Proximity view) looked through every item of every nearby container once for each item dropped, and did it on every frame of the drag, so dragging a big stack next to full crates froze the game for 10 to 20 seconds at a time. Now each container is looked through once per drag. The items go to the same containers as before.
+
+[b]Better Walkie Talkies without inventory lag[/b]
+Option: [i]Better Walkie Talkies Without Inventory Lag[/i]
+Better Walkie Talkies checked every item you carry on every tick to find your walkie talkies, about a tenth of the game's time with a few thousand items carried. Now it follows the radios it has found and only looks through the whole inventory when the number of items changes, and once a second. The radios behave the same.
 
 [b]Bag attachment slots tooltip box[/b]
 Option: [i]Bag Attachment Slots Tooltip Box[/i]
@@ -493,7 +533,7 @@ Plysken Attachments Reborn's bag attachment slot box is drawn at the tooltip's r
 Option: [i]Turbo Game In Multiplayer[/i]
 Turbo Game cartridges and batteries go in and come out on multiplayer servers, including in consoles spawned from the item list. The battery charge, best scores and mood effects are kept, and best scores belong to the console they were set on. Your character no longer walks around while a game is open, and the game closes when a zombie is near or it is too dark.
 
-[b]Mod items without an item type (beta)[/b]
-Option: [i][BETA] Mod Items Without An Item Type (Requires Restart)[/i]
+[b]Mod items without an item type[/b]
+Option: [i]Mod Items Without An Item Type (Requires Restart)[/i]
 Build 42 reads an item's kind only from [i]ItemType = base:normal[/i]. Mods ported from Build 41 that still write [i]Type = Normal[/i] leave their items with no item type: such an item can never be spawned (loot, /additem and the Item List all fail with an error), and the admin Item List stops with an error and does not open while one is loaded. Slocan Lake's five maps are like this. When the world loads, every such item becomes a plain item, and each one is named in the console log so its mod's author can correct it.
 

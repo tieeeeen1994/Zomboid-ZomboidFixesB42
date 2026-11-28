@@ -2,3 +2,7 @@
 tmp/
 __pycache__/
 .vscode/
+
+# Java part: build output (java/build.sh), shipped in the Workshop upload but not tracked
+java/build/
+Contents/mods/ZomboidFixesB42/42.20/java/

@@ -1,7 +1,11 @@
 version=1
 id=3800148259
 title=Zomboid Fixes B42.22.2
-description=A set of fixes for Build 42.22.2, mostly for multiplayer. Install it on both the server and clients. Every fix is on by default and can be turned off in the sandbox options; the few that are off by default say so. Fixes marked beta are new and not fully tested yet. This was supposedly Unlisted, but I feel like people will find the mod useful. It is, however, needed to say that the mod is made by A.I., but under my strict supervision. I just want to play with my friends smoothly without all these bugs stopping us from enjoying the game...
+description=A set of fixes for Build 42.22.2, mostly for multiplayer. Install it on both the server and clients. Every fix is on by default and can be turned off in the sandbox options; the few that are off by default say so. This was supposedly Unlisted, but I feel like people will find the mod useful. It is, however, needed to say that the mod is made by A.I., but under my strict supervision. I just want to play with my friends smoothly without all these bugs stopping us from enjoying the game...
+description=
+description=Optional Java add-on with lag fixes Lua cannot make (crafting with thousands of items nearby). The mod works without it. Requires Build 42.22.2 and, on the game, [url=https://github.com/xD3I/PZ_Optimization]PZ Optimization[/url] installed first with its launch option (a dedicated server needs neither). Close the game, then in PowerShell:
+description=powershell -ExecutionPolicy Bypass -File "C:\Program Files (x86)\Steam\steamapps\workshop\content\108600\3800148259\mods\ZomboidFixesB42\42.20\java\install.ps1"
+description=Linux, details and uninstalling: the pinned thread.
 description=
 description=The full list of fixes, what each one does and which sandbox option turns it off is in the pinned thread in the Discussions tab.
 description=

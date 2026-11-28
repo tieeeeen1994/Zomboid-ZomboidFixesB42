@@ -41,6 +41,32 @@ engine add is deferred, and the net ID map entry is written at that point too); 
 `*_EntityNetIDs.lua` errored on 42.22 until switched. A scan of every public Java method name present in 42.21 and
 gone in 42.22 (63) against all the mods' Lua found no other call.
 
+## Java part (java/, started 2026-11-28)
+
+Fixes Lua cannot reach, as a Java agent that edits single methods as their classes load (`java.lang.classfile`, in
+the game's JRE 25: no library). Optional: the Lua mod works without it. Rule (the user's, 2026-11-28): every Java fix must work on a client whose server has no Java part, and a server with the Java part must still serve clients without it: same results either way, no new packets or state the other side must understand; installing it on a dedicated server is never required. Player docs (README, forum, workshop.txt) list PZ Optimization as a prerequisite on the game (the user's call, 2026-11-28: the agent itself runs without it, but has only been played with it); servers need neither. Launch order `-javaagent:pzopt/...` (PZ
+Optimization, optional) → `-javaagent:ZomboidFixesB42/zfix-agent.jar` → any other agent (ZombieBuddy): each agent gets
+the previous one's bytes, so a class pzopt replaces reaches us as pzopt's; pzopt's installers only prepend / remove
+their own argument. Each patch (`java/src/zfix/patches/`) names one method and the fingerprints of the code it was
+written for (instructions with symbolic operands, SHA-256, first 8 bytes); other code there is skipped and logged.
+premain loads no game class. Toggles: `<game>/ZomboidFixesB42/java.ini`, `Option=true` (missing = off; the shipped
+file has every fix on). `java/build.sh` (JDK: `source /d/PZ_Optimization/local/pzopt-env.sh`) compiles into the
+gitignored `Contents/.../42.20/java/` and runs `zfix.Check` (fingerprint + JVM verifier) against the installed jar;
+`java/install.sh install|uninstall` copies into the game folder and edits `ProjectZomboid64.json`. On Windows the
+agent needs a launch wrapper (`java/launch.cmd` = pzopt's `pzopt-launch.cmd`, jre64\bin on PATH); a Windows server's
+bat runs `jre64\bin\java.exe` itself and needs none. Players: `java/install.ps1` (shipped in the Workshop folder by
+build.sh; finds the game from the Workshop path's `steamapps`, edits the JSON and `StartServer64*.bat` /
+`ProjectZomboidServer.bat`, `-Uninstall`; tested on a fake library 2026-11-28), Linux servers `install.sh` with PZ_DIR (shipped as `install.bash`: the in-game upload refuses `.sh`, `.bat`, `.exe`, `.dll`, `.so`, `.dylib`, `.app`, `.zip` anywhere under Contents, `SteamWorkshopItem.validateFileTypes`)
+(untested). The jar is gitignored but must exist in the working folder when uploading to the Workshop: build first.
+Patches: `HandcraftRecipeCacheLeak` (HandcraftLogic's shadowed recipe cache, see "What costs time with many items");
+`CraftInputItems` (`CraftRecipeData.consumeInputFromItems` compared every possible type of an input against every item
+by full name, so each recipe check cost types x items; the crafting window runs every recipe on each rebuild and each
+finished craft; `zfix.rt.CraftItemIndex` hands the loop only the matching items, same order). Runtime helpers live in
+`zfix.rt` (compiled against the game jar, loaded by the game on first call; premain never touches them).
+Checked and left (2026-11-28): the item tooltip's recipe flags (`getUsedInRecipes` / `isFavouriteRecipeInput` /
+`getResearchableRecipes`, twice a frame) are map lookups per recipe, not item scans; `hasRecipeAtHand` (skill-gated
+recipes) is one item pass that any exact cache would repeat; `getInventoryWeight` is steady per-frame work.
+
 ## Paths
 
 - Game Lua: `~/Library/Application Support/Steam/steamapps/common/ProjectZomboid/Project Zomboid.app/Contents/Java/media/lua`
@@ -970,7 +996,7 @@ forces god mode / invisible / noclip / admin tag / hear all from the flags byte 
   (`FluidContainer.canAddFluid`; `addFluid` then adds nothing and the action loops). `ISMilkAnimal:milk` moves on
   only to "All"'s first available (can be full) and then the same full type, so milking stops when the picked kind
   is full; its stress roll runs before that check. The Milk submenu concatenates `getCapacity()` (a float) raw:
-  "0.20000000298023224L". `*_MilkingContainers.lua` (option `MilkingContainers`, beta).
+  "0.20000000298023224L". `*_MilkingContainers.lua` (option `MilkingContainers`).
   Raking (42.21, `ISPickDungCursor` → shared `ISPickupDung`, 250 ticks, 1 with `isTimedActionInstant`): server
   `complete` runs `square:removeAllDung()` (world items whose script `isDung`; feathers and eggs are not) on each
   square of the radius, local removals, adds the items to the raker with `sendAddItemsToContainer`, then
@@ -1938,9 +1964,19 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   squares) and `ISCraftRecipePanel:updateTitleWidget` (layout, plus an O(items) recipe-at-hand scan) every update.
   Panels bind `onStopCraft` at `new` (`logic:addEventListener`). `ISHandcraftAction:stop` calls onCancel and
   onComplete after `resetQueue`. `HandcraftLogic` shadows the base class's `cachedRecipeInfos` fields, so every
-  rebuild appends ~670 entries to a base list that is never cleared (Java leak). Never refresh the window logic
+  rebuild appends ~670 entries to a base list that is never cleared (Java leak; the Java part's `HandcraftRecipeCacheLeak` clears it). Never refresh the window logic
   while `isCraftActionInProgress()`; the action uses its own logic. `ISBuildPanel:update` runs `updateContainers`
   the same frame on `drawDirty` or a square change. `*_InventoryPerformance.lua`, `*_CraftingPerformance.lua`.
+
+- Floor highlights (42.22, traced 2026-11-28): hovering or selecting a loot stack highlights each of its world items
+  every frame (`ISInventoryPane:updateWorldObjectHighlight` clears and re-sets them); `FBORenderObjectHighlight.render`
+  then runs `renderObject` per highlighted object, which walks the square's objects from that object's index to the end
+  (`isRenderedEveryFrame` + two set lookups each, redrawing the later ones on top), so n highlighted items on one tile
+  cost ~n^2 / 2 a frame (a few thousand: ~20 fps). `*_FloorHighlight.lua` highlights each stack's top 8 per square.
+- Profiled 2026-11-28 (pzopt `luaProfile`, the user's MP save with thousands of items): Better Containers' Smart Deposit
+  (13-22 s frames, dragged x nearby items per plan, run every drag frame: `*_BetterContainersDeposit.lua`), Better
+  Walkie Talkies' per-tick main inventory walk (12%, `*_WalkieTalkieScan.lua`), TienCustomizableHotbar's per-slot
+  inventory walk every 250 ms (13%, fixed there: `Mod.ResolveAll`), this mod's `clearGhostsOf` (per item walks).
 
 ### UI API cheat sheet (vanilla signatures, 42.20)
 
@@ -2219,25 +2255,25 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   send floor hints (`encodeFloorHints`, `findItemOnGroundNear`), log why they decline, and fall back to a vanilla
   transaction for declined items still at the source. Not fixable from Lua: a real floor item the client lost to a
   wrong-index removal (no way to send one world item to one client), and the cross-player Reject of vanilla cancels.
-- `server/ZomboidFixesB42_BagContentsSync.lua` (option `BagContentsSync`, beta): wraps `sendAdd/RemoveItem(s)…`
+- `server/ZomboidFixesB42_BagContentsSync.lua` (option `BagContentsSync`): wraps `sendAdd/RemoveItem(s)…`
   and `sendReplaceItemInContainer`; for a bag lying directly in a vehicle part the bag's container is parented to
   the vehicle for the call (client keeps the same object, so a fast transfer waiting for arrival sees it); a bag
   deeper in a car or in a crate is re-sent whole once per tick, and the fast transfer's `batchMoved` decodes the
   destination again when the old object lacks the item. Reported 2026-10-19: eggs into a Tien's Coolers cooler in a
   trunk with fast forward / Fast Timed Actions hung 10 s and the cooler kept showing its old contents.
-- `*_AnimalCarryAll.lua` (client/server, option `AnimalCarryAll`, beta): an admin's animal submenu (wrapped
+- `*_AnimalCarryAll.lua` (client/server, option `AnimalCarryAll`): an admin's animal submenu (wrapped
   `AnimalContextMenu.doMenu`, submenu found by the option index noted before the call) picks up every loose animal
   of the clicked one's type and breed in its connected zones into the main inventory, 20 a server tick, the way
   `ISPickupAnimal:complete` does but sent with `sendAddItemToContainer`; a carried animal's inventory menu
   (`doInventoryMenu`) puts all of a kind down over the 3x3 round the admin with `AddWorldInventoryItem`, only once
   the zones under those squares have been fully loaded for 3.5 s (refused after 15 s; the client refuses first if its
   own copy is not), so a zone's catch-up replay never lands on animals just put down (see "Pen catch-up").
-- `*_AnimalGroupCheats.lua` (shared/server/client, option `AnimalGroupCheats`, beta): admin hotbar actions
+- `*_AnimalGroupCheats.lua` (shared/server/client, option `AnimalGroupCheats`): admin hotbar actions
   `animals.cheat.<id>` (stress, hunger, thirst, health, age, breed, birth, milk, wool, acceptance, invincible),
   each with value, picked square, scope (pen = zone + joined zones + their hutches, hutch, radius 5-30) and type
   filter. One `animalGroupCheat` command; the server applies vanilla's setters to its animals (`Cheats.run`) and
   answers with the count and online IDs, which the client outlines for 2.5 s. Values reach clients by AnimalPacket.
-- `server/*_BabyAnimalCatchUp.lua` (option `BabyAnimalCatchUp`, beta, 42.22): mirrors `checkStreamed` per animal
+- `server/*_BabyAnimalCatchUp.lua` (option `BabyAnimalCatchUp`, 42.22): mirrors `checkStreamed` per animal
   zone every update (the hour it was first seen not fully loaded); while a zone is back but not made up, its babies
   that no `check()` has counted (no zone yet, or all of them when it came back in the server's preupdate or, in
   single player, when probes say no check ran) get `setOnHook(true)` + `setDZone(zone)` in `OnTickEvenPaused` and
@@ -2268,13 +2304,13 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   ID, origin, destination, token}`; the server takes the item out by ID, flies the same path (same numbers, same
   steps, so the same landing), broadcasts `throwableFly` / `throwableEnd`, and ends it with
   `IsoTrap.new(thrower, item, ...):place()`. Single player: the client calls `Throwables.launch` directly.
-- `*_Storm.lua` (shared/client/server, option `StormControls`, beta): a Storm tab registered after vanilla's in
+- `*_Storm.lua` (shared/client/server, option `StormControls`): a Storm tab registered after vanilla's in
   `ISAdminWeather:initialise`; the server (`Capability.ClimateManager`; SP: the tab calls `Storm.start`) builds a
   modded period with the chosen angle / strength / front, keeps the settings in global mod data
   `ZomboidFixesB42_Storm`, and in `OnClimateTick` replaces the storm stage's clouds (count, radius, strength,
   ratio, centred on a player) and retargets the wind overrides; it is "ours" while the running period's first stage
   start equals the saved `startHour`.
-- `shared/*_WebbingSlots.lua` + `media/registries.lua` (option `ChestRigOverSuspenders`, off by default, beta): the ALICE belts
+- `shared/*_WebbingSlots.lua` + `media/registries.lua` (option `ChestRigOverSuspenders`, off by default): the ALICE belts
   and the chest rigs move from `base:webbing` to `zomboidfixesb42:suspenders` / `zomboidfixesb42:chestrig`
   (`DoParam` BodyLocation + CanBeEquipped at OnLoadMapZones), placed after webbing in that order; each copies every
   webbing rule both ways and stays exclusive with webbing, but not with the other. Locations are registered and
@@ -2325,7 +2361,7 @@ whitelist then falls back to any `set*` method, still behind the Edit Item capab
   is wrapped to send the own Always Day, `RefreshCheats` re-sets the flag, the watermark's `drawTextRight` is
   swapped for one render, and the state is kept in `Zomboid/Lua/ZomboidFixesB42_FullBright.ini` (vanilla
   restores Admin Powers only in SP, from `CheatPanel.ini`, written only by the window's Save).
-- `client/ZomboidFixesB42_GunworksGripSync.lua` (option `GunworksGripSync`, beta): Gunworks' held-pose selector
+- `client/ZomboidFixesB42_GunworksGripSync.lua` (option `GunworksGripSync`): Gunworks' held-pose selector
   (`WeaponSystems/Utils/GripAnim.lua`, variable `GunworksGripAnim`, local player from OnPlayerUpdate, remote ones
   from a 3-tick OnTick sweep on clients) writes the variable only when its value changes in `lastGripByOnlineId`,
   a cache keyed by online ID, not by character. A character rebuilt with the same ID (a remote player back after

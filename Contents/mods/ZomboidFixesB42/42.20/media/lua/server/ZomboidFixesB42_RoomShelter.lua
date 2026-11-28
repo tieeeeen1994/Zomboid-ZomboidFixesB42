@@ -25,7 +25,7 @@
     update just added (the rate times the game time multiplier, as UpdateIllness adds it)
     and zeroes the rate, so the moodle shows nothing. Zombie counts are not touched.
 
-    Option RoomShelterFromCorpses (beta: not yet played in game).
+    Option RoomShelterFromCorpses.
 --]]
 
 if isClient() then return end

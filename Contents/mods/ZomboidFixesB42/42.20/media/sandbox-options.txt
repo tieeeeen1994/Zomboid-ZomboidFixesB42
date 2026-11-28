@@ -255,6 +255,22 @@ option ZomboidFixesB42.GunworksGripSync
     translation = ZomboidFixesB42_GunworksGripSync,
 }
 
+option ZomboidFixesB42.BetterContainersSmartDeposit
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_BetterContainersSmartDeposit,
+}
+
+option ZomboidFixesB42.BetterWalkieTalkiesScan
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_BetterWalkieTalkiesScan,
+}
+
 option ZomboidFixesB42.TooltipStacking
 {
     type = boolean,
@@ -766,6 +782,14 @@ option ZomboidFixesB42.InventoryPerformance
     default = true,
     page = ZomboidFixesB42,
     translation = ZomboidFixesB42_InventoryPerformance,
+}
+
+option ZomboidFixesB42.FloorHighlightLimit
+{
+    type = boolean,
+    default = true,
+    page = ZomboidFixesB42,
+    translation = ZomboidFixesB42_FloorHighlightLimit,
 }
 
 option ZomboidFixesB42.RoomShelterFromCorpses
